@@ -1,0 +1,72 @@
+{
+  "message": "Data received successfully",
+  "received_data": {
+    "_id": 11,
+    "formhub/uuid": "dd3f20c928bb4c54b752d1a6cdd126a7",
+    
+    
+    "adresse_de_la_parcelle/rang": "premier_rang",
+    "adresse_de_la_parcelle/commune": "gombe",
+    "adresse_de_la_parcelle/quartier": "croix_rouge",
+    "adresse_de_la_parcelle/avenue": "de_la_liberation",
+    "adresse_de_la_parcelle/numero_parcellaire": "10",
+    "adresse_de_la_parcelle/longueur": "5",
+    "adresse_de_la_parcelle/largeur": "3",
+    "adresse_de_la_parcelle/calculation": "15",
+    "adresse_de_la_parcelle/unite_de_la_superficie": "metre_carre",
+    "adresse_de_la_parcelle/coordonne_geographique": "-4.666083 18.156931 0 0;-4.666083 18.355701 0 0;-4.678808 18.262291 0 0;-4.680177 18.205263 0 0;-4.666083 18.156931 0 0",
+    
+    
+    "informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2": "locataire",
+    "informations_de_l_occupant/type_de_personne": "personne_physique",
+    "informations_de_l_occupant/nom": "AA",
+    "informations_de_l_occupant/post_nom": "DD",
+    "informations_de_l_occupant/prenom": "XX",
+    "informations_de_l_occupant/n_telephone": "811453920",
+    "informations_de_l_occupant/adresse_email": "aldizele@hologram.cd",
+    "informations_de_l_occupant/genre": "masculin",
+    "informations_de_l_occupant/nationalite": "congolaise_kinshasa",
+    "informations_de_l_occupant/lieu_de_naissance": "kkk",
+    "informations_de_l_occupant/date_de_naissance": "2025-04-16",
+    "informations_de_l_occupant/profession": "Jinshasa",
+    "informations_de_l_occupant/nombre_d_enfants": "0",
+    "informations_de_l_occupant/niveau_d_etudes": "BAC_5",
+    
+    
+    "informations_de_l_occupant/le_proprietaire_habite_t_il_dans_la_parcelle": "non",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp": "personne_physique",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_2": "Aaron",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/post_nom_2": "Dicc",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/prenom_2": "ssss",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2": "2",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/adresse_email_2": "lllll@lll.com",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/genre_2": "masculin",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_2": "congolaise_kinshasa",
+    
+    
+    "informations_du_menage/numero_bien": "10",
+    "informations_du_menage/usage": "residence",
+    "informations_du_menage/usage_specifique": "eglise",
+    "informations_du_menage/nature": "appartement",
+    "informations_du_menage/superficie": "10",
+    "informations_du_menage/unite_de_la_superficie_1": "metre_carre",
+    "informations_du_menage/coordonnee_geographique": "13.848747 12.229714 0 0;13.848701 12.230504 0 0;13.848596 12.230183 0 0;13.848528 12.229963 0 0;13.848747 12.229714 0 0",
+    
+    
+    "information_sur_les_personnes": [
+      { "information_sur_les_personnes/est_il_etranger": "false" }
+    ],
+    "__version__": "vCfxNM5TrAZnmG68B5qTRi",
+    "meta/instanceID": "uuid:c1faabcb-a7e3-4db8-ada7-6e195e16d0ae",
+    "_xform_id_string": "asFZBaUAVHK7PrEnHRwgcv",
+    "_uuid": "c1faabcb-a7e3-4db8-ada7-6e195e16d0ae",
+    "_attachments": [],
+    "_status": "submitted_via_web",
+    "_geolocation": [],
+    "_submission_time": "2025-04-27T14:48:21",
+    "_tags": [],
+    "_notes": [],
+    "_validation_status": {},
+    "_submitted_by": ""
+  }
+}

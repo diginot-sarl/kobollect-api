@@ -1,0 +1,60 @@
+{
+  "message": "Data received successfully",
+  "received_data": {
+    "_id": 9,
+    "formhub/uuid": "dd3f20c928bb4c54b752d1a6cdd126a7",
+    
+    
+    "adresse_de_la_parcelle/rang": "premier_rang",
+    "adresse_de_la_parcelle/commune": "gombe",
+    "adresse_de_la_parcelle/quartier": "croix_rouge",
+    "adresse_de_la_parcelle/avenue": "de_la_liberation",
+    "adresse_de_la_parcelle/numero_parcellaire": "10",
+    "adresse_de_la_parcelle/longueur": "10",
+    "adresse_de_la_parcelle/largeur": "5",
+    "adresse_de_la_parcelle/calculation": "50",
+    "adresse_de_la_parcelle/unite_de_la_superficie": "metre_carre",
+    "adresse_de_la_parcelle/coordonne_geographique": "-3.975488 86.30178 0 0;-3.997407 86.397594 0 0;-4.002491 86.36023 0 0;-3.992901 86.310074 0 0;-3.975488 86.30178 0 0",
+    
+    
+    "informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2": "bailleur",
+    "informations_de_l_occupant/type_de_personne": "personne_morale",
+    "informations_de_l_occupant/denomination": "Hologram Identification Services",
+    "informations_de_l_occupant/sigle": "HIDS",
+    "informations_de_l_occupant/numero_d_impot": "A000",
+    "informations_de_l_occupant/rccm": "A001",
+    "informations_de_l_occupant/id_nat": "A002",
+    "informations_de_l_occupant/forme_juridique": "sarl",
+    "informations_de_l_occupant/domaine_d_activite": "Informatique",
+    "informations_de_l_occupant/n_telephone": "811465530",
+    "informations_de_l_occupant/adresse_email": "contact@hologram.cd",
+    "informations_de_l_occupant/nationalite": "congolaise_kinshasa",
+    "informations_de_l_occupant/occupant_a_titre_gratuit": "non",
+    
+    
+    "informations_du_menage/numero_bien": "10",
+    "informations_du_menage/usage": "residence",
+    "informations_du_menage/usage_specifique": "hotel",
+    "informations_du_menage/nature": "villa",
+    "informations_du_menage/superficie": "20",
+    "informations_du_menage/unite_de_la_superficie_1": "metre_carre",
+    "informations_du_menage/coordonnee_geographique": "-8.712584 14.526347 0 0;-8.71462 14.536767 0 0;-8.715966 14.532698 0 0;-8.715542 14.528661 0 0;-8.712584 14.526347 0 0",
+    
+    
+    "information_sur_les_personnes": [
+      { "information_sur_les_personnes/est_il_etranger": "false" }
+    ],
+    "__version__": "vCfxNM5TrAZnmG68B5qTRi",
+    "meta/instanceID": "uuid:88a581fe-cadd-424d-a02a-1488d1de6ea6",
+    "_xform_id_string": "asFZBaUAVHK7PrEnHRwgcv",
+    "_uuid": "88a581fe-cadd-424d-a02a-1488d1de6ea6",
+    "_attachments": [],
+    "_status": "submitted_via_web",
+    "_geolocation": [],
+    "_submission_time": "2025-04-27T14:10:23",
+    "_tags": [],
+    "_notes": [],
+    "_validation_status": {},
+    "_submitted_by": ""
+  }
+}

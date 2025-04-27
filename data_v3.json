@@ -1,0 +1,77 @@
+{
+  "message": "Data received successfully",
+  "received_data": {
+    "_id": 8,
+    "formhub/uuid": "dd3f20c928bb4c54b752d1a6cdd126a7",
+    "adresse_de_la_parcelle/rang": "premier_rang",
+    "adresse_de_la_parcelle/commune": "gombe",
+    "adresse_de_la_parcelle/quartier": "revolution",
+    "adresse_de_la_parcelle/avenue": "du_tchad",
+    "adresse_de_la_parcelle/numero_parcellaire": "10",
+    "adresse_de_la_parcelle/longueur": "20",
+    "adresse_de_la_parcelle/largeur": "5",
+    "adresse_de_la_parcelle/calculation": "100",
+    "adresse_de_la_parcelle/unite_de_la_superficie": "metre_carre",
+    "adresse_de_la_parcelle/coordonne_geographique": "3.096636 16.451102 0 0;3.096696 16.452172 0 0;3.096563 16.452227 0 0;3.096354 16.451223 0 0;3.096636 16.451102 0 0",
+
+
+
+    "informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2": "locataire",
+    "informations_de_l_occupant/type_de_personne": "personne_physique",
+    "informations_de_l_occupant/nom": "Alain",
+    "informations_de_l_occupant/post_nom": "Ngoy",
+    "informations_de_l_occupant/prenom": "Paluku",
+    "informations_de_l_occupant/n_telephone": "811455392",
+    "informations_de_l_occupant/adresse_email": "alain.paluku@hologram.cd",
+    "informations_de_l_occupant/genre": "feminin",
+    "informations_de_l_occupant/nationalite": "congolaise_kinshasa",
+    "informations_de_l_occupant/lieu_de_naissance": "Kisangani",
+    "informations_de_l_occupant/date_de_naissance": "1989-06-20",
+    "informations_de_l_occupant/profession": "Informaticien",
+    "informations_de_l_occupant/nombre_d_enfants": "1",
+    "informations_de_l_occupant/niveau_d_etudes": "BAC_5",
+    "informations_de_l_occupant/le_proprietaire_habite_t_il_dans_la_parcelle": "non",
+
+    
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp": "personne_morale",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/denomination_2": "Hologram Identification Services",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/sigle_2": "HIDS",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/numero_d_impot_2": "A0000",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/rccm_2": "A1111",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/id_nat_2": "A2222",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2": "sarl",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/domaine_d_activite_2": "Informatique",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/prenom_2": "Bug-1",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2": "811455392",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/adresse_email_2": "contact@hologram.cd",
+    "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_2": "libanaise",
+
+
+
+    "informations_du_menage/numero_bien": "10",
+    "informations_du_menage/usage": "residence",
+    "informations_du_menage/usage_specifique": "eglise",
+    "informations_du_menage/nature": "appartement",
+    "informations_du_menage/superficie": "100",
+    "informations_du_menage/unite_de_la_superficie_1": "metre_carre",
+    "informations_du_menage/coordonnee_geographique": "21.8325 -78.654758 0 0;21.812102 -78.279931 0 0;21.762788 -78.337405 0 0;21.751309 -78.538031 0 0;21.8325 -78.654758 0 0",
+    "information_sur_les_personnes": [
+      { "information_sur_les_personnes/est_il_etranger": "false" }
+    ],
+
+
+    
+    "__version__": "vCfxNM5TrAZnmG68B5qTRi",
+    "meta/instanceID": "uuid:1af4ae5b-d7ff-4037-849d-ff69a80ca457",
+    "_xform_id_string": "asFZBaUAVHK7PrEnHRwgcv",
+    "_uuid": "1af4ae5b-d7ff-4037-849d-ff69a80ca457",
+    "_attachments": [],
+    "_status": "submitted_via_web",
+    "_geolocation": [],
+    "_submission_time": "2025-04-27T13:30:51",
+    "_tags": [],
+    "_notes": [],
+    "_validation_status": {},
+    "_submitted_by": ""
+  }
+}
