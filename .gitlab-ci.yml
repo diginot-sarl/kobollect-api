@@ -61,8 +61,10 @@ deploy_dev:
   stage: deploy-dev
   image: bitnami/kubectl:latest
   script:
+    - echo "=== Fichiers dans kubernetes/ ==="
+    - ls -la kubernetes/  # Affiche kobocollect-api.yml et kustomization.yaml
     - kubectl apply -k kubernetes/
-    - kubectl get all -n ns-dgi-declaration-ispcap-dev
+    - kubectl get all -n ns-api-kobocollect-dev
     - kubectl rollout restart deploy api-kobocollect -n ns-api-kobocollect-dev
   tags:
     - kubernetes
