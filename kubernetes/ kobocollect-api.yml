@@ -32,7 +32,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: config-api-kobocollect
-  namespace: ns-dgi-declaration-ispcap-dev
+  namespace: ns-api-kobocollect-dev
   labels:
     env: dev
     group: lot-1
