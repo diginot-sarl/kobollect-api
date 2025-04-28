@@ -26,19 +26,6 @@ kind: List
 metadata:
   resourceVersion: ""
 
-# ConfigMap pour la configuration de la base de données
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: config-api-kobocollect
-  namespace: ns-api-kobocollect-dev
-  labels:
-    env: dev
-    group: lot-1
-data:
-  SQLALCHEMY_DATABASE_URL: "mssql+pyodbc://gesDeclarationispCap:hids+1234@207.180.239.152/ms_declaration_ispcap?driver=FreeTDS&port=1433&odbc_options='TDS_Version=8.0"
-
 # Deployment pour l'application
 ---
 apiVersion: apps/v1
@@ -74,7 +61,7 @@ spec:
             - name: SQLALCHEMY_DATABASE_URL
               valueFrom:
                 configMapKeyRef:
-                  name: config-api-kobocollect
+                  name: config-api-kobocollect  # Référence au ConfigMap généré par Kustomize
                   key: SQLALCHEMY_DATABASE_URL
             - name: TZ
               value: "Africa/Kinshasa"
