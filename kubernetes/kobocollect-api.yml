@@ -114,7 +114,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: 'api-kobocollect.apps.erecettes.hologram.cd'
+    - host: 'api-kobocollect.apps.kubedev.hologram.cd'
       http:
         paths:
           - pathType: Prefix
