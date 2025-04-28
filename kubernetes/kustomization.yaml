@@ -15,3 +15,4 @@ configMapGenerator:
       labels:
         env: dev
         group: lot-1
+      disableNameSuffixHash: true
