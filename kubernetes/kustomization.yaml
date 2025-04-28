@@ -1,11 +1,17 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# Définir le namespace global (optionnel mais recommandé)
+namespace: ns-api-kobocollect-dev
+
 resources:
-  - kobocollect-api.yml 
+  - kobocollect-api.yml
 
 configMapGenerator:
   - name: config-api-kobocollect
     files:
-        - config/dev/.env  # Chemin vers votre fichier d'environnement ou autre configuration nécessaire
-    namespace: ns-api-kobocollect-dev  #
+      - config/dev/.env  # ⚠️ Vérifier que ce fichier existe
+    options:
+      labels:
+        env: dev
+        group: lot-1
