@@ -1,7 +1,7 @@
 import logging
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from service import process_kobo_data
+from app.service import process_kobo_data
 
 # Configure logging
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
