@@ -7,27 +7,41 @@ metadata:
     env: dev
     group: lot-1
 
-# Secret pour l'accès aux images Docker
 ---
+
+# Secret pour l'accès aux images Docker
 apiVersion: v1
-items:
-  - apiVersion: v1
-    data:
-      .dockerconfigjson: ewogICAgImF1dGhzIjogewogICAgICAiZ2l0bGFiLmhvbG9ncmFtLmNkOjUwNTAiOiB7CiAgICAgICAgInVzZXJuYW1lIjogImNocmlzdG9waGVyIiwKICAgICAgICAicGFzc3dvcmQiOiAiNWtNdW1XVV81a29tR1ROd3FmYm4iCiAgICAgIH0KICAgIH0KfQo=
-    kind: Secret
-    metadata:
-      labels:
-        env: dev
-        group: lot-1
-      name: regcred
-      namespace: ns-api-kobocollect-dev
-    type: kubernetes.io/dockerconfigjson
-kind: List
+kind: Secret
 metadata:
-  resourceVersion: ""
+  name: regcred
+  namespace: ns-api-kobocollect-dev
+  labels:
+    env: dev
+    group: lot-1
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ewogICAgImF1dGhzIjogewogICAgICAiZ2l0bGFiLmhvbG9ncmFtLmNkOjUwNTAiOiB7CiAgICAgICAgInVzZXJuYW1lIjogImNocmlzdG9waGVyIiwKICAgICAgICAicGFzc3dvcmQiOiAiNWtNdW1XVV81a29tR1ROd3FmYm4iCiAgICAgIH0KICAgIH0KfQo=
+
+---
+
+# ConfigMap avec les variables d'environnement séparées
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-api-kobocollect
+  namespace: ns-api-kobocollect-dev
+  labels:
+    env: dev
+    group: lot-1
+data:
+  MSSQL_DB: eRecensement
+  MSSQL_USER: sa
+  MSSQL_PASSWORD: hids++--@@987654321#]*
+  MSSQL_SERVER: mssql+pyodbc://sa:hids++--@@987654321#]*@195.26.250.58/eRecensement?driver=ODBC+Driver+17+for+SQL+Server&port=1433
+
+---
 
 # Deployment pour l'application
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,12 +71,10 @@ spec:
         - name: api-kobocollect
           image: gitlab.hologram.cd:5050/backend-erecettes-dgrk/kobocollect-api:dev
           imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: config-api-kobocollect
           env:
-            - name: MSSQL_SERVER
-              valueFrom:
-                configMapKeyRef:
-                  name: config-api-kobocollect  # Référence au ConfigMap généré par Kustomize
-                  key: MSSQL_SERVER
             - name: TZ
               value: "Africa/Kinshasa"
           resources:
@@ -84,8 +96,9 @@ spec:
         - name: regcred
       priorityClassName: always-available
 
-# Service pour exposer l'application
 ---
+
+# Service pour exposer l'application
 apiVersion: v1
 kind: Service
 metadata:
@@ -101,8 +114,9 @@ spec:
     - port: 9083
       targetPort: 8080
 
-# Ingress pour diriger le trafic vers le service
 ---
+
+# Ingress pour diriger le trafic vers le service
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -123,4 +137,4 @@ spec:
               service:
                 name: api-kobocollect-service
                 port:
-                  number: 8080
+                  number: 9083
