@@ -55,7 +55,7 @@ spec:
     spec:
       containers:
         - name: api-kobocollect
-          image: gitlab.hologram.cd:5050/backend-erecettes-dgrk/kobocollect-api
+          image: gitlab.hologram.cd:5050/backend-erecettes-dgrk/kobocollect-api:dev
           imagePullPolicy: Always
           env:
             - name: SQLALCHEMY_DATABASE_URL
