@@ -58,11 +58,11 @@ spec:
           image: gitlab.hologram.cd:5050/backend-erecettes-dgrk/kobocollect-api:dev
           imagePullPolicy: Always
           env:
-            - name: SQLALCHEMY_DATABASE_URL
+            - name: MSSQL_SERVER
               valueFrom:
                 configMapKeyRef:
                   name: config-api-kobocollect  # Référence au ConfigMap généré par Kustomize
-                  key: SQLALCHEMY_DATABASE_URL
+                  key: MSSQL_SERVER
             - name: TZ
               value: "Africa/Kinshasa"
           resources:
