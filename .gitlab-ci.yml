@@ -1,0 +1,85 @@
+stages:
+  - build-dev
+  - build-staging
+  - test
+  - deploy-dev
+  - deploy-staging
+
+variables:
+  DOCKER_DRIVER: overlay2  # Configuration du pilote Docker
+
+# Étape de construction pour l'environnement de développement
+build_dev:
+  stage: build-dev
+  services:
+    - docker:20.10-dind  # Docker-in-Docker pour le build
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY_URL" -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - docker build --tag $CI_API_KOBOCOLLECT_REGISTRY_URL:dev --build-arg environnement=dev .
+    - docker push $CI_API_KOBOCOLLECT_REGISTRY_URL:dev
+  after_script:
+    - docker rmi --force $CI_API_KOBOCOLLECT_REGISTRY_URL:dev  # Nettoyer les images
+  tags:
+    - build_docker
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master" && $IS_STAGING == null'
+
+# Étape de construction pour l'environnement de staging
+build_staging:
+  stage: build-staging
+  services:
+    - docker:20.10-dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY_URL" -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - docker build --tag $CI_API_KOBOCOLLECT_REGISTRY_URL:$ENVIRONNEMENT --build-arg environnement=$ENVIRONNEMENT .
+    - docker push $CI_API_KOBOCOLLECT_REGISTRY_URL:$ENVIRONNEMENT
+  after_script:
+    - docker rmi --force $CI_API_KOBOCOLLECT_REGISTRY_URL:$ENVIRONNEMENT
+  tags:
+    - build_docker
+  rules:
+    - if: '$IS_STAGING && $CI_COMMIT_BRANCH == "master"'
+
+# Étape de test
+test_build:
+  stage: test
+  image: $CI_API_KOBOCOLLECT_REGISTRY_URL:dev  # Utiliser l'image construite précédemment
+  script:
+    - odbcinst -j  # Afficher les détails du pilote ODBC
+    - odbcinst -q -d -n "ODBC Driver 17 for SQL Server"  # Vérifier le pilote installé
+    - ldd /opt/microsoft/msodbcsql17/lib64/libmsodbcsql-17.9.so.1.1  # Vérifier les dépendances
+    - echo "ODBC Test completed"
+  tags:
+    - build_docker
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master" && $IS_STAGING == null'
+
+# Étape de déploiement pour l'environnement de développement
+deploy_dev:
+  stage: deploy-dev
+  image: bitnami/kubectl:latest
+  script:
+    - echo "=== Fichiers dans kubernetes/ ==="
+    - ls -la kubernetes/  # Affiche kobocollect-api.yml et kustomization.yaml
+    - kubectl apply -k kubernetes/
+    - kubectl get all -n ns-api-kobocollect-dev
+    - kubectl rollout restart deploy api-kobocollect -n ns-api-kobocollect-dev
+  tags:
+    - kubernetes
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master" && $IS_STAGING == null'
+
+# Étape de déploiement pour l'environnement de staging
+deploy_staging:
+  stage: deploy-staging
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl apply -k kubernetes/
+    - kubectl get all -n ns-dgi-declaration-ispcap-$ENVIRONNEMENT
+    - kubectl rollout restart deploy api-kobocollect -n ns-api-kobocollect-$ENVIRONNEMENT
+  tags:
+    - kubernetes
+  rules:
+    - if: '$IS_STAGING && $CI_COMMIT_BRANCH == "master"'

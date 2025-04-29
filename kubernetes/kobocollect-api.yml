@@ -1,0 +1,126 @@
+# Namespace pour l'environnement de développement
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ns-api-kobocollect-dev
+  labels:
+    env: dev
+    group: lot-1
+
+# Secret pour l'accès aux images Docker
+---
+apiVersion: v1
+items:
+  - apiVersion: v1
+    data:
+      .dockerconfigjson: ewogICAgImF1dGhzIjogewogICAgICAiZ2l0bGFiLmhvbG9ncmFtLmNkOjUwNTAiOiB7CiAgICAgICAgInVzZXJuYW1lIjogImNocmlzdG9waGVyIiwKICAgICAgICAicGFzc3dvcmQiOiAiNWtNdW1XVV81a29tR1ROd3FmYm4iCiAgICAgIH0KICAgIH0KfQo=
+    kind: Secret
+    metadata:
+      labels:
+        env: dev
+        group: lot-1
+      name: regcred
+      namespace: ns-api-kobocollect-dev
+    type: kubernetes.io/dockerconfigjson
+kind: List
+metadata:
+  resourceVersion: ""
+
+# Deployment pour l'application
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-kobocollect
+  namespace: ns-api-kobocollect-dev
+  labels:
+    env: dev
+    group: lot-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-kobocollect
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: api-kobocollect
+        env: dev
+        group: lot-1
+    spec:
+      containers:
+        - name: api-kobocollect
+          image: gitlab.hologram.cd:5050/backend-erecettes-dgrk/kobocollect-api:dev
+          imagePullPolicy: Always
+          env:
+            - name: SQLALCHEMY_DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: config-api-kobocollect  # Référence au ConfigMap généré par Kustomize
+                  key: SQLALCHEMY_DATABASE_URL
+            - name: TZ
+              value: "Africa/Kinshasa"
+          resources:
+            limits:
+              memory: 1200Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 15
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 200
+            timeoutSeconds: 3
+            periodSeconds: 30
+      imagePullSecrets:
+        - name: regcred
+      priorityClassName: always-available
+
+# Service pour exposer l'application
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-kobocollect-service
+  namespace: ns-api-kobocollect-dev
+  labels:
+    env: dev
+    group: lot-1
+spec:
+  selector:
+    app: api-kobocollect
+  ports:
+    - port: 9083
+      targetPort: 8080
+
+# Ingress pour diriger le trafic vers le service
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-api-kobocollect
+  namespace: ns-api-kobocollect-dev
+  labels:
+    env: dev
+    group: lot-1
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: 'api-kobocollect.apps.kubedev.hologram.cd'
+      http:
+        paths:
+          - pathType: Prefix
+            path: '/'
+            backend:
+              service:
+                name: api-kobocollect-service
+                port:
+                  number: 8080
