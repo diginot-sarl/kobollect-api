@@ -242,3 +242,6 @@ def process_kobo_data(payload: dict):
     finally:
         cursor.close()
         conn.close()
+
+
+
