@@ -7,12 +7,12 @@ namespace: ns-api-kobocollect-dev
 resources:
   - kobocollect-api.yml
 
-configMapGenerator:
-  - name: config-api-kobocollect
-    files:
-      - config/dev/.env  # ⚠️ Vérifier que ce fichier existe
-    options:
-      labels:
-        env: dev
-        group: lot-1
-      disableNameSuffixHash: true
+#configMapGenerator:
+#  - name: config-api-kobocollect
+#    files:
+#      - config/dev/.env  # ⚠️ Vérifier que ce fichier existe
+#    options:
+#      labels:
+#        env: dev
+#        group: lot-1
+#      disableNameSuffixHash: true
