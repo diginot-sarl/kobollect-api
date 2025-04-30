@@ -1,5 +1,7 @@
 from app.db import get_mssql_connection
 import logging
+from app.auth import get_password_hash
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -244,4 +246,35 @@ def process_kobo_data(payload: dict):
         conn.close()
 
 
+def create_user(user_data: dict):
+    conn = get_mssql_connection()
+    cursor = conn.cursor()
+    try:
+        # Hash the password
+        hashed_password = get_password_hash(user_data["password"])
 
+        # Insert the new user into the users table
+        cursor.execute("""
+            INSERT INTO users (username, last_name, middle_name, first_name, email, password, matricule, disabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+        """, (
+            user_data["username"],
+            user_data["last_name"],
+            user_data["middle_name"],
+            user_data["first_name"],
+            user_data["email"],
+            hashed_password,
+            user_data["matricule"],
+        ))
+
+        conn.commit()
+        logger.info(f"User {user_data['username']} created successfully")
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Failed to create user: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+        
+        

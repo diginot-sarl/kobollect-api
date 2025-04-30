@@ -1,12 +1,13 @@
 import logging
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.service import process_kobo_data
+from tenacity import retry, wait_fixed, stop_after_attempt
+from app.database import engine
+from app.routes import router as routes
 
 # Configure logging
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 app = FastAPI(
     title="API KOBO/SIG",
@@ -22,21 +23,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Retry configuration
+@retry(wait=wait_fixed(5), stop=stop_after_attempt(15), reraise=True)
+def connect_to_db():
+    try:
+        # Attempt to establish a connection
+        engine.connect()
+        logger.info("Successfully connected to the database.")
+    except Exception as e:
+        logger.error("Database connection failed. Retrying...", exc_info=True)
+        raise e
+
 @app.get("/health", tags=["Health"])
 def health_check():
     return {"status": "ok"}
 
-
-@app.post("/import-kobo-data", tags=["KOBO"])
-async def import_kobo_data(request: Request):
-    try:
-        data = await request.json()
-
-        # Validation de l'identifiant de soumission
-        if "received_data" not in data or "_id" not in data["received_data"]:
-            raise HTTPException(status_code=400, detail="Champ '_id' manquant dans les données reçues.")
-
-        return process_kobo_data(data)
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+app.include_router(routes, prefix='/api/v1')

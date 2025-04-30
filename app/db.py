@@ -17,6 +17,26 @@ def get_mssql_connection():
     )
     return pyodbc.connect(conn_str)
 
+def get_user_by_username(username: str):
+    conn = get_mssql_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id, username, password FROM users WHERE username = ?", (username,))
+        user = cursor.fetchone()
+        if user:
+            return {
+                "id": user[0],
+                "username": user[1],
+                "hashed_password": user[2],  # Assuming password is hashed in the DB
+                "email": None,  # Add if your table has this field
+                "full_name": None,  # Add if your table has this field
+                "disabled": False  # Add if your table has this field
+            }
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
 try:
     conn = get_mssql_connection()
     print("Connection successful!")
