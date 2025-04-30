@@ -36,6 +36,6 @@ def connect_to_db():
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok ok"}
 
 app.include_router(routes, prefix='/api/v1')

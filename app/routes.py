@@ -16,7 +16,20 @@ from app.auth import (
 from app.service import process_kobo_data, create_user
 from app.schemas import UserCreate
 from app.database import get_db
-from app.models import Province, Ville, Commune, Quartier, Avenue, Rang, NatureBien, Bien, Utilisateur, Personne, Adresse, Parcelle
+from app.models import (
+    Province,
+    Ville,
+    Commune,
+    Quartier,
+    Avenue,
+    Rang,
+    NatureBien,
+    Bien,
+    Utilisateur,
+    Personne,
+    Adresse,
+    Parcelle
+)
 
 router = APIRouter()
 
@@ -36,6 +49,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 @router.post("/import-kobo-data", tags=["KOBO"])
 async def import_kobo_data(
     request: Request,
@@ -49,9 +63,11 @@ async def import_kobo_data(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/users/me/", response_model=User, tags=["Users"])
 async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user
+
 
 @router.post("/users/create", tags=["Users"])
 async def create_user_endpoint(
@@ -80,7 +96,7 @@ async def get_geojson(
     avenue: str = Query(None),
     rang: str = Query(None),
     nature: str = Query(None),
-    current_user: User = Depends(get_current_active_user),
+    # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -168,7 +184,8 @@ async def get_geojson(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.get("/provinces", tags=["GeoJSON"])
 async def get_provinces(
     # current_user: User = Depends(get_current_active_user),
@@ -252,6 +269,7 @@ async def get_avenues(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+    
 # Fetch rangs
 @router.get("/rangs", tags=["GeoJSON"])
 async def get_rangs(
@@ -263,6 +281,7 @@ async def get_rangs(
         return [{"id": rang.id, "name": rang.intitule} for rang in rangs]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Fetch natures (nature_bien)
 @router.get("/natures", tags=["GeoJSON"])
