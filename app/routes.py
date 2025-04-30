@@ -1,6 +1,5 @@
 from datetime import timedelta
-from typing import Annotated
-
+from typing import Annotated, Dict
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from fastapi import APIRouter, Request, HTTPException, Depends, Query, status
@@ -33,6 +32,10 @@ from app.models import (
 
 router = APIRouter()
 
+# Process Kobo data
+@router.post("/import-kobo-data", tags=["Kobo"])
+async def process_kobo(payload: Dict, db: Session = Depends(get_db)):
+    return process_kobo_data(payload, db)
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -50,37 +53,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/import-kobo-data", tags=["KOBO"])
-async def import_kobo_data(
-    request: Request,
-    # current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    try:
-        data = await request.json()
-        if "received_data" not in data or "_id" not in data["received_data"]:
-            raise HTTPException(status_code=400, detail="Champ '_id' manquant dans les données reçues.")
-        return process_kobo_data(data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/users/me/", response_model=User, tags=["Users"])
 async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user
 
 
-@router.post("/users/create", tags=["Users"])
-async def create_user_endpoint(
-    user: UserCreate,
-    # current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    try:
-        create_user(user.model_dump())
-        return {"message": "User created successfully"}
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Create a new user
+@router.post("/users", response_model=User, tags=["Users"])
+async def create_new_user(user_data: Dict, db: Session = Depends(get_db)):
+    return create_user(user_data, db)
+
     
 # Fetch GeoJSON data with filters
 @router.get("/geojson", tags=["GeoJSON"])

@@ -1,280 +1,265 @@
-from app.db import get_mssql_connection
-import logging
-from app.auth import get_password_hash
+# app/service.py
+from sqlalchemy.orm import Session
 from fastapi import HTTPException
+import logging
+from app.database import get_db
+from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs
+from app.auth import get_password_hash
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-def process_kobo_data(payload: dict):
+def process_kobo_data(payload: dict, db: Session):
     kobo: dict = payload["received_data"]
     record_id = kobo["_id"]
 
-    conn = get_mssql_connection()
-    cursor = conn.cursor()
-
     try:
-        # Vérifier si l'ID existe déjà
-        cursor.execute("SELECT 1 FROM log WHERE id_kobo = ?", (record_id,))
-        if cursor.fetchone():
+        # Check if the ID already exists in the logs table
+        existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
+        if existing_log:
             return {"status": "duplicate", "message": f"Donnée avec _id {record_id} déjà existante."}
 
-        # Démarrer transaction
-        conn.autocommit = False
-        
-        # 0. Récupérer l'ID de l'agent
-        fk_agent = 1
+        # Initialize variables
+        fk_agent = 1  # Hardcoded for now; you might want to derive this dynamically
         fk_parcelle = None
         responsable_est_locataire = True if kobo.get("informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "locataire" else False
-        
-        
-        # 1. Insérer l'Adresse
-        cursor.execute("""
-            INSERT INTO adresse (fk_avenue, numero, fk_agent)
-            OUTPUT INSERTED.id
-            VALUES (?, ?, ?)           
-        """, (
-            kobo["adresse_de_la_parcelle/avenue"],
-            kobo["adresse_de_la_parcelle/numero_parcellaire"],
-            fk_agent
-        ))
-        fk_adresse = cursor.fetchone()[0]
-        
-        
-        # 2. Insérer l'Occupant (Propriétaire/Locataire) dans la table Personne
-        cursor.execute("""
-            INSERT INTO personne (
-                nom, postnom, prenom, sexe, fk_type_personne, lieu_naissance, date_naissance, province_origine, district, territoire, secteur, village, fk_nationalite, profession, type_piece_identiter, numero_piece_identite, nom_du_pere, nom_de_la_mere, etat_civil, lieu_parente, telephone, adresse_email, nombre_enfant, niveau_etude, denomination, sigle, numero_d_impot, rccm, id_nat, forme_juridique, domaine_d_activite, fk_adresse, fk_agent
-            )
-            OUTPUT INSERTED.id
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)         
-        """, (
-            kobo.get("informations_de_l_occupant/nom"),
-            kobo.get("informations_de_l_occupant/post_nom"),
-            kobo.get("informations_de_l_occupant/prenom"),
-            kobo.get("informations_de_l_occupant/genre"),
-            kobo.get("informations_de_l_occupant/type_de_personne"),
-            kobo.get("informations_de_l_occupant/lieu_de_naissance"),
-            kobo.get("informations_de_l_occupant/date_de_naissance"),
-            None,
-            None,
-            None,
-            None,
-            None,
-            kobo.get("informations_de_l_occupant/nationalite"),
-            kobo.get("informations_de_l_occupant/profession"),
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            kobo.get("informations_de_l_occupant/n_telephone"),
-            kobo.get("informations_de_l_occupant/adresse_email"),
-            kobo.get("informations_de_l_occupant/nombre_d_enfants"),
-            kobo.get("informations_de_l_occupant/niveau_d_etudes"),
-            kobo.get("informations_de_l_occupant/denomination"),
-            kobo.get("informations_de_l_occupant/sigle"),
-            kobo.get("informations_de_l_occupant/numero_d_impot"),
-            kobo.get("informations_de_l_occupant/rccm"),
-            kobo.get("informations_de_l_occupant/id_nat"),
-            kobo.get("informations_de_l_occupant/forme_juridique"),
-            kobo.get("informations_de_l_occupant/domaine_d_activite"),
-            fk_adresse,
-            fk_agent
-        ))
+        fk_proprietaire = None
+        fk_locataire = None
+
+        # 1. Insert into Adresse
+        adresse = Adresse(
+            fk_avenue=int(kobo["adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
+            numero=kobo["adresse_de_la_parcelle/numero_parcellaire"],
+            fk_agent=fk_agent,
+            etat=True  # Assuming default value for etat
+        )
+        db.add(adresse)
+        db.flush()  # Flush to get the inserted ID
+        fk_adresse = adresse.id
+
+        # 2. Insert Occupant (Propriétaire/Locataire) into Personne
+        occupant = Personne(
+            nom=kobo.get("informations_de_l_occupant/nom"),
+            postnom=kobo.get("informations_de_l_occupant/post_nom"),
+            prenom=kobo.get("informations_de_l_occupant/prenom"),
+            sexe=kobo.get("informations_de_l_occupant/genre"),
+            fk_type_personne=int(kobo.get("informations_de_l_occupant/type_de_personne")) if kobo.get("informations_de_l_occupant/type_de_personne") else None,
+            lieu_naissance=kobo.get("informations_de_l_occupant/lieu_de_naissance"),
+            date_naissance=kobo.get("informations_de_l_occupant/date_de_naissance"),
+            province_origine=None,
+            district=None,
+            territoire=None,
+            secteur=None,
+            village=None,
+            fk_nationalite=int(kobo.get("informations_de_l_occupant/nationalite")) if kobo.get("informations_de_l_occupant/nationalite") else None,
+            profession=kobo.get("informations_de_l_occupant/profession"),
+            type_piece_identite=None,
+            numero_piece_identite=None,
+            nom_du_pere=None,
+            nom_de_la_mere=None,
+            etat_civil=None,
+            lieu_parente=None,
+            telephone=kobo.get("informations_de_l_occupant/n_telephone"),
+            adresse_mail=kobo.get("informations_de_l_occupant/adresse_email"),
+            nombre_enfant=int(kobo.get("informations_de_l_occupant/nombre_d_enfants")) if kobo.get("informations_de_l_occupant/nombre_d_enfants") else None,
+            niveau_etude=kobo.get("informations_de_l_occupant/niveau_d_etudes"),
+            denomination=kobo.get("informations_de_l_occupant/denomination"),
+            sigle=kobo.get("informations_de_l_occupant/sigle"),
+            numero_impot=kobo.get("informations_de_l_occupant/numero_d_impot"),
+            rccm=kobo.get("informations_de_l_occupant/rccm"),
+            id_nat=kobo.get("informations_de_l_occupant/id_nat"),
+            domaine_activite=kobo.get("informations_de_l_occupant/domaine_d_activite"),
+            fk_adresse=fk_adresse,
+            fk_agent=fk_agent,
+            date_create=datetime.utcnow(),
+            etat=1  # Assuming active state
+        )
+        db.add(occupant)
+        db.flush()
         
         if kobo["informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2"] == "bailleur":
-            # Si l'occupant est un bailleur
-            fk_proprietaire = cursor.fetchone()[0]
+            fk_proprietaire = occupant.id
         else:
-            # Si l'occupant est un locataire
-            fk_locataire = cursor.fetchone()[0]
-        
-        
-        # 3. Insérer Proprietaire dans la table Personne (s'il n'habite pas dans la parcelle)
-        if kobo.get("informations_de_l_occupant/le_proprietaire_habite_t_il_dans_la_parcelle") == 'non':
-            cursor.execute("""
-                INSERT INTO personne (
-                    nom, postnom, prenom, sexe, fk_type_personne, lieu_naissance, date_naissance, province_origine, district, territoire, secteur, village, fk_nationalite, profession, type_piece_identiter, numero_piece_identite, nom_du_pere, nom_de_la_mere, etat_civil, lieu_parente, telephone, adresse_email, nombre_enfant, niveau_etude, denomination, sigle, numero_d_impot, rccm, id_nat, forme_juridique, domaine_d_activite, fk_adresse, fk_agent
-                )
-                OUTPUT INSERTED.id
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)         
-            """, (
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/post_nom_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/prenom_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/genre_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp"),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_2"),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/adresse_email_2"),
-                None,
-                None,
-                None,
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/denomination_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/sigle_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/numero_d_impot_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/rccm_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/id_nat_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2"),
-                kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/domaine_d_activite_2"),
-                fk_adresse,
-                fk_agent
-            ))
-            fk_proprietaire = cursor.fetchone()[0]
-        
-        
-        # 4. Insérer la Parcelle
-        cursor.execute("""
-            INSERT INTO parcelle (
-                ref_parcelle, numero_parcellaire, fk_unite, longueur, largeur, superficie_calculee, coordonnee_geographique, fk_rang, fk_proprietaire, fk_adresse, fk_agent
-            )
-            OUTPUT INSERTED.id
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)           
-        """, (
-            None,
-            kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
-            kobo.get("adresse_de_la_parcelle/Unit"),
-            kobo.get("adresse_de_la_parcelle/longueur"),
-            kobo.get("adresse_de_la_parcelle/largeur"),
-            kobo.get("adresse_de_la_parcelle/calculation"),
-            kobo.get("adresse_de_la_parcelle/coordonne_geographique"),
-            kobo.get("adresse_de_la_parcelle/rang"),
-            fk_proprietaire,
-            fk_adresse,
-            fk_agent
-        ))
-        fk_parcelle = cursor.fetchone()[0]
-        
-        
-        # 5. Insérer le Bien
-        cursor.execute("""
-            INSERT INTO bien (
-                ref_bien, coordinates, fk_parcelle , fk_nature_bien, fk_unite, fk_usage, fk_usage_specifique, fk_agent
-            )
-            OUTPUT INSERTED.id
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)           
-        """, (
-            kobo.get("informations_du_menage/numero_bien"),
-            kobo.get("informations_du_menage/coordonnee_geographique"),
-            fk_parcelle,
-            kobo.get("informations_du_menage/nature"),
-            kobo.get("informations_du_menage/unite_de_la_superficie_1"),
-            kobo.get("informations_du_menage/usage"),
-            kobo.get("informations_du_menage/usage_specifique"),
-            fk_agent
-        ))
-        fk_bien = cursor.fetchone()[0]
-        
-        
-        # 6. Insérer la Locataire_Bien
-        if responsable_est_locataire:
-            cursor.execute("""
-                INSERT INTO location_bien (
-                    fk_personne, fk_bien, date_debut, date_fin, fk_agent
-                )
-                VALUES (?, ?, ?, ?, ?)           
-            """, (
-                fk_locataire,
-                fk_bien,
-                None,
-                None,
-                fk_agent
-            ))
-            
-                
-        # 7. Insérer les Personnes
-        for personne in kobo.get("information_sur_les_personnes", []):
-            cursor.execute("""
-                INSERT INTO personne (
-                    nom, postnom, prenom, sexe, lieu_naissance, date_naissance, province_origine, district, territoire, secteur, village, profession, type_piece_identiter, numero_piece_identite, nom_du_pere, nom_de_la_mere, etat_civil, lieu_parente, telephone, adresse_email, nombre_enfant, niveau_etude, fk_nationalite, fk_adresse, fk_agent
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                personne.get("information_sur_les_personnes/nom_3"),
-                personne.get("information_sur_les_personnes/post_nom_3"),
-                personne.get("information_sur_les_personnes/prenom_3"),
-                personne.get("information_sur_les_personnes/gr"),
-                personne.get("information_sur_les_personnes/lieu_de_naissance_1"),
-                personne.get("information_sur_les_personnes/date_de_naissance_1"),
-                personne.get("information_sur_les_personnes/province_d_origine"),
-                None,
-                personne.get("information_sur_les_personnes/territoire"),
-                personne.get("information_sur_les_personnes/secteur"),
-                personne.get("information_sur_les_personnes/village"),
-                personne.get("information_sur_les_personnes/profession_2"),
-                personne.get("information_sur_les_personnes/type_de_piece_d_identite"),
-                personne.get("information_sur_les_personnes/numero_piece_d_identite"),
-                personne.get("information_sur_les_personnes/nom_du_pere"),
-                personne.get("information_sur_les_personnes/nom_de_la_mere"),
-                personne.get("information_sur_les_personnes/etat_civil"),
-                personne.get("information_sur_les_personnes/lien_de_parente"),
-                personne.get("information_sur_les_personnes/n_telphone"),
-                personne.get("information_sur_les_personnes/adresse_email_3"),
-                int(personne.get("information_sur_les_personnes/nombre_d_enfant", 0)),
-                personne.get("information_sur_les_personnes/niveau_d_etude"),
-                personne.get("information_sur_les_personnes/nationalite_3"),
-                fk_adresse,
-                fk_agent
-            ))
- 
+            fk_locataire = occupant.id
 
-        conn.commit()
+        # 3. Insert Propriétaire into Personne (if they don't live in the parcel)
+        if kobo.get("informations_de_l_occupant/le_proprietaire_habite_t_il_dans_la_parcelle") == 'non':
+            proprietaire = Personne(
+                nom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_2"),
+                postnom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/post_nom_2"),
+                prenom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/prenom_2"),
+                sexe=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/genre_2"),
+                fk_type_personne=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp") else None,
+                lieu_naissance=None,
+                date_naissance=None,
+                province_origine=None,
+                district=None,
+                territoire=None,
+                secteur=None,
+                village=None,
+                fk_nationalite=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_2")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_2") else None,
+                profession=None,
+                type_piece_identite=None,
+                numero_piece_identite=None,
+                nom_du_pere=None,
+                nom_de_la_mere=None,
+                etat_civil=None,
+                lieu_parente=None,
+                telephone=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2"),
+                adresse_mail=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/adresse_email_2"),
+                nombre_enfant=None,
+                niveau_etude=None,
+                denomination=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/denomination_2"),
+                sigle=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/sigle_2"),
+                numero_impot=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/numero_d_impot_2"),
+                rccm=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/rccm_2"),
+                id_nat=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/id_nat_2"),
+                domaine_activite=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/domaine_d_activite_2"),
+                fk_adresse=fk_adresse,
+                fk_agent=fk_agent,
+                date_create=datetime.utcnow(),
+                etat=1  # Assuming active state
+            )
+            db.add(proprietaire)
+            db.flush()
+            fk_proprietaire = proprietaire.id
+
+        # 4. Insert into Parcelle
+        parcelle = Parcelle(
+            ref_parcelle=None,
+            numero_parcellaire=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
+            fk_unite=int(kobo.get("adresse_de_la_parcelle/Unit")) if kobo.get("adresse_de_la_parcelle/Unit") else None,
+            longueur=float(kobo.get("adresse_de_la_parcelle/longueur")) if kobo.get("adresse_de_la_parcelle/longueur") else None,
+            largeur=float(kobo.get("adresse_de_la_parcelle/largeur")) if kobo.get("adresse_de_la_parcelle/largeur") else None,
+            superficie_calculee=float(kobo.get("adresse_de_la_parcelle/calculation")) if kobo.get("adresse_de_la_parcelle/calculation") else None,
+            coordonnee_geographique=kobo.get("adresse_de_la_parcelle/coordonne_geographique"),
+            fk_rang=int(kobo.get("adresse_de_la_parcelle/rang")) if kobo.get("adresse_de_la_parcelle/rang") else None,
+            fk_proprietaire=fk_proprietaire,
+            fk_adresse=fk_adresse,
+            fk_agent=fk_agent,
+            date_create=datetime.utcnow(),
+            etat=1  # Assuming active state
+        )
+        db.add(parcelle)
+        db.flush()
+        fk_parcelle = parcelle.id
+
+        # 5. Insert into Bien
+        bien = Bien(
+            ref_bien=kobo.get("informations_du_menage/numero_bien"),
+            coordinates=kobo.get("informations_du_menage/coordonnee_geographique"),
+            fk_parcelle=fk_parcelle,
+            fk_nature_bien=int(kobo.get("informations_du_menage/nature")) if kobo.get("informations_du_menage/nature") else None,
+            fk_unite=int(kobo.get("informations_du_menage/unite_de_la_superficie_1")) if kobo.get("informations_du_menage/unite_de_la_superficie_1") else None,
+            fk_usage=int(kobo.get("informations_du_menage/usage")) if kobo.get("informations_du_menage/usage") else None,
+            fk_usage_specifique=int(kobo.get("informations_du_menage/usage_specifique")) if kobo.get("informations_du_menage/usage_specifique") else None,
+            fk_agent=fk_agent,
+            date_create=datetime.utcnow(),
+            etat=1  # Assuming active state
+        )
+        db.add(bien)
+        db.flush()
+        fk_bien = bien.id
+
+        # 6. Insert into LocationBien (if the occupant is a locataire)
+        if responsable_est_locataire:
+            location_bien = LocationBien(
+                fk_personne=fk_locataire,
+                fk_bien=fk_bien,
+                date_debut=None,
+                date_fin=None,
+                fk_agent=fk_agent,
+                date_create=datetime.utcnow()
+            )
+            db.add(location_bien)
+            db.flush()
+
+        # 7. Insert additional Personnes (from information_sur_les_personnes)
+        for personne in kobo.get("information_sur_les_personnes", []):
+            new_personne = Personne(
+                nom=personne.get("information_sur_les_personnes/nom_3"),
+                postnom=personne.get("information_sur_les_personnes/post_nom_3"),
+                prenom=personne.get("information_sur_les_personnes/prenom_3"),
+                sexe=personne.get("information_sur_les_personnes/gr"),
+                lieu_naissance=personne.get("information_sur_les_personnes/lieu_de_naissance_1"),
+                date_naissance=personne.get("information_sur_les_personnes/date_de_naissance_1"),
+                province_origine=personne.get("information_sur_les_personnes/province_d_origine"),
+                district=None,
+                territoire=personne.get("information_sur_les_personnes/territoire"),
+                secteur=personne.get("information_sur_les_personnes/secteur"),
+                village=personne.get("information_sur_les_personnes/village"),
+                profession=personne.get("information_sur_les_personnes/profession_2"),
+                type_piece_identite=personne.get("information_sur_les_personnes/type_de_piece_d_identite"),
+                numero_piece_identite=personne.get("information_sur_les_personnes/numero_piece_d_identite"),
+                nom_du_pere=personne.get("information_sur_les_personnes/nom_du_pere"),
+                nom_de_la_mere=personne.get("information_sur_les_personnes/nom_de_la_mere"),
+                etat_civil=personne.get("information_sur_les_personnes/etat_civil"),
+                lieu_parente=personne.get("information_sur_les_personnes/lien_de_parente"),
+                telephone=personne.get("information_sur_les_personnes/n_telphone"),
+                adresse_mail=personne.get("information_sur_les_personnes/adresse_email_3"),
+                nombre_enfant=int(personne.get("information_sur_les_personnes/nombre_d_enfant", 0)) if personne.get("information_sur_les_personnes/nombre_d_enfant") else None,
+                niveau_etude=personne.get("information_sur_les_personnes/niveau_d_etude"),
+                fk_nationalite=int(personne.get("information_sur_les_personnes/nationalite_3")) if personne.get("information_sur_les_personnes/nationalite_3") else None,
+                fk_adresse=fk_adresse,
+                fk_agent=fk_agent,
+                date_create=datetime.utcnow(),
+                etat=1  # Assuming active state
+            )
+            db.add(new_personne)
+
+        # 8. Insert into Logs
+        log = Logs(
+            logs="Processed Kobo data",
+            id_kobo=record_id,
+            data_json=str(payload)
+        )
+        db.add(log)
+
+        # Commit the transaction
+        db.commit()
         logger.info(f"Données insérées pour l'entrée _id={record_id}")
         return {"status": "success", "message": f"Données insérées pour l'entrée _id={record_id}"}
 
     except Exception as e:
-        conn.rollback()
+        db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
         return {"status": "error", "message": str(e)}
 
-    finally:
-        cursor.close()
-        conn.close()
 
-
-def create_user(user_data: dict):
-    conn = get_mssql_connection()
-    cursor = conn.cursor()
+def create_user(user_data: dict, db: Session):
     try:
+        # Check if the user already exists
+        existing_user = db.query(Utilisateur).filter(Utilisateur.login == user_data["login"]).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="User with this login already exists")
+
         # Hash the password
         hashed_password = get_password_hash(user_data["password"])
 
-        # Insert the new user into the users table
-        cursor.execute("""
-            INSERT INTO users (username, last_name, middle_name, first_name, email, password, matricule, disabled)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-        """, (
-            user_data["username"],
-            user_data["last_name"],
-            user_data["middle_name"],
-            user_data["first_name"],
-            user_data["email"],
-            hashed_password,
-            user_data["matricule"],
-        ))
+        # Create the new user
+        new_user = Utilisateur(
+            prenom=user_data["prenom"],
+            nom=user_data["nom"],
+            postnom=user_data.get("postnom"),
+            sexe=user_data.get("sexe"),
+            telephone=user_data.get("telephone"),
+            login=user_data["login"],
+            password=hashed_password,
+            mail=user_data.get("mail"),
+            etat=1,  # Active by default
+            date_creat=datetime.utcnow(),
+            status=1,  # Assuming 1 means active
+            fk_fonction=user_data.get("fk_fonction"),
+            fk_site=user_data.get("fk_site"),
+            fk_agent_creat=user_data.get("fk_agent_creat")
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        logger.info(f"User {user_data['login']} created successfully")
+        return new_user
 
-        conn.commit()
-        logger.info(f"User {user_data['username']} created successfully")
     except Exception as e:
-        conn.rollback()
+        db.rollback()
         logger.error(f"Failed to create user: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
-    finally:
-        cursor.close()
-        conn.close()
-        
-        
