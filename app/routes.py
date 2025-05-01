@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Annotated, Dict
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select
 from fastapi import APIRouter, Request, HTTPException, Depends, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
@@ -37,7 +37,7 @@ router = APIRouter()
 async def process_kobo(payload: Dict, db: Session = Depends(get_db)):
     return process_kobo_data(payload, db)
 
-@router.post("/token", response_model=Token)
+@router.post("/token", response_model=Token, tags=["Authentication"])
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
@@ -188,7 +188,7 @@ async def get_villes(
     db: Session = Depends(get_db),
 ):
     try:
-        province_obj = db.query(Province).filter(Province.intitule == province).first()
+        province_obj = db.query(Ville).filter(Ville.fk_province == province).first()
         if not province_obj:
             raise HTTPException(status_code=404, detail="Province not found")
 
@@ -200,80 +200,83 @@ async def get_villes(
 
 # Fetch communes by ville
 @router.get("/communes", tags=["GeoJSON"])
-async def get_communes(
+def get_communes(
     ville: str = Query(...),
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
-        ville_obj = db.query(Ville).filter(Ville.intitule == ville).first()
-        if not ville_obj:
-            raise HTTPException(status_code=404, detail="Ville not found")
-
-        communes = db.query(Commune).filter(Commune.fk_ville == ville_obj.id).all()
-        return [{"id": commune.id, "name": commune.intitule} for commune in communes]
+        query = db.execute(
+            select(Commune.id, Commune.intitule).where(Commune.fk_ville == ville)
+        )
+        data = query.all()
+        return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Fetch quartiers by commune
 @router.get("/quartiers", tags=["GeoJSON"])
-async def get_quartiers(
+def get_quartiers(
     commune: str = Query(...),
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
-        commune_obj = db.query(Commune).filter(Commune.intitule == commune).first()
-        if not commune_obj:
-            raise HTTPException(status_code=404, detail="Commune not found")
-
-        quartiers = db.query(Quartier).filter(Quartier.fk_commune == commune_obj.id).all()
-        return {"quartiers": [{"id": quartier.id, "name": quartier.intitule} for quartier in quartiers]}
+        query = db.execute(
+            select(Quartier.id, Quartier.intitule).where(Quartier.fk_commune == commune)
+        )
+        data = query.all()
+        return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Fetch avenues by quartier
 @router.get("/avenues", tags=["GeoJSON"])
-async def get_avenues(
+def get_avenues(
     quartier: str = Query(...),
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
-        quartier_obj = db.query(Quartier).filter(Quartier.intitule == quartier).first()
-        if not quartier_obj:
-            raise HTTPException(status_code=404, detail="Quartier not found")
-
-        avenues = db.query(Avenue).filter(Avenue.fk_quartier == quartier_obj.id).all()
-        return {"avenues": [{"id": avenue.id, "name": avenue.intitule} for avenue in avenues]}
+        query = db.execute(
+            select(Avenue.id, Avenue.intitule).where(Avenue.fk_quartier == quartier)
+        )
+        data = query.all()
+        return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
     
 # Fetch rangs
 @router.get("/rangs", tags=["GeoJSON"])
-async def get_rangs(
+def get_rangs(
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
-        rangs = db.query(Rang).all()
-        return [{"id": rang.id, "name": rang.intitule} for rang in rangs]
+        query = db.execute(
+            select(Rang.id, Rang.intitule)
+        )
+        data = query.all()
+        return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Fetch natures (nature_bien)
 @router.get("/natures", tags=["GeoJSON"])
-async def get_natures(
+def get_natures(
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
-        natures = db.query(NatureBien).all()
-        return [{"id": nature.id, "name": nature.intitule} for nature in natures]
+        query = db.execute(
+            select(NatureBien.id, NatureBien.intitule)
+        )
+        data = query.all()
+        return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
