@@ -1,36 +1,36 @@
-stages:
-  - build-dev
-  - test
-  - deploy-dev
+# stages:
+#   - build-dev
+#   - test
+#   - deploy-dev
 
-variables:
-  DOCKER_DRIVER: overlay2 
+# variables:
+#   DOCKER_DRIVER: overlay2 
 
-build_dev:
-  stage: build-dev
-  services:
-    - docker:20.10-dind
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY_URL" -u "$CI_REGISTRY_USER" --password-stdin
-  script:
-    - docker build --tag $CI_API_KOBOCOLLECT_REGISTRY_URL:dev --build-arg environnement=dev .
-    - docker push $CI_API_KOBOCOLLECT_REGISTRY_URL:dev
-  after_script:
-    - docker rmi --force $CI_API_KOBOCOLLECT_REGISTRY_URL:dev  # Nettoyer les images
-  tags:
-    - build_docker
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+# build_dev:
+#   stage: build-dev
+#   services:
+#     - docker:20.10-dind
+#   before_script:
+#     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY_URL" -u "$CI_REGISTRY_USER" --password-stdin
+#   script:
+#     - docker build --tag $CI_API_KOBOCOLLECT_REGISTRY_URL:dev --build-arg environnement=dev .
+#     - docker push $CI_API_KOBOCOLLECT_REGISTRY_URL:dev
+#   after_script:
+#     - docker rmi --force $CI_API_KOBOCOLLECT_REGISTRY_URL:dev  # Nettoyer les images
+#   tags:
+#     - build_docker
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "master"'
 
 
-deploy_dev:
-  stage: deploy-dev
-  image: bitnami/kubectl:latest
-  script:
-    - kubectl apply -f kubernetes/kobocollect-api.yml 
-    - kubectl get all -n ns-api-kobocollect-dev
-    - kubectl rollout restart deploy api-kobocollect -n ns-api-kobocollect-dev
-  tags:
-    - kubernetes
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
+# deploy_dev:
+#   stage: deploy-dev
+#   image: bitnami/kubectl:latest
+#   script:
+#     - kubectl apply -f kubernetes/kobocollect-api.yml 
+#     - kubectl get all -n ns-api-kobocollect-dev
+#     - kubectl rollout restart deploy api-kobocollect -n ns-api-kobocollect-dev
+#   tags:
+#     - kubernetes
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "master"'
