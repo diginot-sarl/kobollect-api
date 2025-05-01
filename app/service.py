@@ -2,7 +2,6 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import logging
-from app.database import get_db
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs
 from app.auth import get_password_hash
 from datetime import datetime
@@ -71,8 +70,6 @@ def process_kobo_data(payload: dict, db: Session):
             domaine_activite=kobo.get("informations_de_l_occupant/domaine_d_activite"),
             fk_adresse=fk_adresse,
             fk_agent=fk_agent,
-            date_create=datetime.utcnow(),
-            etat=1  # Assuming active state
         )
         db.add(occupant)
         db.flush()
@@ -117,8 +114,6 @@ def process_kobo_data(payload: dict, db: Session):
                 domaine_activite=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/domaine_d_activite_2"),
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
-                date_create=datetime.utcnow(),
-                etat=1  # Assuming active state
             )
             db.add(proprietaire)
             db.flush()
@@ -154,8 +149,6 @@ def process_kobo_data(payload: dict, db: Session):
             fk_usage=int(kobo.get("informations_du_menage/usage")) if kobo.get("informations_du_menage/usage") else None,
             fk_usage_specifique=int(kobo.get("informations_du_menage/usage_specifique")) if kobo.get("informations_du_menage/usage_specifique") else None,
             fk_agent=fk_agent,
-            date_create=datetime.utcnow(),
-            etat=1  # Assuming active state
         )
         db.add(bien)
         db.flush()
@@ -202,8 +195,6 @@ def process_kobo_data(payload: dict, db: Session):
                 fk_nationalite=int(personne.get("information_sur_les_personnes/nationalite_3")) if personne.get("information_sur_les_personnes/nationalite_3") else None,
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
-                date_create=datetime.utcnow(),
-                etat=1  # Assuming active state
             )
             db.add(new_personne)
 
@@ -246,9 +237,6 @@ def create_user(user_data: dict, db: Session):
             login=user_data["login"],
             password=hashed_password,
             mail=user_data.get("mail"),
-            etat=1,  # Active by default
-            date_creat=datetime.utcnow(),
-            status=1,  # Assuming 1 means active
             fk_fonction=user_data.get("fk_fonction"),
             fk_site=user_data.get("fk_site"),
             fk_agent_creat=user_data.get("fk_agent_creat")
