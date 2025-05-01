@@ -2,15 +2,15 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
 
-# Pydantic model for user creation
 class UserCreate(BaseModel):
-    username: str
-    last_name: str
-    middle_name: str | None = None
-    first_name: str
-    email: EmailStr
+    login: str
+    prenom: str
+    nom: str
+    postnom: Optional[str] = None
+    mail: EmailStr
     password: str
-    matricule: str
+    telephone: Optional[str] = None
+    sexe: Optional[str] = None
     
 class User(BaseModel):
     id: int

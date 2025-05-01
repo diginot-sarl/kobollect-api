@@ -4,7 +4,8 @@ from fastapi import HTTPException
 import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs
 from app.auth import get_password_hash
-from datetime import datetime
+from app.schemas import UserCreate
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -217,34 +218,32 @@ def process_kobo_data(payload: dict, db: Session):
         return {"status": "error", "message": str(e)}
 
 
-def create_user(user_data: dict, db: Session):
+def create_user(user_data: UserCreate, db: Session):
     try:
         # Check if the user already exists
-        existing_user = db.query(Utilisateur).filter(Utilisateur.login == user_data["login"]).first()
+        existing_user = db.query(Utilisateur).filter(Utilisateur.login == user_data.login).first()
         if existing_user:
             raise HTTPException(status_code=400, detail="User with this login already exists")
 
         # Hash the password
-        hashed_password = get_password_hash(user_data["password"])
+        hashed_password = get_password_hash(user_data.password)
 
         # Create the new user
         new_user = Utilisateur(
-            prenom=user_data["prenom"],
-            nom=user_data["nom"],
-            postnom=user_data.get("postnom"),
-            sexe=user_data.get("sexe"),
-            telephone=user_data.get("telephone"),
-            login=user_data["login"],
+            prenom=user_data.prenom,
+            nom=user_data.nom,
+            postnom=user_data.postnom,
+            sexe=user_data.sexe,
+            telephone=user_data.telephone,
+            login=user_data.login,
             password=hashed_password,
-            mail=user_data.get("mail"),
-            fk_fonction=user_data.get("fk_fonction"),
-            fk_site=user_data.get("fk_site"),
-            fk_agent_creat=user_data.get("fk_agent_creat")
+            mail=user_data.mail,
+            date_creat=datetime.datetime.now(datetime.timezone.utc),
         )
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        logger.info(f"User {user_data['login']} created successfully")
+        logger.info(f"User {user_data.login} created successfully")
         return new_user
 
     except Exception as e:

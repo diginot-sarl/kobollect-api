@@ -60,7 +60,7 @@ async def read_users_me(current_user: Annotated[User, Depends(get_current_active
 
 # Create a new user
 @router.post("/users", response_model=User, tags=["Users"])
-async def create_new_user(user_data: Dict, db: Session = Depends(get_db)):
+async def create_new_user(user_data: UserCreate, db: Session = Depends(get_db)):
     return create_user(user_data, db)
 
     

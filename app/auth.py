@@ -40,6 +40,7 @@ def get_password_hash(password: str) -> str:
 
 # User authentication
 def authenticate_user(login: str, password: str, db: Session) -> Optional[User]:
+    print(f"Authenticating user: {login}")
     user = db.query(Utilisateur).filter(Utilisateur.login == login).first()
     if not user:
         return False
