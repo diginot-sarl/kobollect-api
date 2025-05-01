@@ -16,7 +16,7 @@ metadata:
     group: lot-1
 type: kubernetes.io/dockerconfigjson
 data:
-  .dockerconfigjson: ewogICAgImF1dGhzIjogewogICAgICAiZ2l0bGFiLmhvbG9ncmFtLmNkOjUwNTAiOiB7CiAgICAgICAgInVzZXJuYW1lIjogImNocmlzdG9waGVyIiwKICAgICAgICAicGFzc3dvcmQiOiAiNWtNdW1XVV81a29tR1ROd3FmYm4iCiAgICAgIH0KICAgIH0KfQo=
+  .dockerconfigjson: eyJhdXRocyI6eyJnaXRsYWIuaG9sb2dyYW0uY2Q6NTA1MCI6eyJ1c2VybmFtZSI6Imhhcm9sZCIsInBhc3N3b3JkIjoiNDhfNXpldUJtWnk3UlNIRmZXUC0iLCJhdXRoIjoiYUdGeWIyeGtPalE0WHpWNlpYVkNiVnA1TjFKVFNFWm1WMUF0In19fQ==
 
 ---
 apiVersion: v1
