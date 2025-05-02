@@ -47,6 +47,7 @@ class Bien(Base):
     fk_unite = Column(Integer, ForeignKey("unite.id"), nullable=True)
     fk_usage = Column(Integer, ForeignKey("usage.id"), nullable=True)
     fk_usage_specifique = Column(BigInteger, ForeignKey("usage_specifique.id"), nullable=True)
+    superficie = Column(Float(precision=18), nullable=True)
     date_create = Column(DateTime, nullable=True)
     date_update = Column(DateTime, nullable=True)
     fk_agent = Column(Integer, nullable=True)

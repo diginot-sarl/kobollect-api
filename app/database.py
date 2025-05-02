@@ -7,7 +7,11 @@ import os
 
 load_dotenv()
 
-engine = create_engine(os.getenv('MSSQL_SERVER'))
+engine = create_engine(
+    os.getenv('MSSQL_SERVER'),
+    isolation_level="REPEATABLE READ",
+    connect_args={"check_same_thread": False}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
