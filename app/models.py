@@ -17,6 +17,7 @@ class Adresse(Base):
     id = Column(Integer, primary_key=True, index=True)
     fk_avenue = Column(Integer, ForeignKey("avenue.id"), nullable=True)
     numero = Column(NVARCHAR(50), nullable=True)
+    fk_rang = Column(Integer, ForeignKey("rang.id"), nullable=True)
     etat = Column(Boolean, nullable=True)
     fk_agent = Column(BigInteger, nullable=True)
 

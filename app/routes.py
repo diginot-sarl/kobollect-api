@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Annotated, Dict
+from typing import Annotated, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
 from fastapi import APIRouter, Request, HTTPException, Depends, Query, status
@@ -13,7 +13,7 @@ from app.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.service import process_kobo_data, create_user
-from app.schemas import UserCreate
+from app.schemas import UserCreate, UserOut, PaginatedUserResponse
 from app.database import get_db
 from app.models import (
     Province,
@@ -29,6 +29,8 @@ from app.models import (
     Adresse,
     Parcelle
 )
+from datetime import datetime
+from sqlalchemy import Date
 
 router = APIRouter()
 
@@ -56,7 +58,50 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 @router.get("/users/me/", response_model=User, tags=["Users"])
 async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user
+    
 
+@router.get("/users", response_model=PaginatedUserResponse)
+def get_all_users(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1),
+    name: Optional[str] = None,
+    date_start: Optional[str] = None,
+    date_end: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(Utilisateur)
+
+    # Filter by name (prenom, nom, postnom)
+    if name:
+        like_pattern = f"%{name}%"
+        query = query.filter(
+            (Utilisateur.nom.ilike(like_pattern)) |
+            (Utilisateur.postnom.ilike(like_pattern)) |
+            (Utilisateur.prenom.ilike(like_pattern))
+        )
+
+    # Filter by date range (compare only the date part)
+    if date_start:
+        try:
+            query = query.filter(func.cast(Utilisateur.date_creat, Date) >= date_start)
+        except Exception:
+            pass
+
+    if date_end:
+        try:
+            query = query.filter(func.cast(Utilisateur.date_creat, Date) <= date_end)
+        except Exception:
+            pass
+
+    total = query.count()
+    users = query.order_by(Utilisateur.id.desc()).offset((page - 1) * page_size).limit(page_size).all()
+
+    return {
+        "data": users,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
 
 # Create a new user
 @router.post("/users", response_model=User, tags=["Users"])
@@ -169,13 +214,16 @@ async def get_geojson(
 
 
 @router.get("/provinces", tags=["GeoJSON"])
-async def get_provinces(
+def get_provinces(
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
-        provinces = db.query(Province).all()
-        return [{"id": province.id, "name": province.intitule} for province in provinces]
+        query = db.execute(
+            select(Province.id, Province.intitule)
+        )
+        data = query.all()
+        return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -188,12 +236,11 @@ async def get_villes(
     db: Session = Depends(get_db),
 ):
     try:
-        province_obj = db.query(Ville).filter(Ville.fk_province == province).first()
-        if not province_obj:
-            raise HTTPException(status_code=404, detail="Province not found")
-
-        villes = db.query(Ville).filter(Ville.fk_province == province_obj.id).all()
-        return {"villes": [{"id": ville.id, "name": ville.intitule} for ville in villes]}
+        query = db.execute(
+            select(Ville.id, Ville.intitule).where(Ville.fk_province == province)
+        )
+        data = query.all()
+        return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -279,4 +326,6 @@ def get_natures(
         return [item._asdict() for item in data]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    
     
