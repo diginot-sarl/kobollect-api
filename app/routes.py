@@ -37,14 +37,14 @@ router = APIRouter()
 
 # Process Kobo data
 @router.post("/import", tags=["Kobo"])
-def process_kobo(payload):
-    print("Received payload:", payload)
+def process_kobo(payload: Request):
+    print("Received payload:", payload.body())
     return payload
 
 # Process Kobo data
 @router.post("/import-from-kobo", tags=["Kobo"])
-def process_kobo(payload, db: Session = Depends(get_db)):
-    payload = json.loads(payload)
+def process_kobo(payload: Request, db: Session = Depends(get_db)):
+    payload = json.loads(payload.body())
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
     return process_kobo_data(payload, db)
