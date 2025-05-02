@@ -92,23 +92,23 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                 bien = Bien(
                     ref_bien=menage.get("informations_du_menage/informations_du_bien/numero_bien"),
                     
-                    coordinates=kobo.get("informations_du_menage/informations_du_bien/coordonnee_geographique"),
+                    coordinates=menage.get("informations_du_menage/informations_du_bien/coordonnee_geographique"),
                     
-                    superficie=kobo.get("informations_du_menage/informations_du_bien/superficie"),
+                    superficie=menage.get("informations_du_menage/informations_du_bien/superficie"),
                     
                     fk_parcelle=fk_parcelle,
                     
-                    fk_nature_bien=(int(kobo.get("informations_du_menage/informations_du_bien/nature")) 
-                                    if kobo.get("informations_du_menage/informations_du_bien/nature") else None),
+                    fk_nature_bien=(int(menage.get("informations_du_menage/informations_du_bien/nature")) 
+                                    if menage.get("informations_du_menage/informations_du_bien/nature") else None),
                     
-                    fk_unite=(int(kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
-                              if kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None),
+                    fk_unite=(int(menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
+                              if menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None),
                     
-                    fk_usage=(int(kobo.get("informations_du_menage/informations_du_bien/usage")) 
-                              if kobo.get("informations_du_menage/informations_du_bien/usage") else None),
+                    fk_usage=(int(menage.get("informations_du_menage/informations_du_bien/usage")) 
+                              if menage.get("informations_du_menage/informations_du_bien/usage") else None),
                     
-                    fk_usage_specifique=(int(kobo.get("informations_du_menage/informations_du_bien/usage_specifique")) 
-                                         if kobo.get("informations_du_menage/informations_du_bien/usage_specifique") else None),
+                    fk_usage_specifique=(int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
+                                         if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None),
                     
                     fk_agent=fk_agent,
                 )
