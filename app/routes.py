@@ -54,6 +54,7 @@ async def process_kobo_import(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 
+
 # Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
 async def process_kobo(request: Request, db: Session = Depends(get_db)):
@@ -64,6 +65,8 @@ async def process_kobo(request: Request, db: Session = Depends(get_db)):
         # Validate that payload is a dictionary
         if not isinstance(payload, dict):
             raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+        
+        print("Received payload:", payload)  # Debugging line
         
         # Process the payload using the service function
         return process_kobo_data(payload, db)
