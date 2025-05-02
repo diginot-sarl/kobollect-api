@@ -217,13 +217,13 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                     # fk_proprietaire = proprietaire.id
                     
                 # 5. Insert into Personne (if the occupant is a locataire)
-                menage = Menage(
+                menage_bien = Menage(
                     fk_personne=fk_responsable,
                     fk_bien=fk_bien,
                 )
-                db.add(menage)
+                db.add(menage_bien)
                 db.flush()
-                fk_menage = menage.id
+                fk_menage = menage_bien.id
                 
                 # 7. Insert additional Personnes
                 for personne in menage.get("informations_du_menage/information_sur_les_personnes", []):
