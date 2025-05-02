@@ -37,6 +37,7 @@ router = APIRouter()
 # Process Kobo data
 @router.post("/import-from-kobo", tags=["Kobo"])
 async def process_kobo(payload: ImportDataPayload, db: Session = Depends(get_db)):
+    print("Payload data:", payload)
     return process_kobo_data(payload, db)
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
