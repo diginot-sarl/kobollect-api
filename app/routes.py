@@ -36,13 +36,11 @@ router = APIRouter()
 
 # Process Kobo data
 @router.post("/import-from-kobo", tags=["Kobo"])
-async def process_kobo(payload: ImportDataPayload, db: Session = Depends(get_db)):
-    print("Payload data:", payload)
-    # process_kobo_data(payload, db
+def process_kobo(payload: ImportDataPayload, db: Session = Depends(get_db)):
     return {"data": payload, "message": "Data processed successfully"}
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
@@ -58,7 +56,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 
 @router.get("/users/me/", response_model=User, tags=["Users"])
-async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
     return current_user
     
 
