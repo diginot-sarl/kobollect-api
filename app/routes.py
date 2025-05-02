@@ -36,8 +36,14 @@ from sqlalchemy import Date
 router = APIRouter()
 
 # Process Kobo data
+@router.post("/import", tags=["Kobo"])
+def process_kobo(payload):
+    print("Received payload:", payload)
+    return payload
+
+# Process Kobo data
 @router.post("/import-from-kobo", tags=["Kobo"])
-def process_kobo(payload: any, db: Session = Depends(get_db)):
+def process_kobo(payload, db: Session = Depends(get_db)):
     payload = json.loads(payload)
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
