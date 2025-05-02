@@ -13,7 +13,7 @@ from app.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.service import process_kobo_data, create_user
-from app.schemas import UserCreate, UserOut, PaginatedUserResponse
+from app.schemas import UserCreate, ImportDataPayload, PaginatedUserResponse
 from app.database import get_db
 from app.models import (
     Province,
@@ -36,7 +36,7 @@ router = APIRouter()
 
 # Process Kobo data
 @router.post("/import-kobo-data", tags=["Kobo"])
-async def process_kobo(payload: Dict, db: Session = Depends(get_db)):
+async def process_kobo(payload: ImportDataPayload, db: Session = Depends(get_db)):
     return process_kobo_data(payload, db)
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
@@ -102,6 +102,7 @@ def get_all_users(
         "page": page,
         "page_size": page_size,
     }
+
 
 # Create a new user
 @router.post("/users", response_model=User, tags=["Users"])

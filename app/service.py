@@ -4,13 +4,13 @@ from fastapi import HTTPException
 import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs
 from app.auth import get_password_hash
-from app.schemas import UserCreate
+from app.schemas import UserCreate, ImportDataPayload
 import datetime
 
 logger = logging.getLogger(__name__)
 
-def process_kobo_data(payload: dict, db: Session):
-    kobo: dict = payload["received_data"]
+def process_kobo_data(payload: ImportDataPayload, db: Session):
+    kobo: dict = payload.received_data
     record_id = kobo["_id"]
 
     try:
