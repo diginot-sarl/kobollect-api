@@ -9,8 +9,8 @@ import datetime
 
 logger = logging.getLogger(__name__)
 
-def process_kobo_data(payload: ImportDataPayload, db: Session):
-    kobo: dict = payload.received_data
+def process_kobo_data(payload: dict, db: Session):
+    kobo: dict = payload["received_data"]
     record_id = kobo["_id"]
     
     # return {"data": kobo, "message": "Data processed successfully"}

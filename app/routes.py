@@ -35,14 +35,14 @@ from sqlalchemy import Date
 
 router = APIRouter()
 
-# Process Kobo data
+# Process Kobo data (simple endpoint for testing)
 @router.post("/import", tags=["Kobo"])
-async def process_kobo(request: Request):
+async def process_kobo_import(request: Request):
     try:
         # Parse the raw JSON body
         payload = await request.json()
         
-        # Optional: Validate that payload is a dictionary (if required)
+        # Validate that payload is a dictionary
         if not isinstance(payload, dict):
             raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
         
@@ -50,31 +50,27 @@ async def process_kobo(request: Request):
         return {"status": "success", "received": payload}
     
     except json.JSONDecodeError:
-        # Handle invalid JSON
         raise HTTPException(status_code=400, detail="Invalid JSON payload.")
     except Exception as e:
-        # Handle other unexpected errors
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 
-# Process Kobo data
+# Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
-async def process_kobo(request: Request | str, db: Session = Depends(get_db)):
+async def process_kobo(request: Request, db: Session = Depends(get_db)):
     try:
         # Parse the raw JSON body
         payload = await request.json()
         
-        # Optional: Validate that payload is a dictionary (if required)
+        # Validate that payload is a dictionary
         if not isinstance(payload, dict):
             raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
         
-        # Process the payload (unknown structure)
+        # Process the payload using the service function
         return process_kobo_data(payload, db)
     
     except json.JSONDecodeError:
-        # Handle invalid JSON
         raise HTTPException(status_code=400, detail="Invalid JSON payload.")
     except Exception as e:
-        # Handle other unexpected errors
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 
 
