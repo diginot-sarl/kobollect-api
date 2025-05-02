@@ -77,7 +77,6 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
-                date_create=datetime.datetime.now(datetime.timezone.utc),
             )
             db.add(parcelle)
             db.flush()
@@ -168,7 +167,6 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                         fk_personne=fk_responsable,
                         fk_bien=fk_bien,
                         fk_agent=fk_agent,
-                        date_create=datetime.datetime.now(datetime.timezone.utc),
                     )
                     db.add(location_bien)
                     db.flush()
