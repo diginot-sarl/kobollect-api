@@ -14,7 +14,7 @@ from app.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.service import process_kobo_data, create_user
-from app.schemas import UserCreate, ImportDataPayload, PaginatedUserResponse
+from app.schemas import UserCreate, PaginatedUserResponse
 from app.database import get_db
 from app.models import (
     Province,
@@ -65,9 +65,7 @@ async def process_kobo(request: Request, db: Session = Depends(get_db)):
         # Validate that payload is a dictionary
         if not isinstance(payload, dict):
             raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
-        
-        print("Received payload:", payload)  # Debugging line
-        
+                
         # Process the payload using the service function
         return process_kobo_data(payload, db)
     

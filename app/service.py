@@ -4,21 +4,20 @@ from fastapi import HTTPException
 import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage
 from app.auth import get_password_hash
-from app.schemas import UserCreate, ImportDataPayload
+from app.schemas import UserCreate
 import datetime
 
 logger = logging.getLogger(__name__)
 
 def process_kobo_data(payload: dict, db: Session):
-    # Use the payload directly, as it doesn't have a "received_data" wrapper
     kobo: dict = payload
-    record_id = kobo["id"]  # Use "id" instead of "_id"
-    
+    record_id = kobo.get("id", kobo.get("_id"))
+
     try:
         # Check if the ID already exists in the logs table
-        # existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
-        # if existing_log:
-        #     return {"status": "duplicate", "message": f"Donnée avec id {record_id} déjà existante."}
+        existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
+        if existing_log:
+            return {"status": "duplicate", "message": f"Donnée avec _id {record_id} déjà existante."}
 
         # Initialize variables
         fk_agent = 1  # Hardcoded for now; you might want to derive this dynamically
@@ -44,9 +43,12 @@ def process_kobo_data(payload: dict, db: Session):
                     prenom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/prenom_2"),
                     sexe=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/genre_2"),
                     fk_type_personne=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp") else None,
+                    
                     fk_nationalite=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_2")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_2") else None,
+                    
                     telephone=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2"),
                     adresse_mail=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/adresse_email_2"),
+                    
                     denomination=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/denomination_2"),
                     sigle=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/sigle_2"),
                     numero_impot=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/numero_d_impot_2"),
@@ -64,7 +66,7 @@ def process_kobo_data(payload: dict, db: Session):
             parcelle = Parcelle(
                 ref_parcelle=None,
                 numero_parcellaire=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
-                fk_unite=kobo.get("adresse_de_la_parcelle/unite_de_la_superficie"),  # Store as string (e.g., 'metre_carre')
+                fk_unite=int(kobo.get("adresse_de_la_parcelle/unite_de_la_superficie")) if kobo.get("adresse_de_la_parcelle/unite_de_la_superficie") else None,
                 longueur=float(kobo.get("adresse_de_la_parcelle/longueur")) if kobo.get("adresse_de_la_parcelle/longueur") else None,
                 largeur=float(kobo.get("adresse_de_la_parcelle/largeur")) if kobo.get("adresse_de_la_parcelle/largeur") else None,
                 superficie_calculee=float(kobo.get("adresse_de_la_parcelle/calculation")) if kobo.get("adresse_de_la_parcelle/calculation") else None,
@@ -78,6 +80,7 @@ def process_kobo_data(payload: dict, db: Session):
             db.flush()
             fk_parcelle = parcelle.id
             
+            
             for menage in kobo.get("informations_du_menage", []):
                 menage: dict = menage
                 
@@ -86,27 +89,41 @@ def process_kobo_data(payload: dict, db: Session):
                 # 4. Insert into Bien
                 bien = Bien(
                     ref_bien=menage.get("informations_du_menage/informations_du_bien/numero_bien"),
+                    
                     coordinates=menage.get("informations_du_menage/informations_du_bien/coordonnee_geographique"),
+                    
                     superficie=menage.get("informations_du_menage/informations_du_bien/superficie"),
+                    
                     fk_parcelle=fk_parcelle,
-                    fk_nature_bien=int(menage.get("informations_du_menage/informations_du_bien/nature")) if menage.get("informations_du_menage/informations_du_bien/nature") else None,
-                    fk_unite=menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1"),  # Store as string (e.g., 'metre_carre')
-                    fk_usage=int(menage.get("informations_du_menage/informations_du_bien/usage")) if menage.get("informations_du_menage/informations_du_bien/usage") else None,
-                    fk_usage_specifique=int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
+                    
+                    fk_nature_bien=(int(menage.get("informations_du_menage/informations_du_bien/nature")) 
+                                    if menage.get("informations_du_menage/informations_du_bien/nature") else None),
+                    
+                    fk_unite=(int(menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
+                              if menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None),
+                    
+                    fk_usage=(int(menage.get("informations_du_menage/informations_du_bien/usage")) 
+                              if menage.get("informations_du_menage/informations_du_bien/usage") else None),
+                    
+                    fk_usage_specifique=(int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
+                                         if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None),
+                    
                     fk_agent=fk_agent,
                 )
                 db.add(bien)
                 db.flush()
                 fk_bien = bien.id
                 
-                # 5. Insert Locataire into Personne (if the occupant is a locataire)
+                # 4. Insert Locataire into Personne (if the occupant is a locataire)
                 if menage.get("informations_du_menage/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "locataire":
+                    
                     responsable = Personne(
                         nom=menage.get("informations_du_menage/informations_de_l_occupant/nom"),
                         postnom=menage.get("informations_du_menage/informations_de_l_occupant/post_nom"),
                         prenom=menage.get("informations_du_menage/informations_de_l_occupant/prenom"),
                         sexe=menage.get("informations_du_menage/informations_de_l_occupant/genre"),
                         fk_type_personne=int(menage.get("informations_du_menage/informations_de_l_occupant/type_de_personne")) if menage.get("informations_du_menage/informations_de_l_occupant/type_de_personne") else None,
+                        
                         lieu_naissance=menage.get("informations_du_menage/informations_de_l_occupant/lieu_de_naissance"),
                         date_naissance=menage.get("informations_du_menage/informations_de_l_occupant/date_de_naissance"),
                         province_origine=None,
@@ -114,8 +131,10 @@ def process_kobo_data(payload: dict, db: Session):
                         territoire=None,
                         secteur=None,
                         village=None,
+                        
                         fk_nationalite=int(menage.get("informations_du_menage/informations_de_l_occupant/nationalite")) if menage.get("informations_du_menage/informations_de_l_occupant/nationalite") else None,
                         profession=menage.get("informations_du_menage/informations_de_l_occupant/profession"),
+                        
                         type_piece_identite=None,
                         numero_piece_identite=None,
                         nom_du_pere=None,
@@ -124,8 +143,10 @@ def process_kobo_data(payload: dict, db: Session):
                         lieu_parente=None,
                         telephone=menage.get("informations_du_menage/informations_de_l_occupant/n_telephone"),
                         adresse_mail=menage.get("informations_du_menage/informations_de_l_occupant/adresse_email"),
+                        
                         nombre_enfant=int(menage.get("informations_du_menage/informations_de_l_occupant/nombre_d_enfants")) if menage.get("informations_du_menage/informations_de_l_occupant/nombre_d_enfants") else None,
                         niveau_etude=menage.get("informations_du_menage/informations_de_l_occupant/niveau_d_etudes"),
+                        
                         denomination=menage.get("informations_du_menage/informations_de_l_occupant/denomination"),
                         sigle=menage.get("informations_du_menage/informations_de_l_occupant/sigle"),
                         numero_impot=menage.get("informations_du_menage/informations_de_l_occupant/numero_d_impot"),
@@ -149,9 +170,9 @@ def process_kobo_data(payload: dict, db: Session):
                     db.flush()
                     
                 elif menage.get("informations_du_menage/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "proprietaire":
-                    pass  # Handle proprietor case if needed
-
-                # 7. Insert into Menage
+                    pass
+                    
+                # 5. Insert into Personne (if the occupant is a locataire)
                 menage_bien = Menage(
                     fk_personne=fk_responsable,
                     fk_bien=fk_bien,
@@ -160,7 +181,7 @@ def process_kobo_data(payload: dict, db: Session):
                 db.flush()
                 fk_menage = menage_bien.id
                 
-                # 8. Insert additional Personnes
+                # 7. Insert additional Personnes
                 for personne in menage.get("informations_du_menage/information_sur_les_personnes", []):
                     personne: dict = personne
                     new_personne = Personne(
@@ -184,9 +205,10 @@ def process_kobo_data(payload: dict, db: Session):
                         lieu_parente=personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente"),
                         telephone=personne.get("informations_du_menage/information_sur_les_personnes/n_telphone"),
                         adresse_mail=personne.get("informations_du_menage/information_sur_les_personnes/adresse_email_3"),
-                        nombre_enfant=int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001", 0)) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001") else None,
+                        nombre_enfant=int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant", 0)) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant") else None,
                         niveau_etude=personne.get("informations_du_menage/information_sur_les_personnes/niveau_d_etudes_001"),
-                        fk_nationalite=int(personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3")) if personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3") else None,
+                        fk_nationalite=(int(personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3")) 
+                                        if personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3") else None),
                         fk_adresse=fk_adresse,
                         fk_agent=fk_agent,
                     )
@@ -194,7 +216,7 @@ def process_kobo_data(payload: dict, db: Session):
                     db.flush()
                     fk_personne = new_personne.id
                     
-                    # 9. Insert into MembreMenage
+                    # 8. Insert into MembreMenage
                     membre_menage = MembreMenage(
                         fk_menage=fk_menage,
                         fk_personne=fk_personne,
@@ -202,7 +224,7 @@ def process_kobo_data(payload: dict, db: Session):
                     )
                     db.add(membre_menage)
 
-        # 10. Insert into Logs
+        # 8. Insert into Logs
         log = Logs(
             logs="Processed Kobo data",
             id_kobo=record_id,
@@ -212,13 +234,13 @@ def process_kobo_data(payload: dict, db: Session):
 
         # Commit the transaction
         db.commit()
-        logger.info(f"Données insérées pour l'entrée id={record_id}")
-        return {"status": "success", "message": f"Données insérées pour l'entrée id={record_id}"}
+        logger.info(f"Données insérées pour l'entrée _id={record_id}")
+        return {"status": "success", "message": f"Données insérées pour l'entrée _id={record_id}"}
 
     except Exception as e:
         db.rollback()
-        logger.error(f"Erreur lors de l'insertion des données id={record_id} : {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing data id={record_id}: {str(e)}")
+        logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 
 def create_user(user_data: UserCreate, db: Session):

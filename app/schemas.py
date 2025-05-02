@@ -81,7 +81,3 @@ class PaginatedUserResponse(BaseModel):
     total: int
     page: int
     page_size: int
-    
-class ImportDataPayload(BaseModel):
-    message: str
-    received_data: dict
