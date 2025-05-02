@@ -35,7 +35,7 @@ from sqlalchemy import Date
 router = APIRouter()
 
 # Process Kobo data
-@router.post("/import-kobo-data", tags=["Kobo"])
+@router.post("/import-from-kobo", tags=["Kobo"])
 async def process_kobo(payload: ImportDataPayload, db: Session = Depends(get_db)):
     return process_kobo_data(payload, db)
 
