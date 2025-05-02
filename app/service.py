@@ -10,10 +10,8 @@ import datetime
 logger = logging.getLogger(__name__)
 
 def process_kobo_data(payload: dict, db: Session):
-    kobo: dict = payload["received_data"]
-    record_id = kobo["_id"]
-    
-    # return {"data": kobo, "message": "Data processed successfully"}
+    kobo: dict = payload
+    record_id = kobo.get("id", kobo.get("_id"))
 
     try:
         # Check if the ID already exists in the logs table
