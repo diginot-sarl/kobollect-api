@@ -37,17 +37,46 @@ router = APIRouter()
 
 # Process Kobo data
 @router.post("/import", tags=["Kobo"])
-def process_kobo(payload: Request):
-    print("Received payload:", payload.body())
-    return payload
+async def process_kobo(request: Request):
+    try:
+        # Parse the raw JSON body
+        payload = await request.json()
+        
+        # Optional: Validate that payload is a dictionary (if required)
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+        
+        # Process the payload (unknown structure)
+        return {"status": "success", "received": payload}
+    
+    except json.JSONDecodeError:
+        # Handle invalid JSON
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+    except Exception as e:
+        # Handle other unexpected errors
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
 
 # Process Kobo data
 @router.post("/import-from-kobo", tags=["Kobo"])
-def process_kobo(payload: Request, db: Session = Depends(get_db)):
-    payload = json.loads(payload.body())
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
-    return process_kobo_data(payload, db)
+async def process_kobo(request: Request | str, db: Session = Depends(get_db)):
+    try:
+        # Parse the raw JSON body
+        payload = await request.json()
+        
+        # Optional: Validate that payload is a dictionary (if required)
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+        
+        # Process the payload (unknown structure)
+        return process_kobo_data(payload, db)
+    
+    except json.JSONDecodeError:
+        # Handle invalid JSON
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+    except Exception as e:
+        # Handle other unexpected errors
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
