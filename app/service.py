@@ -2,7 +2,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import logging
-from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs
+from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage
 from app.auth import get_password_hash
 from app.schemas import UserCreate, ImportDataPayload
 import datetime
@@ -31,7 +31,6 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
             adresse = Adresse(
                 fk_avenue=int(kobo["adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
                 numero=kobo["adresse_de_la_parcelle/numero_parcellaire"],
-                fk_rang=kobo["adresse_de_la_parcelle/rang"],
                 fk_agent=fk_agent,
             )
             db.add(adresse)
@@ -65,28 +64,30 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                 db.flush()
                 fk_proprietaire = proprietaire.id
 
-                # 3. Insert into Parcelle
-                parcelle = Parcelle(
-                    ref_parcelle=None,
-                    numero_parcellaire=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
-                    fk_unite=int(kobo.get("adresse_de_la_parcelle/unite_de_la_superficie")) if kobo.get("adresse_de_la_parcelle/unite_de_la_superficie") else None,
-                    longueur=float(kobo.get("adresse_de_la_parcelle/longueur")) if kobo.get("adresse_de_la_parcelle/longueur") else None,
-                    largeur=float(kobo.get("adresse_de_la_parcelle/largeur")) if kobo.get("adresse_de_la_parcelle/largeur") else None,
-                    superficie_calculee=float(kobo.get("adresse_de_la_parcelle/calculation")) if kobo.get("adresse_de_la_parcelle/calculation") else None,
-                    coordonnee_geographique=kobo.get("adresse_de_la_parcelle/coordonne_geographique"),
-                    fk_rang=int(kobo.get("adresse_de_la_parcelle/rang")) if kobo.get("adresse_de_la_parcelle/rang") else None,
-                    fk_proprietaire=fk_proprietaire,
-                    fk_adresse=fk_adresse,
-                    fk_agent=fk_agent,
-                    date_create=datetime.datetime.now(datetime.timezone.utc),
-                )
-                db.add(parcelle)
-                db.flush()
-                fk_parcelle = parcelle.id
+            # 3. Insert into Parcelle
+            parcelle = Parcelle(
+                ref_parcelle=None,
+                numero_parcellaire=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
+                fk_unite=int(kobo.get("adresse_de_la_parcelle/unite_de_la_superficie")) if kobo.get("adresse_de_la_parcelle/unite_de_la_superficie") else None,
+                longueur=float(kobo.get("adresse_de_la_parcelle/longueur")) if kobo.get("adresse_de_la_parcelle/longueur") else None,
+                largeur=float(kobo.get("adresse_de_la_parcelle/largeur")) if kobo.get("adresse_de_la_parcelle/largeur") else None,
+                superficie_calculee=float(kobo.get("adresse_de_la_parcelle/calculation")) if kobo.get("adresse_de_la_parcelle/calculation") else None,
+                coordonnee_geographique=kobo.get("adresse_de_la_parcelle/coordonne_geographique"),
+                fk_rang=int(kobo.get("adresse_de_la_parcelle/rang")) if kobo.get("adresse_de_la_parcelle/rang") else None,
+                fk_proprietaire=fk_proprietaire,
+                fk_adresse=fk_adresse,
+                fk_agent=fk_agent,
+                date_create=datetime.datetime.now(datetime.timezone.utc),
+            )
+            db.add(parcelle)
+            db.flush()
+            fk_parcelle = parcelle.id
             
             
             for menage in kobo.get("informations_du_menage", []):
                 menage: dict = menage
+                
+                fk_responsable = None
                                 
                 # 4. Insert into Bien
                 bien = Bien(
@@ -119,7 +120,7 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                 # 4. Insert Locataire into Personne (if the occupant is a locataire)
                 if menage.get("informations_du_menage/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "locataire":
                     
-                    locataire = Personne(
+                    responsable = Personne(
                         nom=menage.get("informations_du_menage/informations_de_l_occupant/nom"),
                         postnom=menage.get("informations_du_menage/informations_de_l_occupant/post_nom"),
                         prenom=menage.get("informations_du_menage/informations_de_l_occupant/prenom"),
@@ -158,13 +159,13 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                         fk_adresse=fk_adresse,
                         fk_agent=fk_agent,
                     )
-                    db.add(locataire)
+                    db.add(responsable)
                     db.flush()
-                    fk_locataire = locataire.id
+                    fk_responsable = responsable.id
 
-                     # 6. Insert into LocationBien (if the occupant is a locataire)
+                    # 6. Insert into LocationBien (if the occupant is a locataire)
                     location_bien = LocationBien(
-                        fk_personne=fk_locataire,
+                        fk_personne=fk_responsable,
                         fk_bien=fk_bien,
                         fk_agent=fk_agent,
                         date_create=datetime.datetime.now(datetime.timezone.utc),
@@ -217,7 +218,15 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                     # db.flush()
                     # fk_proprietaire = proprietaire.id
                     
-
+                # 5. Insert into Personne (if the occupant is a locataire)
+                menage = Menage(
+                    fk_personne=fk_responsable,
+                    fk_bien=fk_bien,
+                )
+                db.add(menage)
+                db.flush()
+                fk_menage = menage.id
+                
                 # 7. Insert additional Personnes
                 for personne in menage.get("informations_du_menage/information_sur_les_personnes", []):
                     personne: dict = personne
@@ -250,6 +259,16 @@ def process_kobo_data(payload: ImportDataPayload, db: Session):
                         fk_agent=fk_agent,
                     )
                     db.add(new_personne)
+                    db.flush()
+                    fk_personne = new_personne.id
+                    
+                    # 8. Insert into MembreMenage
+                    membre_menage = MembreMenage(
+                        fk_menage=fk_menage,
+                        fk_personne=fk_personne,
+                        fk_filiation=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
+                    )
+                    db.add(membre_menage)
 
         # 8. Insert into Logs
         log = Logs(
