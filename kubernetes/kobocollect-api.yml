@@ -31,7 +31,7 @@ data:
   MSSQL_DB: eRecensement
   MSSQL_USER: sa
   MSSQL_PASSWORD: hids++--@@987654321#]*
-  MSSQL_SERVER: mssql+pyodbc://gesRecens:hids+1234@195.26.250.58/eRecensement?driver=ODBC+Driver+17+for+SQL+Server
+  MSSQL_SERVER: mssql+pyodbc://gesRecens:hids+1234@195.26.250.58@195.26.250.58/eRecensement?driver=FreeTDS&port=1433&odbc_options='TDS_Version=8.0
   TZ: Africa/Kinshasa
 
 ---
