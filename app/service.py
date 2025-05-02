@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 def process_kobo_data(payload: ImportDataPayload, db: Session):
     kobo: dict = payload.received_data
     record_id = kobo["_id"]
+    
+    return {"data": kobo, "message": "Data processed successfully"}
 
     try:
         # Check if the ID already exists in the logs table
