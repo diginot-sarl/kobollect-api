@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 from typing import Annotated, Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select
@@ -36,7 +37,10 @@ router = APIRouter()
 
 # Process Kobo data
 @router.post("/import-from-kobo", tags=["Kobo"])
-def process_kobo(payload: ImportDataPayload, db: Session = Depends(get_db)):
+def process_kobo(payload: any, db: Session = Depends(get_db)):
+    payload = json.loads(payload)
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
     return process_kobo_data(payload, db)
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
