@@ -99,7 +99,7 @@ def process_kobo_data(payload: dict, db: Session):
             for menage in kobo.get("informations_du_menage", []):
                 menage: dict = menage
                 
-                fk_responsable = fk_proprietaire if kobo.get("le_proprietaire_habite_t_il_dans_la_parcelle") == "oui" else None
+                fk_responsable = fk_proprietaire if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/le_proprietaire_habite_t_il_dans_la_parcelle") == "oui" else None
                                 
                 # 4. Insert into Bien
                 bien = Bien(
