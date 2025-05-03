@@ -17,7 +17,7 @@ def process_kobo_data(payload: dict, db: Session):
         # Check if the ID already exists in the logs table
         existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
         if existing_log:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Donnée avec _id {record_id} déjà existante.")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
 
         # Initialize variables
         fk_agent = 1  # Hardcoded for now; you might want to derive this dynamically
@@ -261,7 +261,7 @@ def process_kobo_data(payload: dict, db: Session):
     except Exception as e:
         db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to insert form: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
 
 
 def create_user(user_data: UserCreate, db: Session):
