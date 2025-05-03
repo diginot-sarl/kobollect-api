@@ -1,6 +1,6 @@
 # app/service.py
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage
 from app.auth import get_password_hash
@@ -17,7 +17,7 @@ def process_kobo_data(payload: dict, db: Session):
         # Check if the ID already exists in the logs table
         existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
         if existing_log:
-            return {"status": "duplicate", "message": f"Donnée avec _id {record_id} déjà existante."}
+            return HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Donnée avec _id {record_id} déjà existante.")
 
         # Initialize variables
         fk_agent = 1  # Hardcoded for now; you might want to derive this dynamically
@@ -261,7 +261,7 @@ def process_kobo_data(payload: dict, db: Session):
     except Exception as e:
         db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
-        return {"status": "error", "message": str(e)}
+        return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to insert form: {str(e)}")
 
 
 def create_user(user_data: UserCreate, db: Session):
@@ -269,7 +269,7 @@ def create_user(user_data: UserCreate, db: Session):
         # Check if the user already exists
         existing_user = db.query(Utilisateur).filter(Utilisateur.login == user_data.login).first()
         if existing_user:
-            raise HTTPException(status_code=400, detail="User with this login already exists")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this login already exists")
 
         # Hash the password
         hashed_password = get_password_hash(user_data.password)
@@ -295,4 +295,4 @@ def create_user(user_data: UserCreate, db: Session):
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to create user: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create user: {str(e)}")

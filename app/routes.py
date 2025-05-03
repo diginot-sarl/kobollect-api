@@ -1,8 +1,8 @@
-from datetime import timedelta
 import json
-from typing import Annotated, Dict, Optional
+from datetime import timedelta
+from typing import Annotated, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func, select
+from sqlalchemy import func, select, Date
 from fastapi import APIRouter, Request, HTTPException, Depends, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
@@ -30,30 +30,8 @@ from app.models import (
     Adresse,
     Parcelle
 )
-from datetime import datetime
-from sqlalchemy import Date
 
 router = APIRouter()
-
-# Process Kobo data (simple endpoint for testing)
-@router.post("/import", tags=["Kobo"])
-async def process_kobo_import(request: Request):
-    try:
-        # Parse the raw JSON body
-        payload = await request.json()
-        
-        # Validate that payload is a dictionary
-        if not isinstance(payload, dict):
-            raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
-        
-        # Process the payload (unknown structure)
-        return {"status": "success", "received": payload}
-    
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
-
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
