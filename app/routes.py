@@ -44,13 +44,13 @@ async def process_kobo(request: Request, db: Session = Depends(get_db)):
         if not isinstance(payload, dict):
             raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
                 
-        # Process the payload using the service function
-        return process_kobo_data(payload, db)
-    
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+    
+    # Process the payload using the service function
+    return process_kobo_data(payload, db)
 
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
