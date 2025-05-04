@@ -1174,6 +1174,20 @@ def get_dashboard_stats(
             for row in db.execute(text(parcelles_by_quartier_query), params).fetchall()
         }
 
+        # Get parcelles by avenue
+        parcelles_by_avenue_query = f"""
+            SELECT av.intitule, COUNT(p.id)
+            FROM ({parcelle_query}) AS filtered_parcelles
+            JOIN parcelle p ON filtered_parcelles.id = p.id
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            GROUP BY av.intitule
+        """
+        parcelles_by_avenue = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(parcelles_by_avenue_query), params).fetchall()
+        }
+
         return {
             "total_parcelles": total_parcelles,
             "total_biens": total_biens,
@@ -1186,6 +1200,7 @@ def get_dashboard_stats(
             "parcelles_by_rang": parcelles_by_rang,
             "parcelles_by_commune": parcelles_by_commune,
             "parcelles_by_quartier": parcelles_by_quartier,
+            "parcelles_by_avenue": parcelles_by_avenue,
         }
 
     except Exception as e:
