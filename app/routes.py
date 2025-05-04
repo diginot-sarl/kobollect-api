@@ -1201,10 +1201,11 @@ def get_dashboard_stats(
             "parcelles_by_commune": parcelles_by_commune,
             "parcelles_by_quartier": parcelles_by_quartier,
             "parcelles_by_avenue": parcelles_by_avenue,
-        }
+        } 
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Import GeoJSON data
 @router.post("/import-geojson", tags=["GeoJSON"])
