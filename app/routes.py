@@ -105,7 +105,7 @@ def get_all_users(
     try:
         # Base query
         query = """
-            SELECT id, login, nom, postnom, prenom, date_creat
+            SELECT id, login, nom, postnom, prenom, date_create
             FROM utilisateur
             WHERE 1=1
         """
@@ -118,13 +118,13 @@ def get_all_users(
             params["name"] = f"%{name}%"
         if date_start:
             try:
-                filters.append("CAST(date_creat AS DATE) >= :date_start")
+                filters.append("CAST(date_create AS DATE) >= :date_start")
                 params["date_start"] = date_start
             except Exception:
                 pass
         if date_end:
             try:
-                filters.append("CAST(date_creat AS DATE) <= :date_end")
+                filters.append("CAST(date_create AS DATE) <= :date_end")
                 params["date_end"] = date_end
             except Exception:
                 pass
@@ -155,7 +155,7 @@ def get_all_users(
             "nom": row.nom,
             "postnom": row.postnom,
             "prenom": row.prenom,
-            "date_creat": row.date_creat.isoformat() if row.date_creat else None
+            "date_create": row.date_create.isoformat() if row.date_create else None
         } for row in results]
 
         return {
@@ -226,9 +226,9 @@ async def get_geojson(
                     b.coordinates,
                     b.date_create,
                     nb.intitule AS nature,
-                    CONCAT(u.nom, ' ', u.prenom) AS recensé_par,
-                    CONCAT(pe.nom, ' ', pe.prenom) AS propriétaire_nom,
-                    pe.denomination AS propriétaire_denomination,
+                    CONCAT(u.nom, ' ', u.prenom) AS recense_par,
+                    CONCAT(pe.nom, ' ', pe.prenom) AS proprietaire_nom,
+                    pe.denomination AS proprietaire_denomination,
                     CONCAT(
                         a.numero, ', ',
                         av.intitule, ', Q/',
@@ -314,9 +314,9 @@ async def get_geojson(
             data = [{
                 "id": str(row.id),
                 "coordinates": row.coordinates,
-                "recensé_par": row.recensé_par,
+                "recense_par": row.recense_par,
                 "nature": row.nature,
-                "propriétaire": row.propriétaire_denomination if row.propriétaire_denomination else row.propriétaire_nom,
+                "proprietaire": row.proprietaire_denomination if row.proprietaire_denomination else row.proprietaire_nom,
                 "adresse": row.adresse,
                 "date": row.date_create.isoformat() if row.date_create else None,
             } for row in results]
