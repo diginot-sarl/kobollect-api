@@ -178,6 +178,7 @@ class Personne(Base):
     prenom = Column(String(100), nullable=True)
     sexe = Column(String(50), nullable=True)
     denomination = Column(String(100), nullable=True)
+    nif = Column(String(50), nullable=True)
     sigle = Column(NCHAR(50), nullable=True)
     numero_impot = Column(String(50), nullable=True)
     rccm = Column(String(50), nullable=True)

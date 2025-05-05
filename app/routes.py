@@ -1,43 +1,33 @@
 import json
+
 from datetime import timedelta
 from typing import Annotated, Optional
-from sqlalchemy.orm import Session, aliased
-from sqlalchemy import func, select, Date
-from fastapi import APIRouter, Request, HTTPException, Depends, Query, status, UploadFile, File, Form
+from sqlalchemy.orm import Session
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    File,
+    Query,
+    status,
+    Request,
+    UploadFile,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
-    Token,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     authenticate_user,
     create_access_token,
     get_current_active_user,
+    Token,
     User,
-    ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.service import process_kobo_data, create_user
 from app.schemas import UserCreate, PaginatedUserResponse
 from app.database import get_db
-from app.models import (
-    Province,
-    Ville,
-    Commune,
-    Quartier,
-    Avenue,
-    Rang,
-    NatureBien,
-    Bien,
-    Utilisateur,
-    Personne,
-    Adresse,
-    Parcelle,
-    Unite,
-    Menage,
-    LocationBien,
-    MembreMenage,
-    TypePersonne,
-    Usage,
-    UsageSpecifique
-)
+from app.models import Bien, Parcelle
 from sqlalchemy.sql import text
+
 
 router = APIRouter()
 
@@ -1250,3 +1240,36 @@ async def import_geojson(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Erreur lors de l'import: {str(e)}")
+    
+
+@router.get("/recherche-utilisateur/{code_chasible}", response_model=User, tags=["Users"])
+def get_user_by_code_chasible(
+    code_chasible: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Query to find user by code_chasible
+        query = """
+            SELECT id, login, nom, postnom, prenom, date_create, code_chasible
+            FROM utilisateur
+            WHERE code_chasible = :code_chasible
+        """
+        result = db.execute(text(query), {"code_chasible": code_chasible}).first()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+            
+        return {
+            "id": result.id,
+            "login": result.login,
+            "nom": result.nom,
+            "postnom": result.postnom,
+            "prenom": result.prenom,
+            "date_create": result.date_create.isoformat() if result.date_create else None,
+            "code_chasible": result.code_chasible
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    
