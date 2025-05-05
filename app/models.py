@@ -7,7 +7,6 @@ from app.database import Base
 class Access(Base):
     __tablename__ = "access"
     id = Column(Integer, primary_key=True, index=True)
-    etat = Column(Integer, nullable=True)
     fk_utilisateur = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     fk_droit = Column(Integer, ForeignKey("droit.id"), nullable=True)
 
@@ -17,7 +16,6 @@ class Adresse(Base):
     id = Column(Integer, primary_key=True, index=True)
     fk_avenue = Column(Integer, ForeignKey("avenue.id"), nullable=True)
     numero = Column(NVARCHAR(50), nullable=True)
-    etat = Column(Boolean, nullable=True)
     fk_agent = Column(BigInteger, nullable=True)
 
 # Table: avenue
@@ -25,12 +23,10 @@ class Avenue(Base):
     __tablename__ = "avenue"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
     lon = Column(Float(precision=18), nullable=True)
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(String, nullable=True)  # varchar(max)
     fk_quartier = Column(Integer, ForeignKey("quartier.id"), nullable=True)
-    date_create = Column(DateTime, nullable=True)
 
 # Table: bien
 class Bien(Base):
@@ -40,15 +36,12 @@ class Bien(Base):
     coordinates = Column(String, nullable=True)  # varchar(max)
     coord_projected = Column(String, nullable=True)  # varchar(max)
     coord_corrige = Column(String, nullable=True)  # varchar(max)
-    etat = Column(Integer, nullable=True)
     fk_parcelle = Column(Integer, ForeignKey("parcelle.id"), nullable=True)
     fk_nature_bien = Column(Integer, ForeignKey("nature_bien.id"), nullable=True)
     fk_unite = Column(Integer, ForeignKey("unite.id"), nullable=True)
     fk_usage = Column(Integer, ForeignKey("usage.id"), nullable=True)
     fk_usage_specifique = Column(BigInteger, ForeignKey("usage_specifique.id"), nullable=True)
     superficie = Column(Float(precision=18), nullable=True)
-    date_create = Column(DateTime, nullable=True)
-    date_update = Column(DateTime, nullable=True)
     fk_agent = Column(Integer, nullable=True)
 
 # Table: commune
@@ -56,11 +49,9 @@ class Commune(Base):
     __tablename__ = "commune"
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(50), nullable=False)
-    etat = Column(Integer, nullable=True)
     lon = Column(Float(precision=18), nullable=True)
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(Text, nullable=True)
-    date_creat = Column(DateTime, nullable=True)
     agent_Creat = Column(Integer, nullable=True)
     fk_ville = Column(Integer, ForeignKey("ville.id"), nullable=True)
 
@@ -70,7 +61,6 @@ class Droit(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), nullable=True)
     intitule = Column(String, nullable=True)  # varchar(max)
-    etat = Column(Integer, nullable=True)
     fk_module = Column(Integer, ForeignKey("module.id"), nullable=True)
 
 # Table: filiation_membre
@@ -78,28 +68,24 @@ class FiliationMembre(Base):
     __tablename__ = "filiation_membre"
     id = Column(BigInteger, primary_key=True, index=True)
     intitule = Column(NVARCHAR(100), nullable=True)
-    etat = Column(Boolean, nullable=True)
 
 # Table: fonction
 class Fonction(Base):
     __tablename__ = "fonction"
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
 
 # Table: Forme_juridique
 class FormeJuridique(Base):
     __tablename__ = "Forme_juridique"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
 
 # Table: groupe
 class Groupe(Base):
     __tablename__ = "groupe"
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(100), nullable=True)
-    etat = Column(Integer, nullable=True)
     description = Column(String(500), nullable=True)
     userCreat = Column(Integer, nullable=True)
 
@@ -116,7 +102,6 @@ class LocationBien(Base):
     id = Column(BigInteger, primary_key=True, index=True)
     fk_personne = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     fk_bien = Column(Integer, ForeignKey("bien.id"), nullable=True)
-    date_create = Column(DateTime, nullable=True)
     date_debut = Column(Date, nullable=True)
     date_fin = Column(Date, nullable=True)
     fk_agent = Column(BigInteger, nullable=True)
@@ -149,7 +134,6 @@ class Module(Base):
     __tablename__ = "module"
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
     userCreat = Column(Integer, nullable=True)
 
 # Table: nationalite
@@ -158,7 +142,6 @@ class Nationalite(Base):
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(50), nullable=True)
     pays = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
 
 # Table: nature_bien
 class NatureBien(Base):
@@ -166,8 +149,6 @@ class NatureBien(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String(50), nullable=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
-    date_creat = Column(DateTime, nullable=True)
     agent_Creat = Column(Integer, nullable=True)
 
 # Table: parcelle
@@ -183,11 +164,8 @@ class Parcelle(Base):
     coordonnee_geographique = Column(String, nullable=True)  # varchar(max)
     coord_projected = Column(String, nullable=True)  # varchar(max)
     coord_corrige = Column(String, nullable=True)  # varchar(max)
-    etat = Column(Integer, nullable=True)
     fk_proprietaire = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     fk_rang = Column(Integer, ForeignKey("rang.id"), nullable=True)
-    date_create = Column(DateTime, nullable=True)
-    date_update = Column(DateTime, nullable=True)
     fk_agent = Column(Integer, nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
 
@@ -213,7 +191,6 @@ class Personne(Base):
     territoire = Column(String(100), nullable=True)
     secteur = Column(String(100), nullable=True)
     village = Column(String(100), nullable=True)
-    etat = Column(Integer, nullable=True)
     fk_nationalite = Column(Integer, ForeignKey("nationalite.id"), nullable=True)
     profession = Column(String(100), nullable=True)
     type_piece_identite = Column(String(50), nullable=True)
@@ -226,8 +203,6 @@ class Personne(Base):
     adresse_mail = Column(String(100), nullable=True)
     nombre_enfant = Column(Integer, nullable=True)
     niveau_etude = Column(String(50), nullable=True)
-    date_create = Column(DateTime, nullable=True)
-    date_update = Column(DateTime, nullable=True)
     fk_agent = Column(Integer, nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
 
@@ -236,10 +211,8 @@ class Province(Base):
     __tablename__ = "province"
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(100), nullable=True)
-    etat = Column(Integer, nullable=True)
     lon = Column(Float(precision=18), nullable=True)
     lat = Column(Float(precision=18), nullable=True)
-    date_creat = Column(DateTime, nullable=True)
     agent_Creat = Column(Integer, nullable=True)
 
 # Table: quartier
@@ -247,11 +220,9 @@ class Quartier(Base):
     __tablename__ = "quartier"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
     lon = Column(Float(precision=18), nullable=True)
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(String, nullable=True)  # varchar(max)
-    date_creat = Column(DateTime, nullable=True)
     fk_commune = Column(Integer, ForeignKey("commune.id"), nullable=True)
 
 # Table: rang
@@ -260,8 +231,6 @@ class Rang(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     code = Column(String(50), nullable=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
-    date_creat = Column(DateTime, nullable=True)
     agent_Creat = Column(Integer, nullable=True)
 
 # Table: site
@@ -269,8 +238,6 @@ class Site(Base):
     __tablename__ = "site"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
-    date_creat = Column(DateTime, nullable=True)
     agent_Creat = Column(Integer, nullable=True)
     fk_ville = Column(Integer, ForeignKey("ville.id"), nullable=True)
     code_site = Column(String(50), nullable=True)
@@ -286,7 +253,6 @@ class TypePieceIdentite(Base):
     __tablename__ = "Type_piece_identite"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
 
 # Table: unite
 class Unite(Base):
@@ -295,21 +261,18 @@ class Unite(Base):
     code = Column(String(50), nullable=True)
     sigle = Column(String(150), nullable=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
 
 # Table: usage
 class Usage(Base):
     __tablename__ = "usage"
     id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
     intitule = Column(NVARCHAR(100), nullable=True)
-    etat = Column(Integer, nullable=True)
 
 # Table: usage_specifique
 class UsageSpecifique(Base):
     __tablename__ = "usage_specifique"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     intitule = Column(NVARCHAR(100), nullable=True)
-    etat = Column(Boolean, nullable=True)
 
 # Table: utilisateur
 class Utilisateur(Base):
@@ -323,8 +286,6 @@ class Utilisateur(Base):
     login = Column(String(50), nullable=True)
     password = Column(String(255), nullable=True)
     mail = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
-    date_creat = Column(DateTime, nullable=True)
     status = Column(Integer, nullable=True)
     fk_fonction = Column(Integer, ForeignKey("fonction.id"), nullable=True)
     fk_site = Column(Integer, ForeignKey("site.id"), nullable=True)
@@ -335,7 +296,6 @@ class Ville(Base):
     __tablename__ = "ville"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     intitule = Column(String(50), nullable=True)
-    etat = Column(Integer, nullable=True)
     lon = Column(Float(precision=18), nullable=True)
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(Text, nullable=True)
