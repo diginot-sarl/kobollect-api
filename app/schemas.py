@@ -87,3 +87,11 @@ class PaginatedUserResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+class TeamCreate(BaseModel):
+    intitule: str
+    fk_quartier: int
+    
+class AssignUserTeams(BaseModel):
+    user_id: int
+    team_ids: list[int]

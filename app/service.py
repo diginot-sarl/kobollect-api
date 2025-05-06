@@ -271,6 +271,14 @@ def create_user(user_data: UserCreate, db: Session):
         if existing_user:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this login already exists")
 
+        # Check if code_chasuble is unique
+        existing_code = db.query(Utilisateur).filter(Utilisateur.code_chasuble == user_data.code_chasuble).first()
+        if existing_code:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this code_chasuble already exists"
+            )
+
         # Hash the password
         hashed_password = get_password_hash(user_data.password)
 
@@ -293,6 +301,8 @@ def create_user(user_data: UserCreate, db: Session):
         logger.info(f"User {user_data.login} created successfully")
         return new_user
 
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to create user: {str(e)}")

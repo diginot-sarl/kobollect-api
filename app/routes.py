@@ -23,9 +23,9 @@ from app.auth import (
     User,
 )
 from app.service import process_kobo_data, create_user
-from app.schemas import UserCreate, PaginatedUserResponse
+from app.schemas import UserCreate, PaginatedUserResponse, TeamCreate, AssignUserTeams
 from app.database import get_db
-from app.models import Bien, Parcelle, Equipe
+from app.models import Bien, Parcelle, Equipe, AgentEquipe
 from sqlalchemy.sql import text
 
 
@@ -845,7 +845,6 @@ def get_populations(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # Fetch cartographie data
 @router.get("/cartographie", tags=["Cartographie"])
 def get_cartographie(
@@ -1200,7 +1199,6 @@ def get_dashboard_stats(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # Import GeoJSON data
 @router.post("/import-geojson", tags=["GeoJSON"])
 async def import_geojson(
@@ -1293,20 +1291,72 @@ def get_user_by_code_chasuble(
 
 @router.post("/teams", tags=["Teams"])
 def create_team(
-    intitule: str = Query(...),
-    fk_quartier: int = Query(...),
+    team_data: TeamCreate,
     db: Session = Depends(get_db)
 ):
     try:
+        # Check if a team already exists with this fk_quartier
+        existing_team = db.query(Equipe).filter(Equipe.fk_quartier == team_data.fk_quartier).first()
+        if existing_team:
+            raise HTTPException(
+                status_code=400,
+                detail="Un quartier ne peut être associé qu'à une seule équipe"
+            )
+
         # Create new team
-        new_team = Equipe(intitule=intitule, fk_quartier=fk_quartier)
+        new_team = Equipe(intitule=team_data.intitule, fk_quartier=team_data.fk_quartier)
         db.add(new_team)
         db.commit()
         db.refresh(new_team)
         return {"id": new_team.id, "intitule": new_team.intitule, "fk_quartier": new_team.fk_quartier}
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+    
+
+@router.post("/assign-to-teams", tags=["Teams"])
+def assign_to_teams(
+    assign_user_teams: AssignUserTeams,
+    db: Session = Depends(get_db)
+):
+    try:
+        # First, remove any existing team assignments for this user
+        db.query(AgentEquipe).filter(AgentEquipe.fk_agent == assign_user_teams.user_id).delete()
+        
+        # Add new team assignments
+        for team_id in assign_user_teams.team_ids:
+            # Verify team exists
+            team = db.query(Equipe).filter(Equipe.id == team_id).first()
+            if not team:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Team with ID {team_id} not found"
+                )
+            
+            # Create new assignment
+            new_assignment = AgentEquipe(
+                fk_equipe=team_id,
+                fk_agent=assign_user_teams.user_id
+            )
+            db.add(new_assignment)
+        
+        db.commit()
+        
+        return {
+            "message": "User successfully assigned to teams",
+            "user_id": assign_user_teams.user_id,
+            "team_ids": assign_user_teams.team_ids
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/teams", tags=["Teams"])
 def get_teams(
