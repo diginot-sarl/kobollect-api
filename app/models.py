@@ -279,6 +279,7 @@ class UsageSpecifique(Base):
 class Utilisateur(Base):
     __tablename__ = "utilisateur"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id_kobo = Column(String(50), nullable=True)
     prenom = Column(String(50), nullable=True)
     nom = Column(String(50), nullable=True)
     postnom = Column(String(50), nullable=True)

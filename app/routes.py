@@ -1,8 +1,10 @@
 import json
+import requests
 
 from datetime import timedelta
 from typing import Annotated, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from fastapi import (
     APIRouter,
     Depends,
@@ -12,6 +14,7 @@ from fastapi import (
     status,
     Request,
     UploadFile,
+    BackgroundTasks,
 )
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
@@ -25,8 +28,9 @@ from app.auth import (
 from app.service import process_kobo_data, create_user
 from app.schemas import UserCreate, PaginatedUserResponse, TeamCreate, AssignUserTeams
 from app.database import get_db
-from app.models import Bien, Parcelle, Equipe, AgentEquipe
+from app.models import Bien, Parcelle, Equipe, AgentEquipe, Utilisateur
 from sqlalchemy.sql import text
+import asyncio
 
 
 router = APIRouter()
@@ -1488,5 +1492,116 @@ def get_team_members(
         return {"data": members}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/fetch-kobo-users", tags=["Kobo"])
+async def fetch_kobo_users(db: Session = Depends(get_db)):
+    """
+    Route pour récupérer et afficher les utilisateurs depuis KoboToolbox et les synchroniser dans la base de données locale
+    """
+    KOBOTOOLBOX_URL = "https://kf.hidscollect.hologram.cd"
+    KOBOTOOLBOX_ADMIN_USER = "super_admin"
+    KOBOTOOLBOX_ADMIN_PASSWORD = "xy9AhsnsRI7My2fIDYgX"
+
+    kobotoolbox_api_url = f"{KOBOTOOLBOX_URL}/api/v2/users/"
+    headers = {'Content-Type': 'application/json'}
+
+    try:
+        # Fetch users from KoboToolbox API
+        response = requests.get(
+            kobotoolbox_api_url,
+            headers=headers,
+            auth=(KOBOTOOLBOX_ADMIN_USER, KOBOTOOLBOX_ADMIN_PASSWORD)
+        )
+        
+        if response.status_code == 200:
+            users = response.json()
+            results = users.get("results", [])
+
+            # Synchronize users with local database
+            for user in results:
+                username = user.get("username")
+                if not username:
+                    continue  # Skip if username is missing
+
+                # Check if user exists in local database
+                existing_user = db.query(Utilisateur).filter(Utilisateur.login == username).first()
+
+                if not existing_user:
+                    # Create new user in local database
+                    new_user = Utilisateur(
+                        # id_kobo=username,
+                        login=username,
+                        mail=user.get("email", None),  # Optional: Save email if available
+                    )
+                    db.add(new_user)
+            
+            # Commit the transaction
+            try:
+                db.commit()
+            except SQLAlchemyError as e:
+                db.rollback()
+                return {
+                    "status": "error",
+                    "message": "Erreur lors de l'enregistrement des utilisateurs dans la base de données",
+                    "details": str(e)
+                }
+
+            return {"status": "success", "data": users}
+        else:
+            return {
+                "status": "error",
+                "message": "Échec de la récupération des utilisateurs",
+                "details": response.text
+            }
+            
+    except requests.exceptions.RequestException as e:
+        return {
+            "status": "error",
+            "message": "Erreur de requête",
+            "details": str(e)
+        }
+
+
+
+# @router.get("/user-kobo", tags=["Kobo"])
+# async def test_create_kobo_account(background_tasks: BackgroundTasks):
+#     """
+#     Route de test pour créer un compte KoboToolbox via l'API
+#     et vérifier les utilisateurs après 1 minute
+#     """
+#     KOBOTOOLBOX_URL = "https://kf.hidscollect.hologram.cd"
+#     KOBOTOOLBOX_ADMIN_USER = "super_admin"
+#     KOBOTOOLBOX_ADMIN_PASSWORD = "xy9AhsnsRI7My2fIDYgX"
+
+#     user_info = {
+#         "username": "newuser123",
+#         "password": "password123",
+#         "email": "newuser@example.com",
+#         "first_name": "New",
+#         "last_name": "User"
+#     }
+
+#     kobotoolbox_api_url = f"{KOBOTOOLBOX_URL}/api/v2/users/"
+#     headers = {'Content-Type': 'application/json'}
+
+#     try:
+#         response = requests.post(
+#             kobotoolbox_api_url,
+#             headers=headers,
+#             data=json.dumps(user_info),
+#             auth=(KOBOTOOLBOX_ADMIN_USER, KOBOTOOLBOX_ADMIN_PASSWORD)
+#         )
+        
+#         # Ajouter la tâche en arrière-plan
+#         background_tasks.add_task(check_kobo_users)
+        
+#         if response.status_code == 201:
+#             return {"status": "success", "message": "Compte créé avec succès", "data": response.json()}
+#         else:
+#             return {"status": "error", "message": "Échec de la création du compte", "details": response.text}
+            
+#     except requests.exceptions.RequestException as e:
+#         return {"status": "error", "message": "Erreur de requête", "details": str(e)}
 
 
