@@ -83,7 +83,7 @@ def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)
     return current_user
     
 
-@router.get("/users", response_model=PaginatedUserResponse)
+@router.get("/users")
 def get_all_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1),
@@ -93,10 +93,15 @@ def get_all_users(
     db: Session = Depends(get_db),
 ):
     try:
-        # Base query
-        query = """
-            SELECT id, login, nom, postnom, prenom, date_create, mail, telephone, photo_url, code_chasuble
-            FROM utilisateur
+        # Base query with joins to get team information
+        base_query = """
+            SELECT 
+                u.id, u.login, u.nom, u.postnom, u.prenom, u.date_create, 
+                u.mail, u.telephone, u.photo_url, u.code_chasuble,
+                e.id AS equipe_id, e.intitule AS equipe_intitule
+            FROM utilisateur u
+            LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
+            LEFT JOIN equipe e ON ae.fk_equipe = e.id
             WHERE 1=1
         """
 
@@ -104,32 +109,40 @@ def get_all_users(
         filters = []
         params = {}
         if name:
-            filters.append("(nom LIKE :name OR postnom LIKE :name OR prenom LIKE :name)")
+            filters.append("(u.nom LIKE :name OR u.postnom LIKE :name OR u.prenom LIKE :name)")
             params["name"] = f"%{name}%"
         if date_start:
             try:
-                filters.append("CAST(date_create AS DATE) >= :date_start")
+                filters.append("CAST(u.date_create AS DATE) >= :date_start")
                 params["date_start"] = date_start
             except Exception:
                 pass
         if date_end:
             try:
-                filters.append("CAST(date_create AS DATE) <= :date_end")
+                filters.append("CAST(u.date_create AS DATE) <= :date_end")
                 params["date_end"] = date_end
             except Exception:
                 pass
 
         # Build final query
+        query = base_query
         if filters:
             query += " AND " + " AND ".join(filters)
 
-        # Count total records
-        count_query = f"SELECT COUNT(*) FROM ({query}) AS total"
+        # Count total records (distinct users)
+        count_query = """
+            SELECT COUNT(DISTINCT utilisateur.id) 
+            FROM utilisateur
+            LEFT JOIN agent_equipe ON utilisateur.id = agent_equipe.fk_agent
+            WHERE 1=1
+        """
+        if filters:
+            count_query += " AND " + " AND ".join(filters)
         total = db.execute(text(count_query), params).scalar()
 
         # Add pagination using SQL Server syntax
         query += """
-            ORDER BY id DESC
+            ORDER BY u.id DESC
             OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
         """
         params["limit"] = page_size
@@ -138,19 +151,33 @@ def get_all_users(
         # Execute query
         results = db.execute(text(query), params).fetchall()
 
-        # Format results
-        users = [{
-            "id": row.id,
-            "login": row.login,
-            "nom": row.nom,
-            "postnom": row.postnom,
-            "prenom": row.prenom,
-            "mail": row.mail,
-            "telephone": row.telephone,
-            "code_chasuble": row.code_chasuble,
-            "photo_url": row.photo_url,
-            "date_create": row.date_create.isoformat() if row.date_create else None
-        } for row in results]
+        # Format results - group teams by user
+        users_map = {}
+        for row in results:
+            if row.id not in users_map:
+                users_map[row.id] = {
+                    "id": row.id,
+                    "login": row.login,
+                    "nom": row.nom,
+                    "postnom": row.postnom,
+                    "prenom": row.prenom,
+                    "mail": row.mail,
+                    "telephone": row.telephone,
+                    "code_chasuble": row.code_chasuble,
+                    "photo_url": row.photo_url,
+                    "date_create": row.date_create.isoformat() if row.date_create else None,
+                    "teams": []
+                }
+            
+            # Add team if exists
+            if row.equipe_id:
+                users_map[row.id]["teams"].append({
+                    "id": row.equipe_id,
+                    "intitule": row.equipe_intitule
+                })
+
+        # Convert map to list
+        users = list(users_map.values())
 
         return {
             "data": users,
@@ -1427,6 +1454,38 @@ def get_teams(
             "page_size": page_size,
         }
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/teams/{team_id}/members", tags=["Teams"])
+def get_team_members(
+    team_id: int,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Query to get team members
+        query = """
+            SELECT 
+                u.id, u.nom, u.postnom, u.prenom, u.mail, u.telephone, u.photo_url, u.sexe
+            FROM utilisateur u
+            JOIN agent_equipe ae ON u.id = ae.fk_agent
+            WHERE ae.fk_equipe = :team_id
+        """
+        results = db.execute(text(query), {"team_id": team_id}).fetchall()
+        
+        # Format results
+        members = [{
+            "id": row.id,
+            "nom": row.nom,
+            "postnom": row.postnom,
+            "prenom": row.prenom,
+            "mail": row.mail,
+            "telephone": row.telephone,
+            "photo_url": row.photo_url,
+            "sexe": row.sexe,
+        } for row in results]
+
+        return {"data": members}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
