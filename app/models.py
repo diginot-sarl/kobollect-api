@@ -307,6 +307,7 @@ class Ville(Base):
 class Equipe(Base):
     __tablename__ = "equipe"
     id = Column(Integer, primary_key=True, index=True)
+    intitule = Column(String(50), nullable=True)
     fk_quartier = Column(Integer, ForeignKey("quartier.id"), nullable=True)
 
 # Table: agent_equipe

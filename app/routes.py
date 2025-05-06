@@ -25,7 +25,7 @@ from app.auth import (
 from app.service import process_kobo_data, create_user
 from app.schemas import UserCreate, PaginatedUserResponse
 from app.database import get_db
-from app.models import Bien, Parcelle
+from app.models import Bien, Parcelle, Equipe
 from sqlalchemy.sql import text
 
 
@@ -1261,23 +1261,123 @@ def get_user_by_code_chasuble(
         result = db.execute(text(query), {"code_chasuble": code_chasuble}).first()
         
         if not result:
-            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+            raise {
+                "status": 204,
+                "data": None,
+                "message": "Utilisateur non trouvé"
+            }
             
         return {
-            "id": result.id,
-            "nom": result.nom,
-            "postnom": result.postnom,
-            "prenom": result.prenom,
-            "email": result.mail,
-            "telephone": result.telephone,
-            "sexe": result.sexe,
-            "date_create": result.date_create.isoformat() if result.date_create else None,
-            "code_chasuble": result.code_chasuble,
-            "photo_url": result.photo_url,
-            "fk_adresse": None,
+            "status": 200,
+            "data": {
+                "id": result.id,
+                "nom": result.nom,
+                "postnom": result.postnom,
+                "prenom": result.prenom,
+                "email": result.mail,
+                "telephone": result.telephone,
+                "sexe": result.sexe,
+                "date_create": result.date_create.isoformat() if result.date_create else None,
+                "code_chasuble": result.code_chasuble,
+                "photo_url": result.photo_url,
+                "fk_adresse": None,
+            }
         }
-        
+    except Exception as e:
+        return {
+            "status": 500,
+            "data": None,
+            "message": f"Erreur lors de la recherche: {str(e)}"
+        }
+    
+
+@router.post("/teams", tags=["Teams"])
+def create_team(
+    intitule: str = Query(...),
+    fk_quartier: int = Query(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Create new team
+        new_team = Equipe(intitule=intitule, fk_quartier=fk_quartier)
+        db.add(new_team)
+        db.commit()
+        db.refresh(new_team)
+        return {"id": new_team.id, "intitule": new_team.intitule, "fk_quartier": new_team.fk_quartier}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/teams", tags=["Teams"])
+def get_teams(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    date_start: str = Query(None),
+    date_end: str = Query(None),
+    fk_quartier: int = Query(None),
+    intitule: str = Query(None),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Base query
+        query = """
+            SELECT e.id, e.intitule, e.fk_quartier, q.intitule AS quartier_intitule
+            FROM equipe e
+            LEFT JOIN quartier q ON e.fk_quartier = q.id
+            WHERE 1=1
+        """
+
+        # Add filters
+        filters = []
+        params = {}
+        if date_start:
+            filters.append("CAST(e.date_create AS DATE) >= :date_start")
+            params["date_start"] = date_start
+        if date_end:
+            filters.append("CAST(e.date_create AS DATE) <= :date_end")
+            params["date_end"] = date_end
+        if fk_quartier:
+            filters.append("e.fk_quartier = :fk_quartier")
+            params["fk_quartier"] = fk_quartier
+        if intitule:
+            filters.append("e.intitule LIKE :intitule")
+            params["intitule"] = f"%{intitule}%"
+
+        # Build final query
+        if filters:
+            query += " AND " + " AND ".join(filters)
+
+        # Count total records
+        count_query = f"SELECT COUNT(*) FROM ({query}) AS total"
+        total = db.execute(text(count_query), params).scalar()
+
+        # Add pagination
+        query += """
+            ORDER BY e.id DESC
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        """
+        params["limit"] = page_size
+        params["offset"] = (page - 1) * page_size
+
+        # Execute query
+        results = db.execute(text(query), params).fetchall()
+
+        # Format results
+        teams = [{
+            "id": row.id,
+            "intitule": row.intitule,
+            "fk_quartier": row.fk_quartier,
+            "quartier_intitule": row.quartier_intitule
+        } for row in results]
+
+        return {
+            "data": teams,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-    
+
+
