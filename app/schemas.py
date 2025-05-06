@@ -45,11 +45,13 @@ class UserOut(BaseModel):
     login: Optional[str] = None
     mail: Optional[str] = None
     etat: Optional[int] = None
-    date_creat: Optional[datetime] = None
+    date_create: Optional[datetime] = None
     status: Optional[int] = None
     fk_fonction: Optional[int] = None
     fk_site: Optional[int] = None
     fk_agent_creat: Optional[int] = None
+    photo_url: Optional[str] = None
+    code_chasuble: Optional[str] = None
 
     class Config:
         orm_mode = True

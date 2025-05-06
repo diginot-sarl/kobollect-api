@@ -95,7 +95,7 @@ def get_all_users(
     try:
         # Base query
         query = """
-            SELECT id, login, nom, postnom, prenom, date_create
+            SELECT id, login, nom, postnom, prenom, date_create, mail, telephone, photo_url, code_chasuble
             FROM utilisateur
             WHERE 1=1
         """
@@ -145,6 +145,10 @@ def get_all_users(
             "nom": row.nom,
             "postnom": row.postnom,
             "prenom": row.prenom,
+            "mail": row.mail,
+            "telephone": row.telephone,
+            "code_chasuble": row.code_chasuble,
+            "photo_url": row.photo_url,
             "date_create": row.date_create.isoformat() if row.date_create else None
         } for row in results]
 
@@ -1250,7 +1254,7 @@ def get_user_by_code_chasuble(
     try:
         # Query to find user by code_chasuble
         query = """
-            SELECT id, nom, postnom, prenom, date_create, code_chasuble, photo_url, sexe
+            SELECT id, nom, postnom, prenom, date_create, code_chasuble, photo_url, sexe, mail, telephone
             FROM utilisateur
             WHERE code_chasuble = :code_chasuble
         """
@@ -1264,6 +1268,8 @@ def get_user_by_code_chasuble(
             "nom": result.nom,
             "postnom": result.postnom,
             "prenom": result.prenom,
+            "email": result.mail,
+            "telephone": result.telephone,
             "sexe": result.sexe,
             "date_create": result.date_create.isoformat() if result.date_create else None,
             "code_chasuble": result.code_chasuble,
