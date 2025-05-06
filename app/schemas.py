@@ -11,6 +11,8 @@ class UserCreate(BaseModel):
     password: str
     telephone: Optional[str] = None
     sexe: Optional[str] = None
+    photo_url: Optional[str] = None
+    code_chasuble: Optional[str] = None
     
 class User(BaseModel):
     id: int
@@ -27,6 +29,8 @@ class User(BaseModel):
     fk_fonction: Optional[int] = None
     fk_site: Optional[int] = None
     fk_agent_creat: Optional[int] = None
+    photo_url: Optional[str] = None
+    code_chasuble: Optional[str] = None
 
     class Config:
         orm_mode = True

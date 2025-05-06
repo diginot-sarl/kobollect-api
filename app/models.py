@@ -1,5 +1,5 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Boolean, ForeignKey, BigInteger, Date
+from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, BigInteger, Date
 from sqlalchemy.sql.sqltypes import NVARCHAR, NCHAR
 from app.database import Base
 
@@ -284,12 +284,13 @@ class Utilisateur(Base):
     postnom = Column(String(50), nullable=True)
     sexe = Column(String(50), nullable=True)
     telephone = Column(String(50), nullable=True)
+    code_chasuble = Column(String(50), nullable=True)
+    photo_url = Column(String(50), nullable=True)
     login = Column(String(50), nullable=True)
     password = Column(String(255), nullable=True)
     mail = Column(String(50), nullable=True)
     status = Column(Integer, nullable=True)
     fk_fonction = Column(Integer, ForeignKey("fonction.id"), nullable=True)
-    fk_site = Column(Integer, ForeignKey("site.id"), nullable=True)
     fk_agent_creat = Column(Integer, nullable=True)
 
 # Table: ville
@@ -301,3 +302,17 @@ class Ville(Base):
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(Text, nullable=True)
     fk_province = Column(Integer, ForeignKey("province.id"), nullable=True)
+
+# Table: equipe
+class Equipe(Base):
+    __tablename__ = "equipe"
+    id = Column(Integer, primary_key=True, index=True)
+    fk_quartier = Column(Integer, ForeignKey("quartier.id"), nullable=True)
+
+# Table: agent_equipe
+class AgentEquipe(Base):
+    __tablename__ = "agent_equipe"
+    id = Column(Integer, primary_key=True, index=True)
+    fk_equipe = Column(Integer, ForeignKey("equipe.id"), nullable=True)
+    fk_agent = Column(Integer, nullable=True)
+    

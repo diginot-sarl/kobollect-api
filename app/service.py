@@ -284,7 +284,8 @@ def create_user(user_data: UserCreate, db: Session):
             login=user_data.login,
             password=hashed_password,
             mail=user_data.mail,
-            date_creat=datetime.datetime.now(datetime.timezone.utc),
+            photo_url=user_data.photo_url,
+            code_chasuble=user_data.code_chasuble,
         )
         db.add(new_user)
         db.commit()

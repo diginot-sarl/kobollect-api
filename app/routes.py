@@ -1242,31 +1242,32 @@ async def import_geojson(
         raise HTTPException(status_code=400, detail=f"Erreur lors de l'import: {str(e)}")
     
 
-@router.get("/recherche-utilisateur/{code_chasible}", response_model=User, tags=["Users"])
-def get_user_by_code_chasible(
-    code_chasible: str,
+@router.get("/recherche-utilisateur/{code_chasuble}", response_model=User, tags=["Users"])
+def get_user_by_code_chasuble(
+    code_chasuble: str,
     db: Session = Depends(get_db)
 ):
     try:
-        # Query to find user by code_chasible
+        # Query to find user by code_chasuble
         query = """
-            SELECT id, login, nom, postnom, prenom, date_create, code_chasible
+            SELECT id, nom, postnom, prenom, date_create, code_chasuble, photo_url, sexe
             FROM utilisateur
-            WHERE code_chasible = :code_chasible
+            WHERE code_chasuble = :code_chasuble
         """
-        result = db.execute(text(query), {"code_chasible": code_chasible}).first()
+        result = db.execute(text(query), {"code_chasuble": code_chasuble}).first()
         
         if not result:
             raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
             
         return {
             "id": result.id,
-            "login": result.login,
             "nom": result.nom,
             "postnom": result.postnom,
             "prenom": result.prenom,
             "date_create": result.date_create.isoformat() if result.date_create else None,
-            "code_chasible": result.code_chasible
+            "code_chasuble": result.code_chasuble,
+            "photo_url": result.photo_url,
+            "fk_adresse": None,
         }
         
     except Exception as e:
