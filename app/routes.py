@@ -1242,7 +1242,7 @@ async def import_geojson(
         raise HTTPException(status_code=400, detail=f"Erreur lors de l'import: {str(e)}")
     
 
-@router.get("/recherche-utilisateur/{code_chasuble}", response_model=User, tags=["Users"])
+@router.get("/recherche-utilisateur/{code_chasuble}", tags=["Users"])
 def get_user_by_code_chasuble(
     code_chasuble: str,
     db: Session = Depends(get_db)
@@ -1264,6 +1264,7 @@ def get_user_by_code_chasuble(
             "nom": result.nom,
             "postnom": result.postnom,
             "prenom": result.prenom,
+            "sexe": result.sexe,
             "date_create": result.date_create.isoformat() if result.date_create else None,
             "code_chasuble": result.code_chasuble,
             "photo_url": result.photo_url,
