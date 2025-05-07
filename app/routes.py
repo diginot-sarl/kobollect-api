@@ -978,7 +978,8 @@ def get_cartographie(
     avenue: str = Query(None),
     rang: str = Query(None),
     nature: str = Query(None),
-    nature_specifique: str = Query(None),
+    usage: str = Query(None),
+    usage_specifique: str = Query(None),
     type_donnee: str = Query(None),
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -1001,6 +1002,8 @@ def get_cartographie(
             LEFT JOIN commune c ON q.fk_commune = c.id
             LEFT JOIN rang r ON p.fk_rang = r.id
             LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
+            LEFT JOIN usage u ON b.fk_usage = u.id
+            LEFT JOIN usage_specifique us ON b.fk_usage_specifique = us.id
             WHERE 1=1
         """
 
@@ -1022,9 +1025,12 @@ def get_cartographie(
         if nature:
             filters.append("nb.id = :nature")
             params["nature"] = nature
-        if nature_specifique:
-            filters.append("nb.intitule LIKE :nature_specifique")
-            params["nature_specifique"] = f"%{nature_specifique}%"
+        if usage:
+            filters.append("u.id = :usage")
+            params["usage"] = usage
+        if usage_specifique:
+            filters.append("us.id = :usage_specifique")
+            params["usage_specifique"] = usage_specifique
 
         # Build final query
         query = base_query
