@@ -1743,7 +1743,7 @@ async def update_user(  # Use async for better performance with FastAPI
 #         return {"status": "error", "message": "Erreur de requête", "details": str(e)}
 
 
-@router.get("/get-parameters", tags=["Parameters"])
+@router.get("/get-parameters", tags=["GeoJSON"])
 def get_parameters(
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
