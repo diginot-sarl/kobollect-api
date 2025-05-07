@@ -14,7 +14,6 @@ from fastapi import (
     status,
     Request,
     UploadFile,
-    BackgroundTasks,
 )
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
@@ -26,11 +25,10 @@ from app.auth import (
     User,
 )
 from app.service import process_kobo_data, create_user
-from app.schemas import UserCreate, PaginatedUserResponse, TeamCreate, AssignUserTeams
+from app.schemas import UserCreate, TeamCreate, AssignUserTeams, UserUpdate
 from app.database import get_db
 from app.models import Bien, Parcelle, Equipe, AgentEquipe, Utilisateur
 from sqlalchemy.sql import text
-import asyncio
 
 
 router = APIRouter()
@@ -45,6 +43,26 @@ def format_personne(row):
         "denomination": row.denomination,
         "sigle": row.sigle,
     }
+    
+# Helper function to parse coordinates
+def parse_coordinates(coord_str):
+    # If coord_str is already an array, return it directly
+    if isinstance(coord_str, list):
+        return coord_str
+    # If coord_str is None or empty, return None
+    if not coord_str:
+        return None
+    points = []
+    for part in coord_str.split(';'):
+        vals = part.strip().split()
+        if len(vals) >= 2:
+            try:
+                lat = float(vals[0])
+                lng = float(vals[1])
+                points.append([lat, lng])
+            except Exception:
+                continue
+    return points if points else None
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
@@ -94,6 +112,7 @@ def get_all_users(
     name: Optional[str] = None,
     date_start: Optional[str] = None,
     date_end: Optional[str] = None,
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -192,11 +211,68 @@ def get_all_users(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
+@router.get("/users/{user_id}")
+def get_user(
+    user_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Base query with joins to get team information
+        query = """
+            SELECT 
+                u.id, u.login, u.nom, u.postnom, u.prenom, u.date_create, 
+                u.mail, u.telephone, u.photo_url, u.code_chasuble, u.sexe,
+                e.id AS equipe_id, e.intitule AS equipe_intitule
+            FROM utilisateur u
+            LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
+            LEFT JOIN equipe e ON ae.fk_equipe = e.id
+            WHERE u.id = :user_id
+        """
+
+        # Execute query
+        results = db.execute(text(query), {"user_id": user_id}).fetchall()
+
+        if not results:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Format results - group teams by user
+        user_data = {
+            "id": results[0].id,
+            "login": results[0].login,
+            "nom": results[0].nom,
+            "postnom": results[0].postnom,
+            "prenom": results[0].prenom,
+            "sexe": results[0].sexe,
+            "mail": results[0].mail,
+            "telephone": results[0].telephone,
+            "code_chasuble": results[0].code_chasuble,
+            "photo_url": results[0].photo_url,
+            "date_create": results[0].date_create.isoformat() if results[0].date_create else None,
+            "teams": []
+        }
+
+        # Add all teams if they exist
+        for row in results:
+            if row.equipe_id:
+                user_data["teams"].append({
+                    "id": row.equipe_id,
+                    "intitule": row.equipe_intitule
+                })
+
+        return user_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Create a new user
 @router.post("/users", response_model=User, tags=["Users"])
-async def create_new_user(user_data: UserCreate, db: Session = Depends(get_db)):
+async def create_new_user(user_data: UserCreate, current_user = Depends(get_current_active_user), db: Session = Depends(get_db)):
     return create_user(user_data, db)
 
 
@@ -215,6 +291,7 @@ async def get_geojson(
     avenue: str = Query(None),
     rang: str = Query(None),
     nature: str = Query(None),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -359,6 +436,7 @@ async def get_geojson(
 # Fetch provinces
 @router.get("/provinces", tags=["GeoJSON"])
 def get_provinces(
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -372,6 +450,7 @@ def get_provinces(
 @router.get("/villes", tags=["GeoJSON"])
 async def get_villes(
     province: str = Query(...),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -385,6 +464,7 @@ async def get_villes(
 @router.get("/communes", tags=["GeoJSON"])
 def get_communes(
     ville: str = Query(...),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -398,6 +478,7 @@ def get_communes(
 @router.get("/quartiers", tags=["GeoJSON"])
 def get_quartiers(
     commune: str = Query(...),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -411,6 +492,7 @@ def get_quartiers(
 @router.get("/avenues", tags=["GeoJSON"])
 def get_avenues(
     quartier: str = Query(...),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -423,6 +505,7 @@ def get_avenues(
 # Fetch rangs
 @router.get("/rangs", tags=["GeoJSON"])
 def get_rangs(
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -435,6 +518,7 @@ def get_rangs(
 # Fetch natures
 @router.get("/natures", tags=["GeoJSON"])
 def get_natures(
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -447,6 +531,7 @@ def get_natures(
 # Fetch usages
 @router.get("/usages", tags=["GeoJSON"])
 def get_usages(
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -456,9 +541,11 @@ def get_usages(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch usage_specifiques
 @router.get("/usage-specifiques", tags=["GeoJSON"])
 def get_usage_specifiques(
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -467,6 +554,7 @@ def get_usage_specifiques(
         return [{"id": row[0], "intitule": row[1]} for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Fetch parcelles with filters
 @router.get("/parcelles", tags=["Parcelles"])
@@ -482,6 +570,7 @@ async def get_parcelles(
     avenue: str = Query(None),
     rang: str = Query(None),
     nature: str = Query(None),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -592,10 +681,12 @@ async def get_parcelles(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch parcelle details by ID
 @router.get("/parcelles/{parcelle_id}", tags=["Parcelles"])
 async def get_parcelle_details(
     parcelle_id: int,
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -733,6 +824,7 @@ async def get_parcelle_details(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch populations with filters
 @router.get("/populations", tags=["Populations"])
 def get_populations(
@@ -742,6 +834,7 @@ def get_populations(
     quartier: str = Query(None),
     avenue: str = Query(None),
     rang: str = Query(None),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -876,6 +969,7 @@ def get_populations(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch cartographie data
 @router.get("/cartographie", tags=["Cartographie"])
 def get_cartographie(
@@ -885,16 +979,18 @@ def get_cartographie(
     rang: str = Query(None),
     nature: str = Query(None),
     nature_specifique: str = Query(None),
+    type_donnee: str = Query(None),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
         # Base query with all necessary joins
         base_query = """
             SELECT 
-                b.id AS bien_id, b.coordinates AS bien_coordinates,
+                b.id AS bien_id, b.coordinates AS bien_coordinates, b.coord_corrige AS bien_coord_corrige,
                 b.superficie AS bien_superficie, b.date_create AS bien_date_create,
                 p.id AS parcelle_id, p.numero_parcellaire AS parcelle_numero,
-                p.coordonnee_geographique AS parcelle_coordinates,
+                p.coordonnee_geographique AS parcelle_coordinates, p.coord_corrige AS parcelle_coord_corrige,
                 p.superficie_calculee AS parcelle_superficie,
                 p.date_create AS parcelle_date_create
             FROM bien b
@@ -941,36 +1037,20 @@ def get_cartographie(
         # Execute query
         results = db.execute(text(query), params).fetchall()
 
-        # Helper function to parse coordinates
-        def parse_coordinates(coord_str):
-            if not coord_str:
-                return None
-            points = []
-            for part in coord_str.split(';'):
-                vals = part.strip().split()
-                if len(vals) >= 2:
-                    try:
-                        lat = float(vals[0])
-                        lng = float(vals[1])
-                        points.append([lat, lng])
-                    except Exception:
-                        continue
-            return points if points else None
-
         # Format results
         data = []
         for row in results:
             data.append({
                 "bien": {
                     "id": row.bien_id,
-                    "coordinates": parse_coordinates(row.bien_coordinates),
+                    "coordinates": parse_coordinates(row.bien_coordinates) if type_donnee == 'collected' else parse_coordinates(row.bien_coord_corrige),
                     "superficie": row.bien_superficie,
                     "date_create": row.bien_date_create.isoformat() if row.bien_date_create else None,
                 },
                 "parcelle": {
                     "id": row.parcelle_id,
                     "numero_parcellaire": row.parcelle_numero,
-                    "coordinates": parse_coordinates(row.parcelle_coordinates),
+                    "coordinates": parse_coordinates(row.parcelle_coordinates) if type_donnee == 'collected' else parse_coordinates(row.parcelle_coord_corrige),
                     "superficie_calculee": row.parcelle_superficie,
                     "date_create": row.parcelle_date_create.isoformat() if row.parcelle_date_create else None,
                 }
@@ -984,6 +1064,7 @@ def get_cartographie(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch dashboard statistics
 @router.get("/stats/dashboard", tags=["Stats"])
 def get_dashboard_stats(
@@ -994,6 +1075,7 @@ def get_dashboard_stats(
     nature: str = Query(None),
     date_start: str = Query(None),
     date_end: str = Query(None),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -1230,11 +1312,13 @@ def get_dashboard_stats(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Import GeoJSON data
 @router.post("/import-geojson", tags=["GeoJSON"])
 async def import_geojson(
     type: str = Query(..., regex="^(parcelle|bien)$"),
     file: UploadFile = File(...),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -1280,49 +1364,43 @@ def get_user_by_code_chasuble(
     code_chasuble: str,
     db: Session = Depends(get_db)
 ):
-    try:
-        # Query to find user by code_chasuble
-        query = """
-            SELECT id, nom, postnom, prenom, date_create, code_chasuble, photo_url, sexe, mail, telephone
-            FROM utilisateur
-            WHERE code_chasuble = :code_chasuble
-        """
-        result = db.execute(text(query), {"code_chasuble": code_chasuble}).first()
-        
-        if not result:
-            raise {
-                "status": 204,
-                "data": None,
-                "message": "Utilisateur non trouvé"
-            }
-            
+    # Query to find user by code_chasuble
+    query = """
+        SELECT id, nom, postnom, prenom, date_create, code_chasuble, photo_url, sexe, mail, telephone
+        FROM utilisateur
+        WHERE code_chasuble = :code_chasuble
+    """
+    result = db.execute(text(query), {"code_chasuble": code_chasuble}).first()
+    
+    if not result:
         return {
-            "status": 200,
-            "data": {
-                "id": result.id,
-                "nom": result.nom,
-                "postnom": result.postnom,
-                "prenom": result.prenom,
-                "email": result.mail,
-                "telephone": result.telephone,
-                "sexe": result.sexe,
-                "date_create": result.date_create.isoformat() if result.date_create else None,
-                "code_chasuble": result.code_chasuble,
-                "photo_url": result.photo_url,
-                "fk_adresse": None,
-            }
-        }
-    except Exception as e:
-        return {
-            "status": 500,
+            "status": 204,
             "data": None,
-            "message": f"Erreur lors de la recherche: {str(e)}"
+            "message": "Utilisateur non trouvé"
         }
+        
+    return {
+        "status": 200,
+        "data": {
+            "id": result.id,
+            "nom": result.nom,
+            "postnom": result.postnom,
+            "prenom": result.prenom,
+            "email": result.mail,
+            "telephone": result.telephone,
+            "sexe": result.sexe,
+            "date_create": result.date_create.isoformat() if result.date_create else None,
+            "code_chasuble": result.code_chasuble,
+            "photo_url": result.photo_url,
+            "fk_adresse": None,
+        }
+    }
     
 
 @router.post("/teams", tags=["Teams"])
 def create_team(
     team_data: TeamCreate,
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     try:
@@ -1347,10 +1425,10 @@ def create_team(
         raise HTTPException(status_code=500, detail=str(e))
 
     
-
 @router.post("/assign-to-teams", tags=["Teams"])
 def assign_to_teams(
     assign_user_teams: AssignUserTeams,
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     try:
@@ -1397,14 +1475,21 @@ def get_teams(
     date_end: str = Query(None),
     fk_quartier: int = Query(None),
     intitule: str = Query(None),
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     try:
-        # Base query
+        # Base query with member count
         query = """
-            SELECT e.id, e.intitule, e.fk_quartier, q.intitule AS quartier_intitule
+            SELECT 
+                e.id, 
+                e.intitule, 
+                e.fk_quartier,
+                q.intitule AS quartier_intitule,
+                COUNT(ae.fk_agent) AS member_count
             FROM equipe e
             LEFT JOIN quartier q ON e.fk_quartier = q.id
+            LEFT JOIN agent_equipe ae ON e.id = ae.fk_equipe
             WHERE 1=1
         """
 
@@ -1428,6 +1513,9 @@ def get_teams(
         if filters:
             query += " AND " + " AND ".join(filters)
 
+        # Add GROUP BY clause
+        query += " GROUP BY e.id, e.intitule, e.fk_quartier, q.intitule"
+
         # Count total records
         count_query = f"SELECT COUNT(*) FROM ({query}) AS total"
         total = db.execute(text(count_query), params).scalar()
@@ -1443,12 +1531,13 @@ def get_teams(
         # Execute query
         results = db.execute(text(query), params).fetchall()
 
-        # Format results
+        # Format results with member_count
         teams = [{
             "id": row.id,
             "intitule": row.intitule,
             "fk_quartier": row.fk_quartier,
-            "quartier_intitule": row.quartier_intitule
+            "quartier_intitule": row.quartier_intitule,
+            "member_count": row.member_count,
         } for row in results]
 
         return {
@@ -1461,9 +1550,11 @@ def get_teams(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/teams/{team_id}/members", tags=["Teams"])
 def get_team_members(
     team_id: int,
+    current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     try:
@@ -1495,11 +1586,14 @@ def get_team_members(
 
 
 @router.get("/fetch-kobo-users", tags=["Kobo"])
-async def fetch_kobo_users(db: Session = Depends(get_db)):
+async def fetch_kobo_users(
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Route pour récupérer et afficher les utilisateurs depuis KoboToolbox et les synchroniser dans la base de données locale
     """
-    KOBOTOOLBOX_URL = "https://kf.hidscollect.hologram.cd"
+    KOBOTOOLBOX_URL = "http://kf.hidscollect.hologram.cd"
     KOBOTOOLBOX_ADMIN_USER = "super_admin"
     KOBOTOOLBOX_ADMIN_PASSWORD = "xy9AhsnsRI7My2fIDYgX"
 
@@ -1525,12 +1619,12 @@ async def fetch_kobo_users(db: Session = Depends(get_db)):
                     continue  # Skip if username is missing
 
                 # Check if user exists in local database
-                existing_user = db.query(Utilisateur).filter(Utilisateur.login == username).first()
+                existing_user = db.query(Utilisateur).filter(Utilisateur.id_kobo == username).first()
 
                 if not existing_user:
                     # Create new user in local database
                     new_user = Utilisateur(
-                        # id_kobo=username,
+                        id_kobo=username,
                         login=username,
                         mail=user.get("email", None),  # Optional: Save email if available
                     )
@@ -1561,6 +1655,50 @@ async def fetch_kobo_users(db: Session = Depends(get_db)):
             "message": "Erreur de requête",
             "details": str(e)
         }
+
+
+@router.put("/users/{user_id}", tags=["Users"])  # Add response_model
+async def update_user(  # Use async for better performance with FastAPI
+    user_id: int,
+    user_data: UserUpdate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Get the user to update
+        user = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Convert Pydantic model to dict and remove None values
+        update_data = user_data.dict(exclude_unset=True)
+
+        # Update user attributes
+        for key, value in update_data.items():
+            setattr(user, key, value)
+
+        # Commit the changes
+        db.commit()
+        db.refresh(user)
+
+        return {
+            "id": user.id,
+            "login": user.login,
+            "nom": user.nom,
+            "postnom": user.postnom,
+            "prenom": user.prenom,
+            "mail": user.mail,
+            "code_chasuble": user.code_chasuble,
+            "photo_url": user.photo_url,
+            "sexe": user.sexe,
+            "telephone": user.telephone
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 
@@ -1603,5 +1741,36 @@ async def fetch_kobo_users(db: Session = Depends(get_db)):
             
 #     except requests.exceptions.RequestException as e:
 #         return {"status": "error", "message": "Erreur de requête", "details": str(e)}
+
+
+@router.get("/get-parameters", tags=["Parameters"])
+def get_parameters(
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Fetch all parameters in parallel using SQLAlchemy's execute
+        rangs_query = text("SELECT id, intitule FROM rang")
+        natures_query = text("SELECT id, intitule FROM nature_bien")
+        usages_query = text("SELECT id, intitule FROM usage")
+        usage_specifiques_query = text("SELECT id, intitule FROM usage_specifique")
+
+        # Execute all queries
+        rangs = db.execute(rangs_query).fetchall()
+        natures = db.execute(natures_query).fetchall()
+        usages = db.execute(usages_query).fetchall()
+        usage_specifiques = db.execute(usage_specifiques_query).fetchall()
+
+        # Format results
+        return {
+            "rangs": [{"id": row[0], "intitule": row[1]} for row in rangs],
+            "natures": [{"id": row[0], "intitule": row[1]} for row in natures],
+            "usages": [{"id": row[0], "intitule": row[1]} for row in usages],
+            "usage_specifiques": [{"id": row[0], "intitule": row[1]} for row in usage_specifiques],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 

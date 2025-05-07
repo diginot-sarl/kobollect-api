@@ -290,7 +290,7 @@ class Utilisateur(Base):
     login = Column(String(50), nullable=True)
     password = Column(String(255), nullable=True)
     mail = Column(String(50), nullable=True)
-    status = Column(Integer, nullable=True)
+    etat = Column(Integer, nullable=True, default=1)
     fk_fonction = Column(Integer, ForeignKey("fonction.id"), nullable=True)
     fk_agent_creat = Column(Integer, nullable=True)
 

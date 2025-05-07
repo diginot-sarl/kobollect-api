@@ -78,7 +78,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     user = db.query(Utilisateur).filter(Utilisateur.login == login).first()
     if user is None:
         raise credentials_exception
-    if user.etat != 1:  # Assuming etat == 1 means active
+    if user.etat is not None and user.etat != 1:  # Assuming etat == 1 means active
         raise HTTPException(status_code=400, detail="Inactive user")
     return user
 
