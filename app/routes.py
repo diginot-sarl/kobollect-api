@@ -1191,11 +1191,18 @@ def get_dashboard_stats(
 
         # Get biens by nature
         biens_by_nature_query = f"""
-            SELECT nb.intitule, COUNT(b.id)
-            FROM ({bien_query}) AS filtered_biens
-            JOIN bien b ON filtered_biens.id = b.id
-            LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
-            GROUP BY nb.intitule
+            WITH all_natures AS (
+                SELECT id, intitule 
+                FROM nature_bien
+            ),
+            filtered_biens AS ({bien_query})
+            SELECT 
+                an.intitule, 
+                COUNT(fb.id) AS bien_count
+            FROM all_natures an
+            LEFT JOIN bien b ON an.id = b.fk_nature_bien
+            LEFT JOIN filtered_biens fb ON b.id = fb.id
+            GROUP BY an.id, an.intitule
         """
         biens_by_nature = {
             row[0] if row[0] else "Inconnu": row[1]
@@ -1218,11 +1225,18 @@ def get_dashboard_stats(
 
         # Get biens by usage
         biens_by_usage_query = f"""
-            SELECT u.intitule, COUNT(b.id)
-            FROM ({bien_query}) AS filtered_biens
-            JOIN bien b ON filtered_biens.id = b.id
-            LEFT JOIN usage u ON b.fk_usage = u.id
-            GROUP BY u.intitule
+            WITH all_usages AS (
+                SELECT id, intitule 
+                FROM usage
+            ),
+            filtered_biens AS ({bien_query})
+            SELECT 
+                au.intitule, 
+                COUNT(fb.id) AS bien_count
+            FROM all_usages au
+            LEFT JOIN bien b ON au.id = b.fk_usage
+            LEFT JOIN filtered_biens fb ON b.id = fb.id
+            GROUP BY au.id, au.intitule
         """
         biens_by_usage = {
             row[0] if row[0] else "Inconnu": row[1]
@@ -1231,11 +1245,18 @@ def get_dashboard_stats(
 
         # Get biens by usage_specifique
         biens_by_usage_specifique_query = f"""
-            SELECT us.intitule, COUNT(b.id)
-            FROM ({bien_query}) AS filtered_biens
-            JOIN bien b ON filtered_biens.id = b.id
-            LEFT JOIN usage_specifique us ON b.fk_usage_specifique = us.id
-            GROUP BY us.intitule
+            WITH all_usage_specifiques AS (
+                SELECT id, intitule 
+                FROM usage_specifique
+            ),
+            filtered_biens AS ({bien_query})
+            SELECT 
+                aus.intitule, 
+                COUNT(fb.id) AS bien_count
+            FROM all_usage_specifiques aus
+            LEFT JOIN bien b ON aus.id = b.fk_usage_specifique
+            LEFT JOIN filtered_biens fb ON b.id = fb.id
+            GROUP BY aus.id, aus.intitule
         """
         biens_by_usage_specifique = {
             row[0] if row[0] else "Inconnu": row[1]
@@ -1244,11 +1265,18 @@ def get_dashboard_stats(
 
         # Get parcelles by rang
         parcelles_by_rang_query = f"""
-            SELECT r.intitule, COUNT(p.id)
-            FROM ({parcelle_query}) AS filtered_parcelles
-            JOIN parcelle p ON filtered_parcelles.id = p.id
-            LEFT JOIN rang r ON p.fk_rang = r.id
-            GROUP BY r.intitule
+            WITH all_rangs AS (
+                SELECT id, intitule 
+                FROM rang
+            ),
+            filtered_parcelles AS ({parcelle_query})
+            SELECT 
+                ar.intitule, 
+                COUNT(fp.id) AS parcelle_count
+            FROM all_rangs ar
+            LEFT JOIN parcelle p ON ar.id = p.fk_rang
+            LEFT JOIN filtered_parcelles fp ON p.id = fp.id
+            GROUP BY ar.id, ar.intitule
         """
         parcelles_by_rang = {
             row[0] if row[0] else "Inconnu": row[1]
@@ -1257,14 +1285,22 @@ def get_dashboard_stats(
 
         # Get parcelles by commune
         parcelles_by_commune_query = f"""
-            SELECT c.intitule, COUNT(p.id)
-            FROM ({parcelle_query}) AS filtered_parcelles
-            JOIN parcelle p ON filtered_parcelles.id = p.id
-            LEFT JOIN adresse a ON p.fk_adresse = a.id
-            LEFT JOIN avenue av ON a.fk_avenue = av.id
-            LEFT JOIN quartier q ON av.fk_quartier = q.id
-            LEFT JOIN commune c ON q.fk_commune = c.id
-            GROUP BY c.intitule
+            WITH all_communes AS (
+                SELECT id, intitule 
+                FROM commune 
+                WHERE fk_ville = 1
+            ),
+            filtered_parcelles AS ({parcelle_query})
+            SELECT 
+                ac.intitule, 
+                COUNT(fp.id) AS parcelle_count
+            FROM all_communes ac
+            LEFT JOIN quartier q ON ac.id = q.fk_commune
+            LEFT JOIN avenue av ON q.id = av.fk_quartier
+            LEFT JOIN adresse a ON av.id = a.fk_avenue
+            LEFT JOIN parcelle p ON a.id = p.fk_adresse
+            LEFT JOIN filtered_parcelles fp ON p.id = fp.id
+            GROUP BY ac.id, ac.intitule
         """
         parcelles_by_commune = {
             row[0] if row[0] else "Inconnu": row[1]
