@@ -1395,7 +1395,7 @@ def get_user_by_code_chasuble(
             "fk_adresse": None,
         }
     }
-    
+
 
 @router.post("/teams", tags=["Teams"])
 def create_team(
