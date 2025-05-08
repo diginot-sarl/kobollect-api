@@ -605,6 +605,8 @@ async def get_parcelles(
     avenue: str = Query(None),
     rang: str = Query(None),
     nature: str = Query(None),
+    keyword: str = Query(None),
+    accessibilite: int = Query(None, description="Filter by accessibility: 1 for accessible, 2 for inaccessible"),  # Changed to int
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -612,12 +614,15 @@ async def get_parcelles(
         # Base query with all necessary joins
         base_query = """
             SELECT 
-                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, p.date_create,
+                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, p.date_create, p.statut,
                 per.id AS proprietaire_id, per.nom AS proprietaire_nom, per.postnom AS proprietaire_postnom,
                 per.prenom AS proprietaire_prenom, per.denomination AS proprietaire_denomination,
                 per.sigle AS proprietaire_sigle, per.fk_type_personne AS proprietaire_type_id,
                 r.id AS rang_id, r.intitule AS rang_intitule,
-                u.id AS type_personne_id, u.intitule AS type_personne_intitule
+                u.id AS type_personne_id, u.intitule AS type_personne_intitule,
+                c.intitule AS commune,
+                q.intitule AS quartier,
+                av.intitule AS avenue
             FROM parcelle p
             LEFT JOIN personne per ON p.fk_proprietaire = per.id
             LEFT JOIN rang r ON p.fk_rang = r.id
@@ -658,6 +663,20 @@ async def get_parcelles(
         if rang:
             filters.append("r.id = :rang")
             params["rang"] = rang
+        if keyword:
+            keyword_filters = [
+                "per.nom LIKE :keyword",
+                "per.postnom LIKE :keyword",
+                "per.prenom LIKE :keyword",
+                "per.denomination LIKE :keyword",
+                "r.intitule LIKE :keyword"
+            ]
+            filters.append(f"({' OR '.join(keyword_filters)})")
+            params["keyword"] = f"%{keyword}%"
+        if accessibilite:
+            if accessibilite in [1, 2]:  # Only accept 1 or 2
+                filters.append("p.statut = :accessibilite")
+                params["accessibilite"] = accessibilite
 
         # Build final query
         query = base_query
@@ -688,6 +707,12 @@ async def get_parcelles(
                 "superficie_calculee": row.superficie_calculee,
                 "coordonnee_geographique": row.coordonnee_geographique,
                 "date_create": row.date_create.isoformat() if row.date_create else None,
+                "statut": "Accessible" if row.statut == 1 else "Non accessible",
+                "adresse": {
+                    "commune": row.commune,
+                    "quartier": row.quartier,
+                    "avenue": row.avenue
+                },
                 "proprietaire": {
                     "id": row.proprietaire_id,
                     "nom": row.proprietaire_nom,
@@ -695,15 +720,9 @@ async def get_parcelles(
                     "prenom": row.proprietaire_prenom,
                     "denomination": row.proprietaire_denomination,
                     "sigle": row.proprietaire_sigle,
-                    "fk_type_personne": {
-                        "id": row.type_personne_id,
-                        "intitule": row.type_personne_intitule
-                    } if row.type_personne_id else None,
+                    "type_personne": row.type_personne_intitule if row.type_personne_id else None,
                 },
-                "rang": {
-                    "id": row.rang_id,
-                    "intitule": row.rang_intitule,
-                },
+                "rang": row.rang_intitule,
             })
 
         return {
@@ -728,14 +747,18 @@ async def get_parcelle_details(
         # Main query to fetch parcelle, owner, and address hierarchy
         parcelle_query = """
             SELECT 
-                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, p.date_create,
+                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, 
+                p.date_create, p.longueur, p.largeur, p.fk_agent, p.statut,
                 per.id AS proprietaire_id, per.nom AS proprietaire_nom, per.postnom AS proprietaire_postnom,
                 per.prenom AS proprietaire_prenom, per.denomination AS proprietaire_denomination,
                 per.sigle AS proprietaire_sigle, per.fk_type_personne AS proprietaire_type_id,
                 a.numero AS adresse_numero, av.intitule AS avenue_intitule,
                 q.intitule AS quartier_intitule, c.intitule AS commune_intitule,
                 v.intitule AS ville_intitule, pr.intitule AS province_intitule,
-                tp.id AS type_personne_id, tp.intitule AS type_personne_intitule
+                tp.id AS type_personne_id, tp.intitule AS type_personne_intitule,
+                u.id AS unite_id, u.intitule AS unite_intitule,
+                r.id AS rang_id, r.intitule AS rang_intitule,
+                agent.nom AS agent_nom, agent.postnom AS agent_postnom, agent.prenom AS agent_prenom
             FROM parcelle p
             LEFT JOIN personne per ON p.fk_proprietaire = per.id
             LEFT JOIN type_personne tp ON per.fk_type_personne = tp.id
@@ -745,6 +768,9 @@ async def get_parcelle_details(
             LEFT JOIN commune c ON q.fk_commune = c.id
             LEFT JOIN ville v ON c.fk_ville = v.id
             LEFT JOIN province pr ON v.fk_province = pr.id
+            LEFT JOIN unite u ON p.fk_unite = u.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            LEFT JOIN utilisateur agent ON p.fk_agent = agent.id
             WHERE p.id = :parcelle_id
         """
 
@@ -772,20 +798,25 @@ async def get_parcelle_details(
             "prenom": parcelle_result.proprietaire_prenom,
             "denomination": parcelle_result.proprietaire_denomination,
             "sigle": parcelle_result.proprietaire_sigle,
-            "fk_type_personne": {
-                "id": parcelle_result.type_personne_id,
-                "intitule": parcelle_result.type_personne_intitule
-            } if parcelle_result.type_personne_id else None,
+            "type_personne": parcelle_result.type_personne_intitule if parcelle_result.type_personne_id else None,
         }
 
         # Query for biens and their related information
         biens_query = """
             SELECT 
                 b.id, b.ref_bien, b.coordinates, b.superficie, b.date_create,
+                nb.intitule AS nature_bien,
+                u.intitule AS unite,
+                us.intitule AS usage,
+                usp.intitule AS usage_specifique,
                 m.id AS menage_id, m.fk_personne AS menage_owner_id,
                 lb.fk_personne AS locataire_id,
                 mm.fk_personne AS membre_id
             FROM bien b
+            LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
+            LEFT JOIN unite u ON b.fk_unite = u.id
+            LEFT JOIN usage us ON b.fk_usage = us.id
+            LEFT JOIN usage_specifique usp ON b.fk_usage_specifique = usp.id
             LEFT JOIN menage m ON b.id = m.fk_bien
             LEFT JOIN location_bien lb ON b.id = lb.fk_bien
             LEFT JOIN membre_menage mm ON m.id = mm.fk_menage
@@ -794,6 +825,38 @@ async def get_parcelle_details(
 
         # Execute biens query
         biens_results = db.execute(text(biens_query), {"parcelle_id": parcelle_id}).fetchall()
+
+        # Helper function to get personne details
+        def get_personne_details(personne_id: int):
+            if not personne_id:
+                return None
+            query = """
+                SELECT 
+                    p.id, p.nom, p.postnom, p.prenom, p.denomination, p.sigle, p.nif,
+                    p.sexe, p.fk_type_personne, tp.intitule AS type_personne,
+                    fm.intitule AS lien_parente, n.intitule AS nationalite
+                FROM personne p
+                LEFT JOIN type_personne tp ON p.fk_type_personne = tp.id
+                LEFT JOIN filiation_membre fm ON p.fk_lien_parente = fm.id
+                LEFT JOIN nationalite n ON p.fk_nationalite = n.id
+                WHERE p.id = :personne_id
+            """
+            result = db.execute(text(query), {"personne_id": personne_id}).first()
+            if result:
+                return {
+                    "id": result.id,
+                    "nom": result.nom,
+                    "postnom": result.postnom,
+                    "prenom": result.prenom,
+                    "denomination": result.denomination,
+                    "sigle": result.sigle,
+                    "nif": result.nif,
+                    "sexe": result.sexe,
+                    "type_personne": result.type_personne,
+                    "lien_parente": result.lien_parente,
+                    "nationalite": result.nationalite
+                }
+            return None
 
         # Process biens and their relationships
         biens_map = {}
@@ -805,43 +868,20 @@ async def get_parcelle_details(
                     "coordinates": row.coordinates,
                     "superficie": row.superficie,
                     "date_create": row.date_create.isoformat() if row.date_create else None,
-                    "owner": None,
-                    "locataire": None,
+                    "nature_bien": row.nature_bien,
+                    "unite": row.unite,
+                    "usage": row.usage,
+                    "usage_specifique": row.usage_specifique,
+                    "proprietaire": get_personne_details(row.menage_owner_id),
+                    "locataire": get_personne_details(row.locataire_id),
                     "membres_menage": []
                 }
 
-            # Add owner if exists
-            if row.menage_owner_id and not biens_map[row.id]["owner"]:
-                owner_query = """
-                    SELECT id, nom, postnom, prenom, denomination, sigle
-                    FROM personne
-                    WHERE id = :personne_id
-                """
-                owner_result = db.execute(text(owner_query), {"personne_id": row.menage_owner_id}).first()
-                if owner_result:
-                    biens_map[row.id]["owner"] = format_personne(owner_result)
-
-            # Add locataire if exists
-            if row.locataire_id and not biens_map[row.id]["locataire"]:
-                locataire_query = """
-                    SELECT id, nom, postnom, prenom, denomination, sigle
-                    FROM personne
-                    WHERE id = :personne_id
-                """
-                locataire_result = db.execute(text(locataire_query), {"personne_id": row.locataire_id}).first()
-                if locataire_result:
-                    biens_map[row.id]["locataire"] = format_personne(locataire_result)
-
             # Add membre if exists
             if row.membre_id:
-                membre_query = """
-                    SELECT id, nom, postnom, prenom, denomination, sigle
-                    FROM personne
-                    WHERE id = :personne_id
-                """
-                membre_result = db.execute(text(membre_query), {"personne_id": row.membre_id}).first()
-                if membre_result:
-                    biens_map[row.id]["membres_menage"].append(format_personne(membre_result))
+                membre_details = get_personne_details(row.membre_id)
+                if membre_details:
+                    biens_map[row.id]["membres_menage"].append(membre_details)
 
         return {
             "parcelle": {
@@ -850,7 +890,13 @@ async def get_parcelle_details(
                 "superficie_calculee": parcelle_result.superficie_calculee,
                 "coordonnee_geographique": parcelle_result.coordonnee_geographique,
                 "date_create": parcelle_result.date_create.isoformat() if parcelle_result.date_create else None,
+                "longueur": parcelle_result.longueur,
+                "largeur": parcelle_result.largeur,
+                "unite": parcelle_result.unite_intitule,
+                "rang": parcelle_result.rang_intitule,
+                "ajoute_par": f"{parcelle_result.agent_nom} {parcelle_result.agent_postnom} {parcelle_result.agent_prenom}",
                 "adresse": address_info,
+                "statut": parcelle_result.statut
             },
             "proprietaire": proprietaire,
             "biens": list(biens_map.values()),
@@ -860,18 +906,19 @@ async def get_parcelle_details(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 # Fetch populations with filters
 @router.get("/populations", tags=["Populations"])
 def get_populations(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
-    commune: str = Query(None),
-    quartier: str = Query(None),
-    avenue: str = Query(None),
-    rang: str = Query(None),
-    type_personne: str = Query(None),  # New filter
-    keyword: str = Query(None),  # New filter
-    current_user = Depends(get_current_active_user),
+    commune: Optional[str] = Query(None),
+    quartier: Optional[str] = Query(None),
+    avenue: Optional[str] = Query(None),
+    rang: Optional[str] = Query(None),
+    type_personne: Optional[str] = Query(None),
+    keyword: Optional[str] = Query(None),
+    current_user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -902,10 +949,10 @@ def get_populations(
         if rang:
             filters.append("p.fk_rang = :rang")
             params["rang"] = rang
-        if type_personne:  # Add type_personne filter
+        if type_personne:
             filters.append("per.fk_type_personne = :type_personne")
             params["type_personne"] = type_personne
-        if keyword:  # Add keyword filter
+        if keyword:
             keyword_filters = [
                 "per.nom LIKE :keyword",
                 "per.postnom LIKE :keyword",
@@ -931,9 +978,9 @@ def get_populations(
                 "page_size": page_size,
             }
 
-        # Query to get all unique person IDs from related tables
+        # Get all person IDs with sorting applied
         person_query = """
-            SELECT DISTINCT person_id FROM (
+            WITH all_persons AS (
                 SELECT p.fk_proprietaire AS person_id
                 FROM parcelle p
                 WHERE p.id IN (SELECT * FROM string_split(:parcelle_ids, ','))
@@ -957,7 +1004,11 @@ def get_populations(
                 JOIN membre_menage mm ON m.id = mm.fk_menage
                 WHERE b.fk_parcelle IN (SELECT * FROM string_split(:parcelle_ids, ','))
                 AND mm.fk_personne IS NOT NULL
-            ) AS all_persons
+            )
+            SELECT DISTINCT p.id, p.date_create  -- Include date_create in SELECT
+            FROM all_persons ap
+            JOIN personne p ON ap.person_id = p.id
+            ORDER BY p.date_create DESC  -- Apply sorting here
         """
 
         # Convert parcelle_ids to a comma-separated string
@@ -977,12 +1028,13 @@ def get_populations(
         end = start + page_size
         paginated_ids = person_ids[start:end]
 
-        # Modified query to include all requested fields
+        # Query to get person details (remove ORDER BY here since it's already sorted)
         person_details_query = """
             SELECT 
                 p.id, p.nom, p.postnom, p.prenom, p.denomination, p.sigle, p.fk_lien_parente,
                 p.nif, p.domaine_activite, p.lieu_naissance, p.date_naissance, p.profession,
                 p.etat_civil, p.telephone, p.adresse_mail, p.niveau_etude,
+                p.date_create,
                 tp.id AS type_personne_id, tp.intitule AS type_personne_intitule,
                 n.intitule AS nationalite,
                 a.numero AS adresse_numero,
@@ -1048,7 +1100,7 @@ def get_populations(
             {"person_ids": paginated_ids_str if paginated_ids_str else "0", "parcelle_ids": parcelle_ids_str if parcelle_ids_str else "0"}
         ).fetchall()
 
-        # Format results with all new fields
+        # Format results
         data = [{
             "id": row.id,
             "nom": row.nom,
@@ -1069,6 +1121,7 @@ def get_populations(
             "telephone": row.telephone,
             "adresse_mail": row.adresse_mail,
             "niveau_etude": row.niveau_etude,
+            "date_create": row.date_create.isoformat() if row.date_create else None,  # Included date_create
             "adresse": {
                 "numero": row.adresse_numero,
                 "avenue": row.avenue,
@@ -1987,7 +2040,8 @@ def get_personne(
             LEFT JOIN avenue av ON a.fk_avenue = av.id
             LEFT JOIN quartier q ON av.fk_quartier = q.id
             LEFT JOIN commune c ON q.fk_commune = c.id
-            LEFT JOIN province pr ON c.fk_province = pr.id
+            LEFT JOIN ville v ON c.fk_ville = v.id  -- Join ville first
+            LEFT JOIN province pr ON v.fk_province = pr.id  -- Then join province through ville
             WHERE p.id = :personne_id
         """
 

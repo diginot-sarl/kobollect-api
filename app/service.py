@@ -47,6 +47,7 @@ def process_kobo_data(payload: dict, db: Session):
                 postnom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/post_nom_2"),
                 prenom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/prenom_2"),
                 sexe=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/genre_2"),
+                
                 fk_type_personne=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp") else None,
                 
                 fk_nationalite=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5") else None,
@@ -116,17 +117,17 @@ def process_kobo_data(payload: dict, db: Session):
                     
                     fk_parcelle=fk_parcelle,
                     
-                    fk_nature_bien=(int(menage.get("informations_du_menage/informations_du_bien/nature")) 
-                                    if menage.get("informations_du_menage/informations_du_bien/nature") else None),
+                    fk_nature_bien=int(menage.get("informations_du_menage/informations_du_bien/nature")) 
+                                    if menage.get("informations_du_menage/informations_du_bien/nature") else None,
                     
-                    fk_unite=(int(menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
-                              if menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None),
+                    fk_unite=int(menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
+                              if menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None,
                     
-                    fk_usage=(int(menage.get("informations_du_menage/informations_du_bien/usage")) 
-                              if menage.get("informations_du_menage/informations_du_bien/usage") else None),
+                    fk_usage=int(menage.get("informations_du_menage/informations_du_bien/usage")) 
+                              if menage.get("informations_du_menage/informations_du_bien/usage") else None,
                     
-                    fk_usage_specifique=(int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
-                                         if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None),
+                    fk_usage_specifique=int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
+                                         if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
                     
                     fk_agent=fk_agent,
                 )
