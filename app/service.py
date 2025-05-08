@@ -51,7 +51,7 @@ def process_kobo_data(payload: dict, db: Session):
                 
                 fk_nationalite=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5") else None,
                 
-                province_origine=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5") else None,
+                fk_province=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5") else None,
                 
                 district=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/district_5"),
                 territoire=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/territoire_5"),
@@ -146,7 +146,7 @@ def process_kobo_data(payload: dict, db: Session):
                         
                         lieu_naissance=menage.get("informations_du_menage/informations_de_l_occupant/lieu_de_naissance"),
                         date_naissance=menage.get("informations_du_menage/informations_de_l_occupant/date_de_naissance"),
-                        province_origine=int(menage.get("informations_du_menage/informations_de_l_occupant/province_4")) if menage.get("informations_du_menage/informations_de_l_occupant/province_4") else None,
+                        fk_province=int(menage.get("informations_du_menage/informations_de_l_occupant/province_4")) if menage.get("informations_du_menage/informations_de_l_occupant/province_4") else None,
                         district=menage.get("informations_du_menage/informations_de_l_occupant/district_4"),
                         territoire=menage.get("informations_du_menage/informations_de_l_occupant/territoire_4"),
                         secteur=menage.get("informations_du_menage/informations_de_l_occupant/secteur_4"),
@@ -217,7 +217,7 @@ def process_kobo_data(payload: dict, db: Session):
                             sexe=personne.get("informations_du_menage/information_sur_les_personnes/gr"),
                             lieu_naissance=personne.get("informations_du_menage/information_sur_les_personnes/lieu_de_naissance_1"),
                             date_naissance=personne.get("informations_du_menage/information_sur_les_personnes/date_de_naissance_1"),
-                            province_origine=personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine"),
+                            fk_province=(int(personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine")) if personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine") else None),
                             district=personne.get("informations_du_menage/information_sur_les_personnes/district"),
                             territoire=personne.get("informations_du_menage/information_sur_les_personnes/territoire"),
                             secteur=personne.get("informations_du_menage/information_sur_les_personnes/secteur"),
@@ -228,10 +228,10 @@ def process_kobo_data(payload: dict, db: Session):
                             nom_du_pere=personne.get("informations_du_menage/information_sur_les_personnes/nom_du_pere"),
                             nom_de_la_mere=personne.get("informations_du_menage/information_sur_les_personnes/nom_de_la_mere"),
                             etat_civil=personne.get("informations_du_menage/information_sur_les_personnes/etat_civil"),
-                            fk_lien_parente=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
+                            fk_lien_parente=(int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None),
                             telephone=personne.get("informations_du_menage/information_sur_les_personnes/n_telphone"),
                             adresse_mail=personne.get("informations_du_menage/information_sur_les_personnes/adresse_email_3"),
-                            nombre_enfant=int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant", 0)) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant") else None,
+                            nombre_enfant=(int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant", 0)) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant") else None),
                             niveau_etude=personne.get("informations_du_menage/information_sur_les_personnes/niveau_d_etudes_001"),
                             fk_nationalite=(int(personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3")) 
                                             if personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3") else None),

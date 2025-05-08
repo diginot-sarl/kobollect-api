@@ -2043,18 +2043,12 @@ def get_personne(
             "sigle": result.sigle,
             "categorie": result.categorie,
             "lien_de_famille": result.fk_lien_parente,
-            "type_personne": {
-                "id": result.type_personne_id,
-                "intitule": result.type_personne_intitule
-            } if result.type_personne_id else None,
+            "type_personne": result.type_personne_intitule if result.type_personne_id else None,
             "nif": result.nif,
             "domaine_activite": result.domaine_activite,
             "lieu_naissance": result.lieu_naissance,
             "date_naissance": result.date_naissance.isoformat() if result.date_naissance else None,
-            "nationalite": {
-                "id": result.nationalite_id,
-                "intitule": result.nationalite
-            } if result.nationalite_id else None,
+            "nationalite": result.nationalite if result.nationalite_id else None,
             "profession": result.profession,
             "etat_civil": result.etat_civil,
             "telephone": result.telephone,
@@ -2063,18 +2057,9 @@ def get_personne(
             "adresse": {
                 "id": result.adresse_id,
                 "numero": result.adresse_numero,
-                "avenue": {
-                    "id": result.avenue_id,
-                    "intitule": result.avenue
-                } if result.avenue_id else None,
-                "quartier": {
-                    "id": result.quartier_id,
-                    "intitule": result.quartier
-                } if result.quartier_id else None,
-                "commune": {
-                    "id": result.commune_id,
-                    "intitule": result.commune
-                } if result.commune_id else None
+                "avenue": result.avenue if result.avenue_id else None,
+                "quartier": result.quartier if result.quartier_id else None,
+                "commune": result.commune if result.commune_id else None
             },
             "nom_responsable": result.nom_responsable
         }

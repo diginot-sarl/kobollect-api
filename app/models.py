@@ -188,7 +188,7 @@ class Personne(Base):
     fk_type_personne = Column(Integer, ForeignKey("type_personne.id"), nullable=True)
     lieu_naissance = Column(String(100), nullable=True)
     date_naissance = Column(Date, nullable=True)
-    province_origine = Column(String(100), nullable=True)
+    fk_province = Column(Integer, ForeignKey("province.id"), nullable=True)
     district = Column(String(100), nullable=True)
     territoire = Column(String(100), nullable=True)
     secteur = Column(String(100), nullable=True)
