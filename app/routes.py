@@ -1917,47 +1917,6 @@ def get_parameters(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# @router.get("/user-kobo", tags=["Kobo"])
-# async def test_create_kobo_account(background_tasks: BackgroundTasks):
-#     """
-#     Route de test pour créer un compte KoboToolbox via l'API
-#     et vérifier les utilisateurs après 1 minute
-#     """
-#     KOBOTOOLBOX_URL = "https://kf.hidscollect.hologram.cd"
-#     KOBOTOOLBOX_ADMIN_USER = "super_admin"
-#     KOBOTOOLBOX_ADMIN_PASSWORD = "xy9AhsnsRI7My2fIDYgX"
-
-#     user_info = {
-#         "username": "newuser123",
-#         "password": "password123",
-#         "email": "newuser@example.com",
-#         "first_name": "New",
-#         "last_name": "User"
-#     }
-
-#     kobotoolbox_api_url = f"{KOBOTOOLBOX_URL}/api/v2/users/"
-#     headers = {'Content-Type': 'application/json'}
-
-#     try:
-#         response = requests.post(
-#             kobotoolbox_api_url,
-#             headers=headers,
-#             data=json.dumps(user_info),
-#             auth=(KOBOTOOLBOX_ADMIN_USER, KOBOTOOLBOX_ADMIN_PASSWORD)
-#         )
-        
-#         # Ajouter la tâche en arrière-plan
-#         background_tasks.add_task(check_kobo_users)
-        
-#         if response.status_code == 201:
-#             return {"status": "success", "message": "Compte créé avec succès", "data": response.json()}
-#         else:
-#             return {"status": "error", "message": "Échec de la création du compte", "details": response.text}
-            
-#     except requests.exceptions.RequestException as e:
-#         return {"status": "error", "message": "Erreur de requête", "details": str(e)}
-
-
 @router.get("/populations/{personne_id}", tags=["Populations"])
 def get_personne(
     personne_id: int,
@@ -1965,18 +1924,22 @@ def get_personne(
     db: Session = Depends(get_db),
 ):
     try:
-        # Query to get all personne details with relations
+        # Updated query to handle district, territoire, secteur, and village as strings
         personne_query = """
             SELECT 
                 p.id, p.nom, p.postnom, p.prenom, p.denomination, p.sigle, p.fk_lien_parente,
                 p.nif, p.domaine_activite, p.lieu_naissance, p.date_naissance, p.profession,
-                p.etat_civil, p.telephone, p.adresse_mail, p.niveau_etude,
+                p.etat_civil, p.telephone, p.adresse_mail, p.niveau_etude, p.sexe,
+                p.numero_impot, p.rccm, p.id_nat, p.type_piece_identite, p.numero_piece_identite,
+                p.nom_du_pere, p.nom_de_la_mere, p.nombre_enfant,
+                p.district, p.territoire, p.secteur, p.village,
                 tp.id AS type_personne_id, tp.intitule AS type_personne_intitule,
                 n.id AS nationalite_id, n.intitule AS nationalite,
                 a.id AS adresse_id, a.numero AS adresse_numero,
                 av.id AS avenue_id, av.intitule AS avenue,
                 q.id AS quartier_id, q.intitule AS quartier,
                 c.id AS commune_id, c.intitule AS commune,
+                pr.id AS province_id, pr.intitule AS province,
                 CASE
                     WHEN p.id IN (
                         SELECT p.fk_proprietaire
@@ -2024,6 +1987,7 @@ def get_personne(
             LEFT JOIN avenue av ON a.fk_avenue = av.id
             LEFT JOIN quartier q ON av.fk_quartier = q.id
             LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN province pr ON c.fk_province = pr.id
             WHERE p.id = :personne_id
         """
 
@@ -2033,7 +1997,7 @@ def get_personne(
         if not result:
             raise HTTPException(status_code=404, detail="Personne not found")
 
-        # Format result
+        # Format result with corrected address fields
         personne_data = {
             "id": result.id,
             "nom": result.nom,
@@ -2041,10 +2005,14 @@ def get_personne(
             "prenom": result.prenom,
             "denomination": result.denomination,
             "sigle": result.sigle,
+            "sexe": result.sexe,
             "categorie": result.categorie,
             "lien_de_famille": result.fk_lien_parente,
             "type_personne": result.type_personne_intitule if result.type_personne_id else None,
             "nif": result.nif,
+            "numero_impot": result.numero_impot,
+            "rccm": result.rccm,
+            "id_nat": result.id_nat,
             "domaine_activite": result.domaine_activite,
             "lieu_naissance": result.lieu_naissance,
             "date_naissance": result.date_naissance.isoformat() if result.date_naissance else None,
@@ -2054,12 +2022,22 @@ def get_personne(
             "telephone": result.telephone,
             "adresse_mail": result.adresse_mail,
             "niveau_etude": result.niveau_etude,
+            "type_piece_identite": result.type_piece_identite,
+            "numero_piece_identite": result.numero_piece_identite,
+            "nom_du_pere": result.nom_du_pere,
+            "nom_de_la_mere": result.nom_de_la_mere,
+            "nombre_enfant": result.nombre_enfant,
+            "district": result.district,
+            "territoire": result.territoire,
+            "secteur": result.secteur,
+            "village": result.village,
             "adresse": {
                 "id": result.adresse_id,
                 "numero": result.adresse_numero,
                 "avenue": result.avenue if result.avenue_id else None,
                 "quartier": result.quartier if result.quartier_id else None,
-                "commune": result.commune if result.commune_id else None
+                "commune": result.commune if result.commune_id else None,
+                "province": result.province if result.province_id else None
             },
             "nom_responsable": result.nom_responsable
         }
