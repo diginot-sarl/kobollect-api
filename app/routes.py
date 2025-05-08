@@ -44,6 +44,7 @@ def format_personne(row):
         "sigle": row.sigle,
     }
     
+
 # Helper function to parse coordinates
 def parse_coordinates(coord_str):
     # If coord_str is already an array, return it directly
@@ -63,6 +64,7 @@ def parse_coordinates(coord_str):
             except Exception:
                 continue
     return points if points else None
+
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
@@ -302,19 +304,22 @@ async def get_geojson(
                     p.id,
                     p.coordonnee_geographique,
                     p.date_create,
-                    CONCAT(
-                        a.numero, ', ',
-                        av.intitule, ', Q/',
-                        q.intitule, ', C/',
-                        c.intitule, ', V/',
-                        v.intitule, ', ',
-                        pr.intitule
-                    ) AS adresse
+                    a.numero AS adresse_numero,
+                    av.intitule AS avenue,
+                    q.intitule AS quartier,
+                    c.intitule AS commune,
+                    per.nom AS proprietaire_nom,
+                    per.postnom AS proprietaire_postnom,
+                    per.prenom AS proprietaire_prenom,
+                    per.denomination AS proprietaire_denomination,
+                    tp.intitule AS type_personne
                 FROM parcelle p
                 LEFT JOIN adresse a ON p.fk_adresse = a.id
                 LEFT JOIN avenue av ON a.fk_avenue = av.id
                 LEFT JOIN quartier q ON av.fk_quartier = q.id
                 LEFT JOIN commune c ON q.fk_commune = c.id
+                LEFT JOIN personne per ON p.fk_proprietaire = per.id
+                LEFT JOIN type_personne tp ON per.fk_type_personne = tp.id
                 LEFT JOIN ville v ON c.fk_ville = v.id
                 LEFT JOIN province pr ON v.fk_province = pr.id
                 LEFT JOIN rang r ON p.fk_rang = r.id
@@ -329,21 +334,22 @@ async def get_geojson(
                     b.date_create,
                     nb.intitule AS nature,
                     CONCAT(u.nom, ' ', u.prenom) AS recense_par,
-                    CONCAT(pe.nom, ' ', pe.prenom) AS proprietaire_nom,
-                    pe.denomination AS proprietaire_denomination,
-                    CONCAT(
-                        a.numero, ', ',
-                        av.intitule, ', Q/',
-                        q.intitule, ', C/',
-                        c.intitule, ', V/',
-                        v.intitule, ', ',
-                        pr.intitule
-                    ) AS adresse
+                    a.numero AS adresse_numero,
+                    av.intitule AS avenue,
+                    q.intitule AS quartier,
+                    c.intitule AS commune,
+                    per.nom AS proprietaire_nom,
+                    per.postnom AS proprietaire_postnom,
+                    per.prenom AS proprietaire_prenom,
+                    per.denomination AS proprietaire_denomination,
+                    tp.intitule AS type_personne
                 FROM bien b
                 LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
                 LEFT JOIN utilisateur u ON b.fk_agent = u.id
                 LEFT JOIN parcelle p ON b.fk_parcelle = p.id
-                LEFT JOIN personne pe ON p.fk_proprietaire = pe.id
+                LEFT JOIN menage m ON b.id = m.fk_bien
+                LEFT JOIN personne per ON m.fk_personne = per.id
+                LEFT JOIN type_personne tp ON per.fk_type_personne = tp.id
                 LEFT JOIN adresse a ON p.fk_adresse = a.id
                 LEFT JOIN avenue av ON a.fk_avenue = av.id
                 LEFT JOIN quartier q ON av.fk_quartier = q.id
@@ -409,7 +415,19 @@ async def get_geojson(
             data = [{
                 "id": str(row.id),
                 "coordinates": row.coordonnee_geographique,
-                "adresse": row.adresse,
+                "adresse": {
+                    "numero": row.adresse_numero,
+                    "avenue": row.avenue,
+                    "quartier": row.quartier,
+                    "commune": row.commune
+                },
+                "proprietaire": {
+                    "nom": row.proprietaire_nom,
+                    "postnom": row.proprietaire_postnom,
+                    "prenom": row.proprietaire_prenom,
+                    "denomination": row.proprietaire_denomination,
+                    "type_personne": row.type_personne
+                },
                 "date": row.date_create.isoformat() if row.date_create else None,
             } for row in results]
         else:
@@ -418,8 +436,19 @@ async def get_geojson(
                 "coordinates": row.coordinates,
                 "recense_par": row.recense_par,
                 "nature": row.nature,
-                "proprietaire": row.proprietaire_denomination if row.proprietaire_denomination else row.proprietaire_nom,
-                "adresse": row.adresse,
+                "adresse": {
+                    "numero": row.adresse_numero,
+                    "avenue": row.avenue,
+                    "quartier": row.quartier,
+                    "commune": row.commune
+                },
+                "proprietaire": {
+                    "nom": row.proprietaire_nom,
+                    "postnom": row.proprietaire_postnom,
+                    "prenom": row.proprietaire_prenom,
+                    "denomination": row.proprietaire_denomination,
+                    "type_personne": row.type_personne
+                },
                 "date": row.date_create.isoformat() if row.date_create else None,
             } for row in results]
 
@@ -460,6 +489,7 @@ async def get_villes(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch communes by ville
 @router.get("/communes", tags=["GeoJSON"])
 def get_communes(
@@ -473,6 +503,7 @@ def get_communes(
         return [{"id": row[0], "intitule": row[1]} for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Fetch quartiers by commune
 @router.get("/quartiers", tags=["GeoJSON"])
@@ -488,6 +519,7 @@ def get_quartiers(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch avenues by quartier
 @router.get("/avenues", tags=["GeoJSON"])
 def get_avenues(
@@ -502,6 +534,7 @@ def get_avenues(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch rangs
 @router.get("/rangs", tags=["GeoJSON"])
 def get_rangs(
@@ -515,6 +548,7 @@ def get_rangs(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch natures
 @router.get("/natures", tags=["GeoJSON"])
 def get_natures(
@@ -527,6 +561,7 @@ def get_natures(
         return [{"id": row[0], "intitule": row[1]} for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Fetch usages
 @router.get("/usages", tags=["GeoJSON"])
@@ -1406,35 +1441,60 @@ def get_user_by_code_chasuble(
     code_chasuble: str,
     db: Session = Depends(get_db)
 ):
-    # Query to find user by code_chasuble
+    # Query to find user by code_chasuble with team and location information
     query = """
-        SELECT id, nom, postnom, prenom, date_create, code_chasuble, photo_url, sexe, mail, telephone
-        FROM utilisateur
-        WHERE code_chasuble = :code_chasuble
+        SELECT 
+            u.id, u.nom, u.postnom, u.prenom, u.date_create, u.code_chasuble, 
+            u.photo_url, u.sexe, u.mail, u.telephone,
+            e.id AS team_id, e.intitule AS team_name,
+            q.id AS quartier_id, q.intitule AS quartier_name,
+            c.id AS commune_id, c.intitule AS commune_name
+        FROM utilisateur u
+        LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
+        LEFT JOIN equipe e ON ae.fk_equipe = e.id
+        LEFT JOIN quartier q ON e.fk_quartier = q.id
+        LEFT JOIN commune c ON q.fk_commune = c.id
+        WHERE u.code_chasuble = :code_chasuble
     """
-    result = db.execute(text(query), {"code_chasuble": code_chasuble}).first()
+    results = db.execute(text(query), {"code_chasuble": code_chasuble}).fetchall()
     
-    if not result:
+    if not results:
         return {
             "status": 204,
             "data": None,
             "message": "Utilisateur non trouvé"
         }
         
+    # Format teams with location information
+    teams = []
+    for row in results:
+        if row.team_id:
+            team_info = {
+                "nom_equipe": row.team_name,
+                "lieu_affectation": {
+                    "quartier": row.quartier_name,
+                    "commune": row.commune_name
+                }
+            }
+            teams.append(team_info)
+    
+    # Get first row for user details
+    first_row = results[0]
+        
     return {
         "status": 200,
         "data": {
-            "id": result.id,
-            "nom": result.nom,
-            "postnom": result.postnom,
-            "prenom": result.prenom,
-            "email": result.mail,
-            "telephone": result.telephone,
-            "sexe": result.sexe,
-            "date_create": result.date_create.isoformat() if result.date_create else None,
-            "code_chasuble": result.code_chasuble,
-            "photo_url": result.photo_url,
-            "fk_adresse": None,
+            "id": first_row.id,
+            "nom": first_row.nom,
+            "postnom": first_row.postnom,
+            "prenom": first_row.prenom,
+            "email": first_row.mail,
+            "telephone": first_row.telephone,
+            "sexe": first_row.sexe,
+            "date_create": first_row.date_create.isoformat() if first_row.date_create else None,
+            "code_chasuble": first_row.code_chasuble,
+            "photo_url": first_row.photo_url,
+            "equipes": teams
         }
     }
 
@@ -1743,6 +1803,35 @@ async def update_user(  # Use async for better performance with FastAPI
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+@router.get("/get-parameters", tags=["GeoJSON"])
+def get_parameters(
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Fetch all parameters in parallel using SQLAlchemy's execute
+        rangs_query = text("SELECT id, intitule FROM rang")
+        natures_query = text("SELECT id, intitule FROM nature_bien")
+        usages_query = text("SELECT id, intitule FROM usage")
+        usage_specifiques_query = text("SELECT id, intitule FROM usage_specifique")
+
+        # Execute all queries
+        rangs = db.execute(rangs_query).fetchall()
+        natures = db.execute(natures_query).fetchall()
+        usages = db.execute(usages_query).fetchall()
+        usage_specifiques = db.execute(usage_specifiques_query).fetchall()
+
+        # Format results
+        return {
+            "rangs": [{"id": row[0], "intitule": row[1]} for row in rangs],
+            "natures": [{"id": row[0], "intitule": row[1]} for row in natures],
+            "usages": [{"id": row[0], "intitule": row[1]} for row in usages],
+            "usage_specifiques": [{"id": row[0], "intitule": row[1]} for row in usage_specifiques],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # @router.get("/user-kobo", tags=["Kobo"])
 # async def test_create_kobo_account(background_tasks: BackgroundTasks):
@@ -1784,35 +1873,6 @@ async def update_user(  # Use async for better performance with FastAPI
 #     except requests.exceptions.RequestException as e:
 #         return {"status": "error", "message": "Erreur de requête", "details": str(e)}
 
-
-@router.get("/get-parameters", tags=["GeoJSON"])
-def get_parameters(
-    current_user = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
-):
-    try:
-        # Fetch all parameters in parallel using SQLAlchemy's execute
-        rangs_query = text("SELECT id, intitule FROM rang")
-        natures_query = text("SELECT id, intitule FROM nature_bien")
-        usages_query = text("SELECT id, intitule FROM usage")
-        usage_specifiques_query = text("SELECT id, intitule FROM usage_specifique")
-
-        # Execute all queries
-        rangs = db.execute(rangs_query).fetchall()
-        natures = db.execute(natures_query).fetchall()
-        usages = db.execute(usages_query).fetchall()
-        usage_specifiques = db.execute(usage_specifiques_query).fetchall()
-
-        # Format results
-        return {
-            "rangs": [{"id": row[0], "intitule": row[1]} for row in rangs],
-            "natures": [{"id": row[0], "intitule": row[1]} for row in natures],
-            "usages": [{"id": row[0], "intitule": row[1]} for row in usages],
-            "usage_specifiques": [{"id": row[0], "intitule": row[1]} for row in usage_specifiques],
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 
