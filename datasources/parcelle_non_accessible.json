@@ -1,0 +1,27 @@
+{
+    "message": "Data received successfully",
+    "received_data": {
+        "_id": 26,
+        "formhub/uuid": "1353aa12a9cd4d4aa81858ec410ff75c",
+        "parcelle_accessible_ou_non": "non",
+        "Parcelle_non_accessible/commune_1": "11",
+        "Parcelle_non_accessible/quartier_1": "2465",
+        "Parcelle_non_accessible/avenue_1": "1815",
+        "Parcelle_non_accessible/rang_1": "4",
+        "Parcelle_non_accessible/numero_parcellaire_1": "09",
+        "Parcelle_non_accessible/observation": "RAS ",
+        "Parcelle_non_accessible/coordonne_geographique_1": "-4.3650117 15.2564794 422.9000244140625 34.4;-4.3650126 15.2564592 422.6000061035156 16.967;-4.3650286 15.2564535 422.6000061035156 25.683;-4.3650117 15.2564794 422.9000244140625 34.4",
+        "__version__": "vdmrV9YMvBLR7gNsD5jmKG",
+        "meta/instanceID": "uuid: 56062fb5-7eaa-4caf-a81b-d051e58dd6d6",
+        "_xform_id_string": "aDhg4mBz2tqANBb6eT9Sn4",
+        "_uuid": "56062fb5-7eaa-4caf-a81b-d051e58dd6d6",
+        "_attachments": [],
+        "_status": "submitted_via_web",
+        "_geolocation": [],
+        "_submission_time": "2025-05-08T11: 37: 34",
+        "_tags": [],
+        "_notes": [],
+        "_validation_status": {},
+        "_submitted_by": "merveillekitatshima"
+    }
+}

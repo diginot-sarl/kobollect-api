@@ -199,7 +199,7 @@ class Personne(Base):
     nom_du_pere = Column(String(100), nullable=True)
     nom_de_la_mere = Column(String(100), nullable=True)
     etat_civil = Column(String(50), nullable=True)
-    lieu_parente = Column(String(100), nullable=True)
+    fk_lien_parente = Column(BigInteger, ForeignKey("filiation_membre.id"), nullable=True)
     telephone = Column(String(50), nullable=True)
     adresse_mail = Column(String(100), nullable=True)
     nombre_enfant = Column(Integer, nullable=True)

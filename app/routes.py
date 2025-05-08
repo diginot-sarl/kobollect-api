@@ -869,6 +869,8 @@ def get_populations(
     quartier: str = Query(None),
     avenue: str = Query(None),
     rang: str = Query(None),
+    type_personne: str = Query(None),  # New filter
+    keyword: str = Query(None),  # New filter
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -881,6 +883,7 @@ def get_populations(
             LEFT JOIN avenue av ON a.fk_avenue = av.id
             LEFT JOIN quartier q ON av.fk_quartier = q.id
             LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN personne per ON p.fk_proprietaire = per.id
             WHERE 1=1
         """
 
@@ -899,6 +902,19 @@ def get_populations(
         if rang:
             filters.append("p.fk_rang = :rang")
             params["rang"] = rang
+        if type_personne:  # Add type_personne filter
+            filters.append("per.fk_type_personne = :type_personne")
+            params["type_personne"] = type_personne
+        if keyword:  # Add keyword filter
+            keyword_filters = [
+                "per.nom LIKE :keyword",
+                "per.postnom LIKE :keyword",
+                "per.prenom LIKE :keyword",
+                "per.denomination LIKE :keyword",
+                "per.sigle LIKE :keyword"
+            ]
+            filters.append(f"({' OR '.join(keyword_filters)})")
+            params["keyword"] = f"%{keyword}%"
 
         # Build final parcelle query
         if filters:
@@ -961,13 +977,65 @@ def get_populations(
         end = start + page_size
         paginated_ids = person_ids[start:end]
 
-        # Query to get person details with type_personne
+        # Modified query to include all requested fields
         person_details_query = """
             SELECT 
-                p.id, p.nom, p.postnom, p.prenom, p.denomination, p.sigle,
-                tp.id AS type_personne_id, tp.intitule AS type_personne_intitule
+                p.id, p.nom, p.postnom, p.prenom, p.denomination, p.sigle, p.fk_lien_parente,
+                p.nif, p.domaine_activite, p.lieu_naissance, p.date_naissance, p.profession,
+                p.etat_civil, p.telephone, p.adresse_mail, p.niveau_etude,
+                tp.id AS type_personne_id, tp.intitule AS type_personne_intitule,
+                n.intitule AS nationalite,
+                a.numero AS adresse_numero,
+                av.intitule AS avenue,
+                q.intitule AS quartier,
+                c.intitule AS commune,
+                CASE
+                    WHEN p.id IN (
+                        SELECT p.fk_proprietaire
+                        FROM parcelle p
+                        WHERE p.id IN (SELECT * FROM string_split(:parcelle_ids, ','))
+                    ) THEN 'Propriétaire'
+                    WHEN p.id IN (
+                        SELECT m.fk_personne
+                        FROM bien b
+                        JOIN menage m ON b.id = m.fk_bien
+                        WHERE b.fk_parcelle IN (SELECT * FROM string_split(:parcelle_ids, ','))
+                    ) THEN 'Responsable menage'
+                    WHEN p.id IN (
+                        SELECT mm.fk_personne
+                        FROM bien b
+                        JOIN menage m ON b.id = m.fk_bien
+                        JOIN membre_menage mm ON m.id = mm.fk_menage
+                        WHERE b.fk_parcelle IN (SELECT * FROM string_split(:parcelle_ids, ','))
+                    ) THEN 'Membre menage'
+                    ELSE 'Inconnu'
+                END AS categorie,
+                CASE
+                    WHEN p.id IN (
+                        SELECT mm.fk_personne
+                        FROM bien b
+                        JOIN menage m ON b.id = m.fk_bien
+                        JOIN membre_menage mm ON m.id = mm.fk_menage
+                        WHERE b.fk_parcelle IN (SELECT * FROM string_split(:parcelle_ids, ','))
+                    ) THEN (
+                        SELECT TOP 1 CONCAT(rp.nom, ' ', rp.prenom)
+                        FROM menage m
+                        JOIN personne rp ON m.fk_personne = rp.id
+                        WHERE m.id = (
+                            SELECT TOP 1 mm.fk_menage
+                            FROM membre_menage mm
+                            WHERE mm.fk_personne = p.id
+                        )
+                    )
+                    ELSE NULL
+                END AS nom_responsable
             FROM personne p
             LEFT JOIN type_personne tp ON p.fk_type_personne = tp.id
+            LEFT JOIN nationalite n ON p.fk_nationalite = n.id
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
             WHERE p.id IN (SELECT * FROM string_split(:person_ids, ','))
         """
 
@@ -977,10 +1045,10 @@ def get_populations(
         # Get person details
         person_results = db.execute(
             text(person_details_query),
-            {"person_ids": paginated_ids_str if paginated_ids_str else "0"}
+            {"person_ids": paginated_ids_str if paginated_ids_str else "0", "parcelle_ids": parcelle_ids_str if parcelle_ids_str else "0"}
         ).fetchall()
 
-        # Format results
+        # Format results with all new fields
         data = [{
             "id": row.id,
             "nom": row.nom,
@@ -988,10 +1056,26 @@ def get_populations(
             "prenom": row.prenom,
             "denomination": row.denomination,
             "sigle": row.sigle,
-            "fk_type_personne": {
-                "id": row.type_personne_id,
-                "intitule": row.type_personne_intitule
-            } if row.type_personne_id else None,
+            "categorie": row.categorie,
+            "lien_de_famille": row.fk_lien_parente,
+            "type_personne": row.type_personne_intitule if row.type_personne_id else None,
+            "nif": row.nif,
+            "domaine_activite": row.domaine_activite,
+            "lieu_naissance": row.lieu_naissance,
+            "date_naissance": row.date_naissance.isoformat() if row.date_naissance else None,
+            "nationalite": row.nationalite,
+            "profession": row.profession,
+            "etat_civil": row.etat_civil,
+            "telephone": row.telephone,
+            "adresse_mail": row.adresse_mail,
+            "niveau_etude": row.niveau_etude,
+            "adresse": {
+                "numero": row.adresse_numero,
+                "avenue": row.avenue,
+                "quartier": row.quartier,
+                "commune": row.commune
+            },
+            "nom_responsable": row.nom_responsable
         } for row in person_results]
 
         return {
@@ -1872,6 +1956,135 @@ def get_parameters(
             
 #     except requests.exceptions.RequestException as e:
 #         return {"status": "error", "message": "Erreur de requête", "details": str(e)}
+
+
+@router.get("/populations/{personne_id}", tags=["Populations"])
+def get_personne(
+    personne_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Query to get all personne details with relations
+        personne_query = """
+            SELECT 
+                p.id, p.nom, p.postnom, p.prenom, p.denomination, p.sigle, p.fk_lien_parente,
+                p.nif, p.domaine_activite, p.lieu_naissance, p.date_naissance, p.profession,
+                p.etat_civil, p.telephone, p.adresse_mail, p.niveau_etude,
+                tp.id AS type_personne_id, tp.intitule AS type_personne_intitule,
+                n.id AS nationalite_id, n.intitule AS nationalite,
+                a.id AS adresse_id, a.numero AS adresse_numero,
+                av.id AS avenue_id, av.intitule AS avenue,
+                q.id AS quartier_id, q.intitule AS quartier,
+                c.id AS commune_id, c.intitule AS commune,
+                CASE
+                    WHEN p.id IN (
+                        SELECT p.fk_proprietaire
+                        FROM parcelle p
+                        WHERE p.fk_proprietaire = :personne_id
+                    ) THEN 'Propriétaire'
+                    WHEN p.id IN (
+                        SELECT m.fk_personne
+                        FROM bien b
+                        JOIN menage m ON b.id = m.fk_bien
+                        WHERE m.fk_personne = :personne_id
+                    ) THEN 'Responsable menage'
+                    WHEN p.id IN (
+                        SELECT mm.fk_personne
+                        FROM bien b
+                        JOIN menage m ON b.id = m.fk_bien
+                        JOIN membre_menage mm ON m.id = mm.fk_menage
+                        WHERE mm.fk_personne = :personne_id
+                    ) THEN 'Membre menage'
+                    ELSE 'Inconnu'
+                END AS categorie,
+                CASE
+                    WHEN p.id IN (
+                        SELECT mm.fk_personne
+                        FROM bien b
+                        JOIN menage m ON b.id = m.fk_bien
+                        JOIN membre_menage mm ON m.id = mm.fk_menage
+                        WHERE mm.fk_personne = :personne_id
+                    ) THEN (
+                        SELECT TOP 1 CONCAT(rp.nom, ' ', rp.prenom)
+                        FROM menage m
+                        JOIN personne rp ON m.fk_personne = rp.id
+                        WHERE m.id = (
+                            SELECT TOP 1 mm.fk_menage
+                            FROM membre_menage mm
+                            WHERE mm.fk_personne = :personne_id
+                        )
+                    )
+                    ELSE NULL
+                END AS nom_responsable
+            FROM personne p
+            LEFT JOIN type_personne tp ON p.fk_type_personne = tp.id
+            LEFT JOIN nationalite n ON p.fk_nationalite = n.id
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            WHERE p.id = :personne_id
+        """
+
+        # Execute query
+        result = db.execute(text(personne_query), {"personne_id": personne_id}).first()
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Personne not found")
+
+        # Format result
+        personne_data = {
+            "id": result.id,
+            "nom": result.nom,
+            "postnom": result.postnom,
+            "prenom": result.prenom,
+            "denomination": result.denomination,
+            "sigle": result.sigle,
+            "categorie": result.categorie,
+            "lien_de_famille": result.fk_lien_parente,
+            "type_personne": {
+                "id": result.type_personne_id,
+                "intitule": result.type_personne_intitule
+            } if result.type_personne_id else None,
+            "nif": result.nif,
+            "domaine_activite": result.domaine_activite,
+            "lieu_naissance": result.lieu_naissance,
+            "date_naissance": result.date_naissance.isoformat() if result.date_naissance else None,
+            "nationalite": {
+                "id": result.nationalite_id,
+                "intitule": result.nationalite
+            } if result.nationalite_id else None,
+            "profession": result.profession,
+            "etat_civil": result.etat_civil,
+            "telephone": result.telephone,
+            "adresse_mail": result.adresse_mail,
+            "niveau_etude": result.niveau_etude,
+            "adresse": {
+                "id": result.adresse_id,
+                "numero": result.adresse_numero,
+                "avenue": {
+                    "id": result.avenue_id,
+                    "intitule": result.avenue
+                } if result.avenue_id else None,
+                "quartier": {
+                    "id": result.quartier_id,
+                    "intitule": result.quartier
+                } if result.quartier_id else None,
+                "commune": {
+                    "id": result.commune_id,
+                    "intitule": result.commune
+                } if result.commune_id else None
+            },
+            "nom_responsable": result.nom_responsable
+        }
+
+        return personne_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

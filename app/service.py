@@ -14,13 +14,18 @@ def process_kobo_data(payload: dict, db: Session):
     record_id = kobo.get("id", kobo.get("_id"))
 
     try:
+        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo ==kobo["_submitted_by"]).first()
+        if existing_agent:
+            fk_agent = existing_agent.id
+        else:
+            fk_agent = 1  # Default agent ID if not found
+        
         # Check if the ID already exists in the logs table
         existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
         if existing_log:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
 
         # Initialize variables
-        fk_agent = 1  # Hardcoded for now; you might want to derive this dynamically
         fk_proprietaire = None
         
         if kobo.get("parcelle_accessible_ou_non") == "oui":
@@ -58,7 +63,7 @@ def process_kobo_data(payload: dict, db: Session):
                 nom_du_pere=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_du_pere_5"),
                 nom_de_la_mere=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_de_la_mere_5"),
                 etat_civil=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/etat_civil_5"),
-                lieu_parente=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5"),
+                fk_lien_parente=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5"),
                 niveau_etude=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/niveau_d_etudes_5"),
                 
                 telephone=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2"),
@@ -155,7 +160,7 @@ def process_kobo_data(payload: dict, db: Session):
                         nom_du_pere=menage.get("informations_du_menage/informations_de_l_occupant/nom_du_pere_4"),
                         nom_de_la_mere=menage.get("informations_du_menage/informations_de_l_occupant/nom_de_la_mere_4"),
                         etat_civil=menage.get("informations_du_menage/informations_de_l_occupant/etat_civil_4"),
-                        lieu_parente=int(menage.get("informations_du_menage/informations_de_l_occupant/lien_de_parente_4")) if menage.get("informations_du_menage/informations_de_l_occupant/lien_de_parente_4") else None,
+                        fk_lien_parente=int(menage.get("informations_du_menage/informations_de_l_occupant/lien_de_parente_4")) if menage.get("informations_du_menage/informations_de_l_occupant/lien_de_parente_4") else None,
                         
                         telephone=menage.get("informations_du_menage/informations_de_l_occupant/n_telephone"),
                         adresse_mail=menage.get("informations_du_menage/informations_de_l_occupant/adresse_email"),
@@ -223,7 +228,7 @@ def process_kobo_data(payload: dict, db: Session):
                             nom_du_pere=personne.get("informations_du_menage/information_sur_les_personnes/nom_du_pere"),
                             nom_de_la_mere=personne.get("informations_du_menage/information_sur_les_personnes/nom_de_la_mere"),
                             etat_civil=personne.get("informations_du_menage/information_sur_les_personnes/etat_civil"),
-                            lieu_parente=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
+                            fk_lien_parente=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
                             telephone=personne.get("informations_du_menage/information_sur_les_personnes/n_telphone"),
                             adresse_mail=personne.get("informations_du_menage/information_sur_les_personnes/adresse_email_3"),
                             nombre_enfant=int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant", 0)) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfant") else None,
@@ -245,6 +250,31 @@ def process_kobo_data(payload: dict, db: Session):
                         )
                         db.add(membre_menage)
 
+        else:
+            # 1. Insert into Adresse
+            adresse = Adresse(
+                fk_avenue=int(kobo["Parcelle_non_accessible/avenue_1"]),  # Assuming this is an ID
+                numero=kobo["Parcelle_non_accessible/numero_parcellaire_1"],
+                fk_agent=fk_agent,
+            )
+            db.add(adresse)
+            db.flush()  # Flush to get the inserted ID
+            fk_adresse = adresse.id
+            
+            # 2. Insert into Parcelle
+            parcelle = Parcelle(
+                numero_parcellaire=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
+                coordonnee_geographique=kobo.get("Parcelle_non_accessible/coordonne_geographique_1"),
+                fk_rang=int(kobo.get("Parcelle_non_accessible/rang_1")) if kobo.get("Parcelle_non_accessible/rang_1") else None,
+                fk_proprietaire=fk_proprietaire,
+                fk_adresse=fk_adresse,
+                fk_agent=fk_agent,
+            )
+            db.add(parcelle)
+            db.flush()
+            fk_parcelle = parcelle.id
+            
+    
         # 8. Insert into Logs
         log = Logs(
             logs="Processed Kobo data",
