@@ -168,7 +168,7 @@ class Parcelle(Base):
     fk_rang = Column(Integer, ForeignKey("rang.id"), nullable=True)
     fk_agent = Column(Integer, nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
-    status = Column(Integer, nullable=True, default=1)
+    statut = Column(Integer, nullable=True, default=1)
 
 # Table: personne
 class Personne(Base):
