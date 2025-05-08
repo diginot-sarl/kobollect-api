@@ -269,6 +269,7 @@ def process_kobo_data(payload: dict, db: Session):
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
+                status=2
             )
             db.add(parcelle)
             db.flush()
