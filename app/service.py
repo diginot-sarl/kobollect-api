@@ -5,7 +5,6 @@ import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage
 from app.auth import get_password_hash
 from app.schemas import UserCreate
-import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +90,6 @@ def process_kobo_data(payload: dict, db: Session):
 
             # 3. Insert into Parcelle
             parcelle = Parcelle(
-                ref_parcelle=None,
                 numero_parcellaire=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
                 fk_unite=int(kobo.get("adresse_de_la_parcelle/unite_de_la_superficie")) if kobo.get("adresse_de_la_parcelle/unite_de_la_superficie") else None,
                 longueur=float(kobo.get("adresse_de_la_parcelle/longueur")) if kobo.get("adresse_de_la_parcelle/longueur") else None,
@@ -114,27 +112,18 @@ def process_kobo_data(payload: dict, db: Session):
                 fk_responsable = fk_proprietaire if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/le_proprietaire_habite_t_il_dans_la_parcelle") == "oui" else None
                                 
                 # 4. Insert into Bien
-                bien = Bien(
-                    ref_bien=menage.get("informations_du_menage/informations_du_bien/numero_bien"),
-                    
+                bien = Bien(                    
                     coordinates=menage.get("informations_du_menage/informations_du_bien/coordonnee_geographique"),
-                    
                     superficie=menage.get("informations_du_menage/informations_du_bien/superficie"),
-                    
                     fk_parcelle=fk_parcelle,
-                    
                     fk_nature_bien=int(menage.get("informations_du_menage/informations_du_bien/nature")) 
                                     if menage.get("informations_du_menage/informations_du_bien/nature") else None,
-                    
                     fk_unite=int(menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
                               if menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None,
-                    
                     fk_usage=int(menage.get("informations_du_menage/informations_du_bien/usage")) 
                               if menage.get("informations_du_menage/informations_du_bien/usage") else None,
-                    
                     fk_usage_specifique=int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
                                          if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
-                    
                     fk_agent=fk_agent,
                 )
                 db.add(bien)

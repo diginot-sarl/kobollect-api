@@ -32,7 +32,6 @@ class Avenue(Base):
 class Bien(Base):
     __tablename__ = "bien"
     id = Column(Integer, primary_key=True, index=True)
-    ref_bien = Column(String(50), nullable=True)
     coordinates = Column(String, nullable=True)  # varchar(max)
     coord_projected = Column(String, nullable=True)  # varchar(max)
     coord_corrige = Column(String, nullable=True)  # varchar(max)
@@ -155,7 +154,6 @@ class NatureBien(Base):
 class Parcelle(Base):
     __tablename__ = "parcelle"
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    ref_parcelle = Column(String(50), nullable=True)
     numero_parcellaire = Column(String(50), nullable=True)
     fk_unite = Column(Integer, ForeignKey("unite.id"), nullable=True)
     longueur = Column(Float(precision=18), nullable=True)
