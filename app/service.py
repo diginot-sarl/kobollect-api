@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 def process_kobo_data(payload: dict, db: Session):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
+    
+    logger.info(f"Données kobo : {kobo}")
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo ==kobo["_submitted_by"]).first()
