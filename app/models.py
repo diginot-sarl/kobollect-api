@@ -40,7 +40,7 @@ class Bien(Base):
     fk_nature_bien = Column(Integer, ForeignKey("nature_bien.id"), nullable=True)
     fk_unite = Column(Integer, ForeignKey("unite.id"), nullable=True)
     fk_usage = Column(Integer, ForeignKey("usage.id"), nullable=True)
-    fk_usage_specifique = Column(BigInteger, ForeignKey("usage_specifique.id"), nullable=True)
+    fk_usage_specifique = Column(Integer, ForeignKey("usage_specifique.id"), nullable=True)
     superficie = Column(Float(precision=18), nullable=True)
     fk_agent = Column(Integer, nullable=True)
 
