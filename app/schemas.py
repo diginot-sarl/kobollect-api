@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
     sexe: Optional[str] = None
     photo_url: Optional[str] = None
     code_chasuble: Optional[str] = None
+    fk_groupe: Optional[int] = None
     
 class User(BaseModel):
     id: int
@@ -107,7 +108,90 @@ class UserUpdate(BaseModel):
     code_chasuble: Optional[str] = None
     photo_url: Optional[str] = None
     sexe: Optional[str] = None
-    telephone: Optional[str] = None    
+    telephone: Optional[str] = None
+    fk_groupe: Optional[int] = None
+
+class ModuleCreate(BaseModel):
+    intitule: str
+    userCreat: Optional[int] = None
+
+class ModuleUpdate(BaseModel):
+    intitule: Optional[str] = None
+
+class ModuleOut(BaseModel):
+    id: int
+    intitule: str
+    userCreat: Optional[int] = None
+
+    class Config:
+        orm_mode = True
+
+class PaginatedModuleResponse(BaseModel):
+    data: List[ModuleOut]
+    total: int
+    page: int
+    page_size: int
+
+class GroupeCreate(BaseModel):
+    intitule: str
+    description: Optional[str] = None
+    userCreat: Optional[int] = None
+
+class GroupeUpdate(BaseModel):
+    intitule: Optional[str] = None
+    description: Optional[str] = None
+
+class GroupeOut(BaseModel):
+    id: int
+    intitule: str
+    description: Optional[str] = None
+    userCreat: Optional[int] = None
+    droit_ids: List[int] = []
+
+    class Config:
+        orm_mode = True
+
+class PaginatedGroupeResponse(BaseModel):
+    data: List[GroupeOut]
+    total: int
+    page: int
+    page_size: int
+
+class DroitCreate(BaseModel):
+    code: str
+    intitule: str
+    fk_module: int
+
+class DroitUpdate(BaseModel):
+    code: Optional[str] = None
+    intitule: Optional[str] = None
+    fk_module: Optional[int] = None
+
+class DroitOut(BaseModel):
+    id: int
+    code: str
+    intitule: str
+    fk_module: int
+
+    class Config:
+        orm_mode = True
+
+class DroitModuleOut(BaseModel):
+    id: int
+    intitule: str
+class PaginatedDroitResponse(BaseModel):
+    data: List[DroitOut]
+    total: int
+    page: int
+    page_size: int
+    module: DroitModuleOut
+
+class AssignDroitsToGroupe(BaseModel):
+    droit_ids: List[int]
+
+class AssignDroitsToUser(BaseModel):
+    user_id: int
+    droit_ids: List[int]
 
 
 

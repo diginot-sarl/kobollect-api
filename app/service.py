@@ -321,6 +321,7 @@ def create_user(user_data: UserCreate, db: Session):
             mail=user_data.mail,
             photo_url=user_data.photo_url,
             code_chasuble=user_data.code_chasuble,
+            fk_groupe=user_data.fk_groupe
         )
         db.add(new_user)
         db.commit()

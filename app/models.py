@@ -4,8 +4,8 @@ from sqlalchemy.sql.sqltypes import NVARCHAR, NCHAR
 from app.database import Base
 
 # Table: access
-class Access(Base):
-    __tablename__ = "access"
+class UtilisateurDroit(Base):
+    __tablename__ = "utilisateur_droit"
     id = Column(Integer, primary_key=True, index=True)
     fk_utilisateur = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     fk_droit = Column(Integer, ForeignKey("droit.id"), nullable=True)
@@ -292,6 +292,7 @@ class Utilisateur(Base):
     etat = Column(Integer, nullable=True, default=1)
     fk_fonction = Column(Integer, ForeignKey("fonction.id"), nullable=True)
     fk_agent_creat = Column(Integer, nullable=True)
+    fk_groupe = Column(Integer, ForeignKey("groupe.id"), nullable=True)
 
 # Table: ville
 class Ville(Base):

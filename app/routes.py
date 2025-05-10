@@ -25,9 +25,9 @@ from app.auth import (
     User,
 )
 from app.service import process_kobo_data, create_user
-from app.schemas import UserCreate, TeamCreate, AssignUserTeams, UserUpdate
+from app.schemas import UserCreate, TeamCreate, AssignUserTeams, UserUpdate, PaginatedModuleResponse, ModuleOut, ModuleCreate, ModuleUpdate, PaginatedGroupeResponse, GroupeOut, GroupeCreate, GroupeUpdate, PaginatedDroitResponse, DroitOut, DroitCreate, DroitUpdate, AssignDroitsToGroupe
 from app.database import get_db
-from app.models import Bien, Parcelle, Equipe, AgentEquipe, Utilisateur
+from app.models import Bien, Parcelle, Equipe, AgentEquipe, Utilisateur, Module, Groupe, Droit, GroupeDroit, UtilisateurDroit
 from sqlalchemy.sql import text
 
 
@@ -1165,17 +1165,38 @@ def get_cartographie(
                 p.id AS parcelle_id, p.numero_parcellaire AS parcelle_numero,
                 p.coordonnee_geographique AS parcelle_coordinates, p.coord_corrige AS parcelle_coord_corrige,
                 p.superficie_calculee AS parcelle_superficie,
-                p.date_create AS parcelle_date_create
+                p.date_create AS parcelle_date_create,
+                c.intitule AS commune,
+                q.intitule AS quartier,
+                av.intitule AS avenue,
+                COALESCE(
+                    CONCAT(pp.nom, ' ', pp.prenom),  -- Parcelle owner
+                    CONCAT(mp.nom, ' ', mp.prenom)   -- Bien owner through menage
+                ) AS nom_proprietaire,
+                CONCAT(mp.nom, ' ', mp.prenom) AS bien_proprietaire,  -- Specific owner for bien
+                nb.intitule AS nature_bien,
+                u.intitule AS unite,
+                usg.intitule AS usage,
+                us.intitule AS usage_specifique,
+                CONCAT(per.nom, ' ', per.prenom) AS ajouter_par,
+                r.intitule AS rang,
+                pu.intitule AS parcelle_unite
             FROM bien b
             LEFT JOIN parcelle p ON b.fk_parcelle = p.id
+            LEFT JOIN personne pp ON p.fk_proprietaire = pp.id  -- Parcelle owner
+            LEFT JOIN menage m ON b.id = m.fk_bien
+            LEFT JOIN personne mp ON m.fk_personne = mp.id  -- Bien owner through menage
             LEFT JOIN adresse a ON p.fk_adresse = a.id
             LEFT JOIN avenue av ON a.fk_avenue = av.id
             LEFT JOIN quartier q ON av.fk_quartier = q.id
             LEFT JOIN commune c ON q.fk_commune = c.id
             LEFT JOIN rang r ON p.fk_rang = r.id
             LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
-            LEFT JOIN usage u ON b.fk_usage = u.id
+            LEFT JOIN unite u ON b.fk_unite = u.id
+            LEFT JOIN unite pu ON p.fk_unite = pu.id
+            LEFT JOIN usage usg ON b.fk_usage = usg.id
             LEFT JOIN usage_specifique us ON b.fk_usage_specifique = us.id
+            LEFT JOIN personne per ON b.fk_agent = per.id
             WHERE 1=1
         """
 
@@ -1198,7 +1219,7 @@ def get_cartographie(
             filters.append("nb.id = :nature")
             params["nature"] = nature
         if usage:
-            filters.append("u.id = :usage")
+            filters.append("usg.id = :usage")
             params["usage"] = usage
         if usage_specifique:
             filters.append("us.id = :usage_specifique")
@@ -1224,6 +1245,11 @@ def get_cartographie(
                     "coordinates": parse_coordinates(row.bien_coordinates) if type_donnee == 'collected' else parse_coordinates(row.bien_coord_corrige),
                     "superficie": row.bien_superficie,
                     "date_create": row.bien_date_create.isoformat() if row.bien_date_create else None,
+                    "nature_bien": row.nature_bien,
+                    "unite": row.unite,
+                    "usage": row.usage,
+                    "usage_specifique": row.usage_specifique,
+                    "nom_proprietaire": row.bien_proprietaire  # Added bien_proprietaire
                 },
                 "parcelle": {
                     "id": row.parcelle_id,
@@ -1231,7 +1257,14 @@ def get_cartographie(
                     "coordinates": parse_coordinates(row.parcelle_coordinates) if type_donnee == 'collected' else parse_coordinates(row.parcelle_coord_corrige),
                     "superficie_calculee": row.parcelle_superficie,
                     "date_create": row.parcelle_date_create.isoformat() if row.parcelle_date_create else None,
-                }
+                    "unite": row.parcelle_unite,
+                    "rang": row.rang,
+                    "nom_proprietaire": row.nom_proprietaire
+                },
+                "ajouter_par": row.ajouter_par,
+                "commune": row.commune,
+                "quartier": row.quartier,
+                "avenue": row.avenue
             })
 
         return {
@@ -2101,6 +2134,596 @@ def get_personne(
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/modules", response_model=PaginatedModuleResponse, tags=["Modules"])
+def get_modules(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    keyword: Optional[str] = None,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Base query
+        query = "SELECT id, intitule FROM module WHERE 1=1"
+        params = {}
+
+        # Add keyword filter
+        if keyword:
+            query += " AND intitule LIKE :keyword"
+            params["keyword"] = f"%{keyword}%"
+
+        # Count total records
+        count_query = f"SELECT COUNT(*) FROM ({query}) AS total"
+        total = db.execute(text(count_query), params).scalar()
+
+        # Add pagination
+        query += """
+            ORDER BY id DESC
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        """
+        params["limit"] = page_size
+        params["offset"] = (page - 1) * page_size
+
+        # Execute query
+        results = db.execute(text(query), params).fetchall()
+
+        # Format results
+        modules = [{"id": row[0], "intitule": row[1]} for row in results]
+
+        return {
+            "data": modules,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/modules", response_model=ModuleOut, tags=["Modules"])
+def create_module(
+    module_data: ModuleCreate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Check if module already exists
+        existing_module = db.query(Module).filter(Module.intitule == module_data.intitule).first()
+        if existing_module:
+            raise HTTPException(
+                status_code=400,
+                detail="Module with this name already exists"
+            )
+
+        # Create new module
+        new_module = Module(
+            intitule=module_data.intitule,
+            userCreat=current_user.id
+        )
+        db.add(new_module)
+        db.commit()
+        db.refresh(new_module)
+
+        return new_module
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/modules/{module_id}", response_model=ModuleOut, tags=["Modules"])
+def update_module(
+    module_id: int,
+    module_data: ModuleUpdate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Get the module to update
+        module = db.query(Module).filter(Module.id == module_id).first()
+        if not module:
+            raise HTTPException(status_code=404, detail="Module not found")
+
+        if module_data.intitule:
+            existing_module = db.query(Module).filter(
+                Module.intitule == module_data.intitule,
+                Module.id != module_id
+            ).first()
+            if existing_module:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Another module with this name already exists"
+                )
+
+            module.intitule = module_data.intitule
+
+        db.commit()
+        db.refresh(module)
+        return module
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/modules/{module_id}", tags=["Modules"])
+def delete_module(
+    module_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Get the module to delete
+        module = db.query(Module).filter(Module.id == module_id).first()
+        if not module:
+            raise HTTPException(status_code=404, detail="Module not found")
+
+        # Delete the module
+        db.delete(module)
+        db.commit()
+
+        return {
+            "message": "Module deleted successfully",
+            "id": module_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/groupes", response_model=PaginatedGroupeResponse, tags=["Groupes"])
+def get_groupes(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    keyword: Optional[str] = None,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Base query
+        query = """
+            SELECT g.id, g.intitule, g.description, 
+                   STRING_AGG(CAST(d.id AS VARCHAR), ',') AS droit_ids
+            FROM groupe g
+            LEFT JOIN groupe_droit gd ON g.id = gd.fk_groupe
+            LEFT JOIN droit d ON gd.fk_droit = d.id
+            WHERE 1=1
+        """
+        params = {}
+
+        # Add keyword filter
+        if keyword:
+            query += " AND (g.intitule LIKE :keyword OR g.description LIKE :keyword)"
+            params["keyword"] = f"%{keyword}%"
+
+        # Group by clause
+        query += " GROUP BY g.id, g.intitule, g.description"
+
+        # Count total records - modified to use CTE
+        count_query = f"""
+            WITH filtered_groups AS (
+                SELECT g.id
+                FROM groupe g
+                LEFT JOIN groupe_droit gd ON g.id = gd.fk_groupe
+                LEFT JOIN droit d ON gd.fk_droit = d.id
+                WHERE 1=1
+                { " AND (g.intitule LIKE :keyword OR g.description LIKE :keyword)" if keyword else "" }
+                GROUP BY g.id, g.intitule, g.description
+            )
+            SELECT COUNT(DISTINCT id) FROM filtered_groups
+        """
+        total = db.execute(text(count_query), params).scalar()
+
+        # Add pagination
+        query += """
+            ORDER BY g.id DESC
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        """
+        params["limit"] = page_size
+        params["offset"] = (page - 1) * page_size
+
+        # Execute query
+        results = db.execute(text(query), params).fetchall()
+
+        # Format results
+        groupes = [{
+            "id": row[0],
+            "intitule": row[1],
+            "description": row[2],
+            "droit_ids": [int(d) for d in (row[3].split(',') if row[3] else [])]  # Convert string to list of ints
+        } for row in results]
+
+        return {
+            "data": groupes,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/groupes", response_model=GroupeOut, tags=["Groupes"])
+def create_groupe(
+    groupe_data: GroupeCreate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Check if groupe already exists
+        existing_groupe = db.query(Groupe).filter(Groupe.intitule == groupe_data.intitule).first()
+        if existing_groupe:
+            raise HTTPException(
+                status_code=400,
+                detail="Groupe with this name already exists"
+            )
+
+        # Create new groupe
+        new_groupe = Groupe(
+            intitule=groupe_data.intitule,
+            description=groupe_data.description,
+            userCreat=current_user.id
+        )
+        db.add(new_groupe)
+        db.commit()
+        db.refresh(new_groupe)
+
+        return new_groupe
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/groupes/{groupe_id}", response_model=GroupeOut, tags=["Groupes"])
+def update_groupe(
+    groupe_id: int,
+    groupe_data: GroupeUpdate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Get the groupe to update
+        groupe = db.query(Groupe).filter(Groupe.id == groupe_id).first()
+        if not groupe:
+            raise HTTPException(status_code=404, detail="Groupe not found")
+
+        if groupe_data.intitule:
+            existing_groupe = db.query(Groupe).filter(
+                Groupe.intitule == groupe_data.intitule,
+                Groupe.id != groupe_id
+            ).first()
+            if existing_groupe:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Another groupe with this name already exists"
+                )
+
+            groupe.intitule = groupe_data.intitule
+
+        if groupe_data.description is not None:
+            groupe.description = groupe_data.description
+
+        db.commit()
+        db.refresh(groupe)
+        return groupe
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/groupes/{groupe_id}", tags=["Groupes"])
+def delete_groupe(
+    groupe_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Get the groupe to delete
+        groupe = db.query(Groupe).filter(Groupe.id == groupe_id).first()
+        if not groupe:
+            raise HTTPException(status_code=404, detail="Groupe not found")
+
+        # Delete the groupe
+        db.delete(groupe)
+        db.commit()
+
+        return {
+            "message": "Groupe deleted successfully",
+            "id": groupe_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/droits", tags=["Droits"])
+def get_droits(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=1000),
+    keyword: Optional[str] = None,
+    fk_module: Optional[int] = None,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Base query with module join
+        query = """
+            SELECT d.id, d.code, d.intitule, d.fk_module, m.intitule as module_intitule
+            FROM droit d
+            LEFT JOIN module m ON d.fk_module = m.id
+                WHERE 1=1
+        """
+        params = {}
+
+        # Add keyword filter
+        if keyword:
+            query += " AND (d.code LIKE :keyword OR d.intitule LIKE :keyword)"
+            params["keyword"] = f"%{keyword}%"
+
+        # Add module filter
+        if fk_module:
+            query += " AND d.fk_module = :fk_module"
+            params["fk_module"] = fk_module
+
+        # Count total records
+        count_query = f"SELECT COUNT(*) FROM ({query}) AS total"
+        total = db.execute(text(count_query), params).scalar()
+
+        # Add pagination
+        query += """
+            ORDER BY d.id DESC
+            OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
+        """
+        params["limit"] = page_size
+        params["offset"] = (page - 1) * page_size
+
+        # Execute query
+        results = db.execute(text(query), params).fetchall()
+
+        # Format results with module information
+        droits = [{
+            "id": row[0],
+            "code": row[1],
+            "intitule": row[2],
+            "fk_module": row[3],
+            "module": {
+                "id": row[3],
+                "intitule": row[4]
+            } if row[3] else None
+        } for row in results]
+
+        return {
+            "data": droits,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/droits", response_model=DroitOut, tags=["Droits"])
+def create_droit(
+    droit_data: DroitCreate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Check if droit already exists
+        existing_droit = db.query(Droit).filter(
+            (Droit.code == droit_data.code) | (Droit.intitule == droit_data.intitule)
+        ).first()
+        if existing_droit:
+            raise HTTPException(
+                status_code=400,
+                detail="Droit with this code or name already exists"
+            )
+
+        # Create new droit
+        new_droit = Droit(
+            code=droit_data.code,
+            intitule=droit_data.intitule,
+            fk_module=droit_data.fk_module
+        )
+        db.add(new_droit)
+        db.commit()
+        db.refresh(new_droit)
+
+        return new_droit
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/droits/{droit_id}", response_model=DroitOut, tags=["Droits"])
+def update_droit(
+    droit_id: int,
+    droit_data: DroitUpdate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Get the droit to update
+        droit = db.query(Droit).filter(Droit.id == droit_id).first()
+        if not droit:
+            raise HTTPException(status_code=404, detail="Droit not found")
+
+        if droit_data.code or droit_data.intitule:
+            existing_droit = db.query(Droit).filter(
+                ((Droit.code == droit_data.code) if droit_data.code else False) |
+                ((Droit.intitule == droit_data.intitule) if droit_data.intitule else False),
+                Droit.id != droit_id
+            ).first()
+            if existing_droit:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Another droit with this code or name already exists"
+                )
+
+        if droit_data.code:
+            droit.code = droit_data.code
+        if droit_data.intitule:
+            droit.intitule = droit_data.intitule
+        if droit_data.fk_module:
+            droit.fk_module = droit_data.fk_module
+            
+        db.commit()
+        db.refresh(droit)
+        return droit
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/droits/{droit_id}", tags=["Droits"])
+def delete_droit(
+    droit_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Get the droit to delete
+        droit = db.query(Droit).filter(Droit.id == droit_id).first()
+        if not droit:
+            raise HTTPException(status_code=404, detail="Droit not found")
+
+        # Delete the droit
+        db.delete(droit)
+        db.commit()
+
+        return {
+            "message": "Droit deleted successfully",
+            "id": droit_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/groupes/{groupe_id}/assign-droits", tags=["Groupes"])
+def assign_droits_to_groupe(
+    groupe_id: int,
+    assign_data: AssignDroitsToGroupe,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Verify groupe exists
+        groupe = db.query(Groupe).filter(Groupe.id == groupe_id).first()
+        if not groupe:
+            raise HTTPException(status_code=404, detail="Groupe not found")
+
+        # Remove existing assignments for this groupe
+        db.query(GroupeDroit).filter(GroupeDroit.fk_groupe == groupe_id).delete()
+
+        # Create new assignments
+        for droit_id in assign_data.droit_ids:
+            # Verify droit exists
+            droit = db.query(Droit).filter(Droit.id == droit_id).first()
+            if not droit:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Droit with ID {droit_id} not found"
+                )
+            
+            # Create new assignment
+            new_assignment = GroupeDroit(
+                fk_groupe=groupe_id,
+                fk_droit=droit_id
+            )
+            db.add(new_assignment)
+        
+        db.commit()
+        
+        return {
+            "message": "Droits successfully assigned to groupe",
+            "groupe_id": groupe_id,
+            "droit_ids": assign_data.droit_ids
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/users/{user_id}/assign-droits", tags=["Users"])
+def assign_droits_to_user(
+    user_id: int,
+    droit_ids: list[int],  # List of droit IDs to assign
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Verify user exists
+        user = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Remove existing assignments for this user
+        db.query(UtilisateurDroit).filter(UtilisateurDroit.fk_utilisateur == user_id).delete()
+
+        # Create new assignments
+        for droit_id in droit_ids:
+            # Verify droit exists
+            droit = db.query(Droit).filter(Droit.id == droit_id).first()
+            if not droit:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Droit with ID {droit_id} not found"
+                )
+            
+            # Create new assignment
+            new_assignment = UtilisateurDroit(
+                fk_utilisateur=user_id,
+                fk_droit=droit_id
+            )
+            db.add(new_assignment)
+        
+        db.commit()
+        
+        return {
+            "message": "Droits successfully assigned to user",
+            "user_id": user_id,
+            "droit_ids": droit_ids
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
