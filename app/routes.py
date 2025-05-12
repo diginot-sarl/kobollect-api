@@ -918,81 +918,90 @@ def get_age_pyramid(
     db: Session=Depends(get_db),
 ):
     try:
-        # Base query to get persons
-        persons_query = """
-        WITH filtered_parcelles AS (
-            SELECT DISTINCT p.id AS parcelle_id
+        # Base query to get filtered parcelle IDs
+        parcelle_query = """
+            SELECT DISTINCT p.id
             FROM parcelle p
             LEFT JOIN adresse a ON p.fk_adresse = a.id
             LEFT JOIN avenue av ON a.fk_avenue = av.id
             LEFT JOIN quartier q ON av.fk_quartier = q.id
             LEFT JOIN commune c ON q.fk_commune = c.id
             WHERE 1=1
-            {location_filters}
-        ),
-        related_persons AS (
+        """
+
+        # Add filters
+        filters = []
+        params = {}
+        if commune:
+            filters.append("c.id = :commune")
+            params["commune"] = commune
+        if quartier:
+            filters.append("q.id = :quartier")
+            params["quartier"] = quartier
+        if avenue:
+            filters.append("av.id = :avenue")
+            params["avenue"] = avenue
+
+        # Build final parcelle query
+        if filters:
+            parcelle_query += " AND " + " AND ".join(filters)
+
+        # Get filtered parcelle IDs
+        parcelle_ids = [row[0] for row in db.execute(text(parcelle_query), params).fetchall()]
+
+        # If no parcelle IDs found, return empty list
+        if not parcelle_ids:
+            return []
+
+        # Prepare parcelle IDs for IN clause
+        parcelle_ids_str = ",".join(map(str, parcelle_ids))
+
+        # Query to get persons
+        persons_query = """
+        WITH related_persons AS (
             SELECT DISTINCT p.id, p.sexe, p.date_naissance
             FROM personne p
-            LEFT JOIN (
-                -- Menage owners
-                SELECT DISTINCT m.fk_personne AS person_id
-                FROM bien b
-                JOIN menage m ON b.id = m.fk_bien
-                WHERE b.fk_parcelle IN (SELECT parcelle_id FROM filtered_parcelles)
-                
-                UNION
-                
-                -- Location bien persons
-                SELECT DISTINCT lb.fk_personne AS person_id
-                FROM bien b
-                JOIN location_bien lb ON b.id = lb.fk_bien
-                WHERE b.fk_parcelle IN (SELECT parcelle_id FROM filtered_parcelles)
-                
-                UNION
-                
-                -- Menage members
-                SELECT DISTINCT mm.fk_personne AS person_id
-                FROM bien b
-                JOIN menage m ON b.id = m.fk_bien
-                JOIN membre_menage mm ON m.id = mm.fk_menage
-                WHERE b.fk_parcelle IN (SELECT parcelle_id FROM filtered_parcelles)
-                
-                UNION
-                
-                -- Parcelle owners
-                SELECT DISTINCT p.fk_proprietaire AS person_id
-                FROM parcelle p
-                WHERE p.id IN (SELECT parcelle_id FROM filtered_parcelles)
-            ) AS associated_persons ON p.id = associated_persons.person_id
             WHERE p.date_naissance IS NOT NULL AND p.date_naissance <= GETDATE()
+            AND (
+                -- Owners of parcelles
+                p.id IN (
+                    SELECT fk_proprietaire 
+                    FROM parcelle 
+                    WHERE id IN ({parcelle_ids}) AND fk_proprietaire IS NOT NULL
+                )
+                OR
+                -- Persons in menage related to parcelles
+                p.id IN (
+                    SELECT m.fk_personne 
+                    FROM bien b
+                    JOIN menage m ON b.id = m.fk_bien
+                    WHERE b.fk_parcelle IN ({parcelle_ids})
+                )
+                OR
+                -- Persons in location_bien related to parcelles
+                p.id IN (
+                    SELECT lb.fk_personne 
+                    FROM bien b
+                    JOIN location_bien lb ON b.id = lb.fk_bien
+                    WHERE b.fk_parcelle IN ({parcelle_ids})
+                )
+                OR
+                -- Members of menage related to parcelles
+                p.id IN (
+                    SELECT mm.fk_personne 
+                    FROM bien b
+                    JOIN menage m ON b.id = m.fk_bien
+                    JOIN membre_menage mm ON m.id = mm.fk_menage
+                    WHERE b.fk_parcelle IN ({parcelle_ids})
+                )
+            )
         )
         SELECT id, sexe, date_naissance
         FROM related_persons
-        """
-
-        # Build location filters
-        location_filters = []
-        params = {}
-        if commune:
-            location_filters.append("c.id = :commune")
-            params["commune"] = commune
-        if quartier:
-            location_filters.append("q.id = :quartier")
-            params["quartier"] = quartier
-        if avenue:
-            location_filters.append("av.id = :avenue")
-            params["avenue"] = avenue
-
-        # Construct final query
-        if location_filters:
-            persons_query = persons_query.format(
-                location_filters=" AND " + " AND ".join(location_filters)
-            )
-        else:
-            persons_query = persons_query.format(location_filters="")
+        """.format(parcelle_ids=parcelle_ids_str)
 
         # Execute query
-        results = db.execute(text(persons_query), params).fetchall()
+        results = db.execute(text(persons_query)).fetchall()
 
         # Log the number of persons retrieved
         logger.info(f"Retrieved {len(results)} persons with non-NULL date_naissance")
