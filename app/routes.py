@@ -1,5 +1,6 @@
 import json
 import requests
+import logging
 
 from datetime import timedelta
 from typing import Annotated, Optional
@@ -30,8 +31,10 @@ from app.database import get_db
 from app.models import Bien, Parcelle, Equipe, AgentEquipe, Utilisateur, Module, Groupe, Droit, GroupeDroit, UtilisateurDroit
 from sqlalchemy.sql import text
 
-
 router = APIRouter()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Helper function to format personne (used in get_parcelle_details)
 def format_personne(row):
@@ -906,36 +909,15 @@ async def get_parcelle_details(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 @router.get("/population-by-age-pyramid", tags=["Populations"])
 def get_age_pyramid(
     commune: Optional[str] = Query(None),
     quartier: Optional[str] = Query(None),
     avenue: Optional[str] = Query(None),
-    current_user = Depends(get_current_active_user),
-    db: Session = Depends(get_db),
+    current_user=Depends(get_current_active_user),
+    db: Session=Depends(get_db),
 ):
     try:
-        # Define age groups
-        age_groups = [
-            {"min": 0, "max": 4},
-            {"min": 5, "max": 9},
-            {"min": 10, "max": 14},
-            {"min": 15, "max": 19},
-            {"min": 20, "max": 24},
-            {"min": 25, "max": 29},
-            {"min": 30, "max": 34},
-            {"min": 35, "max": 39},
-            {"min": 40, "max": 44},
-            {"min": 45, "max": 49},
-            {"min": 50, "max": 54},
-            {"min": 55, "max": 59},
-            {"min": 60, "max": 64},
-            {"min": 65, "max": 69},
-            {"min": 70, "max": 74},
-            {"min": 75, "max": 200}  # 75+ with a high max age
-        ]
-
         # Base query to get filtered parcelle IDs
         parcelle_query = """
             SELECT DISTINCT p.id
@@ -967,83 +949,89 @@ def get_age_pyramid(
         # Get filtered parcelle IDs
         parcelle_ids = [row[0] for row in db.execute(text(parcelle_query), params).fetchall()]
 
-        if not parcelle_ids:
-            return []
-
-        # Convert parcelle_ids to a comma-separated string
-        parcelle_ids_str = ",".join(str(id) for id in parcelle_ids)
-
-        # Query to get population statistics by age group and sex
-        population_query = """
-            WITH age_groups AS (
-                SELECT * FROM (VALUES
-                    (0, 4), (5, 9), (10, 14), (15, 19),
-                    (20, 24), (25, 29), (30, 34), (35, 39),
-                    (40, 44), (45, 49), (50, 54), (55, 59),
-                    (60, 64), (65, 69), (70, 74), (75, 200)
-                ) AS t(min_age, max_age)
-            ),
-            population AS (
+        # If no filters are applied, get all persons
+        if not filters:
+            persons_query = """
                 SELECT 
                     p.id,
                     p.sexe,
-                    DATEDIFF(YEAR, p.date_naissance, GETDATE()) - 
-                    CASE 
-                        WHEN DATEADD(YEAR, DATEDIFF(YEAR, p.date_naissance, GETDATE()), p.date_naissance) > GETDATE()
-                        THEN 1 
-                        ELSE 0 
-                    END AS age
+                    p.date_naissance
                 FROM personne p
-                WHERE p.date_naissance IS NOT NULL
-                AND p.id IN (
-                    SELECT p.fk_proprietaire FROM parcelle WHERE id IN (SELECT value FROM STRING_SPLIT(:parcelle_ids, ',')) AND p.fk_proprietaire IS NOT NULL
-                    UNION
-                    SELECT m.fk_personne FROM bien b JOIN menage m ON b.id = m.fk_bien WHERE b.fk_parcelle IN (SELECT value FROM STRING_SPLIT(:parcelle_ids, ','))
-                    UNION
-                    SELECT lb.fk_personne FROM bien b JOIN location_bien lb ON b.id = lb.fk_bien WHERE b.fk_parcelle IN (SELECT value FROM STRING_SPLIT(:parcelle_ids, ','))
-                    UNION
-                    SELECT mm.fk_personne FROM bien b JOIN menage m ON b.id = m.fk_bien JOIN membre_menage mm ON m.id = mm.fk_menage WHERE b.fk_parcelle IN (SELECT value FROM STRING_SPLIT(:parcelle_ids, ','))
-                )
-            )
-            SELECT 
-                ag.min_age,
-                ag.max_age,
-                SUM(CASE WHEN pop.sexe = 'M' THEN 1 ELSE 0 END) AS male_count,
-                SUM(CASE WHEN pop.sexe = 'F' THEN 1 ELSE 0 END) AS female_count
-            FROM age_groups ag
-            LEFT JOIN population pop ON pop.age BETWEEN ag.min_age AND ag.max_age
-            GROUP BY ag.min_age, ag.max_age
-            ORDER BY ag.min_age
-        """
+                WHERE p.date_naissance IS NOT NULL AND p.date_naissance <= GETDATE()
+            """
+            results = db.execute(text(persons_query)).fetchall()
+        else:
+            # Create a temporary table to store parcelle IDs
+            temp_table_name = f"#temp_parcelle_ids_{current_user.id}"
+            db.execute(text(f"CREATE TABLE {temp_table_name} (id INT PRIMARY KEY)"))
+            
+            # Insert parcelle IDs into the temporary table
+            if parcelle_ids:
+                # Split parcelle_ids into chunks to avoid parameter limit
+                chunk_size = 1000
+                for i in range(0, len(parcelle_ids), chunk_size):
+                    chunk = parcelle_ids[i:i + chunk_size]
+                    insert_query = f"INSERT INTO {temp_table_name} (id) VALUES (:id)"
+                    db.execute(text(insert_query), [{"id": id} for id in chunk])
 
-        # Execute query
-        results = db.execute(text(population_query), {"parcelle_ids": parcelle_ids_str}).fetchall()
+            # Base query to get persons with date_naissance and sexe
+            persons_query = f"""
+                SELECT 
+                    p.id,
+                    p.sexe,
+                    p.date_naissance
+                FROM personne p
+                WHERE p.date_naissance IS NOT NULL AND p.date_naissance <= GETDATE()
+                AND EXISTS (
+                    SELECT 1 FROM (
+                        SELECT m.fk_personne AS person_id
+                        FROM bien b 
+                        JOIN menage m ON b.id = m.fk_bien 
+                        JOIN {temp_table_name} t ON b.fk_parcelle = t.id
+                        UNION
+                        SELECT lb.fk_personne AS person_id
+                        FROM bien b 
+                        JOIN location_bien lb ON b.id = lb.fk_bien 
+                        JOIN {temp_table_name} t ON b.fk_parcelle = t.id
+                        UNION
+                        SELECT mm.fk_personne AS person_id
+                        FROM bien b 
+                        JOIN menage m ON b.id = m.fk_bien 
+                        JOIN membre_menage mm ON m.id = mm.fk_menage 
+                        JOIN {temp_table_name} t ON b.fk_parcelle = t.id
+                    ) AS filtered_persons
+                    WHERE filtered_persons.person_id = p.id
+                )
+            """
+
+            # Execute query
+            results = db.execute(text(persons_query)).fetchall()
+
+            # Clean up temporary table
+            db.execute(text(f"DROP TABLE {temp_table_name}"))
+
+        # Log the number of persons retrieved
+        logger.info(f"Retrieved {len(results)} persons with non-NULL date_naissance")
 
         # Format results
-        age_pyramid = []
-        for row in results:
-            min_age = row[0]
-            max_age = row[1]
-            age_group = f"{min_age}-{max_age}" if max_age < 200 else "75+"
-            
-            male_count = row[2] or 0
-            female_count = row[3] or 0
-            total = male_count + female_count
-            
-            male_proportion = round((male_count / total) * 100, 1) if total > 0 else 0
-            female_proportion = round((female_count / total) * 100, 1) if total > 0 else 0
+        persons = [
+            {
+                "id": row[0],
+                "sexe": row[1],
+                "date_naissance": row[2].isoformat() if row[2] else None
+            }
+            for row in results
+        ]
 
-            age_pyramid.append({
-                "ageGroup": age_group,
-                "masculinCount": male_count,
-                "masculinProportion": male_proportion,
-                "femininCount": female_count,
-                "femininProportion": female_proportion
-            })
-
-        return age_pyramid
+        return persons
 
     except Exception as e:
+        # Clean up temporary table in case of error
+        try:
+            db.execute(text(f"DROP TABLE IF EXISTS {temp_table_name}"))
+        except:
+            pass
+        logger.error(f"Error in get_age_pyramid: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -2201,7 +2189,7 @@ def get_personne(
                         WHERE m.id = (
                             SELECT TOP 1 mm.fk_menage
                             FROM membre_menage mm
-                            WHERE mm.fk_personne = :personne_id
+                            WHERE mm.fk_personne = p.id
                         )
                     )
                     ELSE NULL
