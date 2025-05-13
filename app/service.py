@@ -3,8 +3,6 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage
-from app.auth import get_password_hash
-from app.schemas import UserCreate
 
 logger = logging.getLogger(__name__)
 
@@ -290,48 +288,3 @@ def process_kobo_data(payload: dict, db: Session):
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
 
-
-def create_user(user_data: UserCreate, db: Session):
-    try:
-        # Check if the user already exists
-        existing_user = db.query(Utilisateur).filter(Utilisateur.login == user_data.login).first()
-        if existing_user:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this login already exists")
-
-        # Check if code_chasuble is unique
-        existing_code = db.query(Utilisateur).filter(Utilisateur.code_chasuble == user_data.code_chasuble).first()
-        if existing_code:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User with this code_chasuble already exists"
-            )
-
-        # Hash the password
-        hashed_password = get_password_hash(user_data.password)
-
-        # Create the new user
-        new_user = Utilisateur(
-            prenom=user_data.prenom,
-            nom=user_data.nom,
-            postnom=user_data.postnom,
-            sexe=user_data.sexe,
-            telephone=user_data.telephone,
-            login=user_data.login,
-            password=hashed_password,
-            mail=user_data.mail,
-            photo_url=user_data.photo_url,
-            code_chasuble=user_data.code_chasuble,
-            fk_groupe=user_data.fk_groupe
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        logger.info(f"User {user_data.login} created successfully")
-        return new_user
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Failed to create user: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create user: {str(e)}")

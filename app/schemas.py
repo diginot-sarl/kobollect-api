@@ -7,7 +7,7 @@ class UserCreate(BaseModel):
     prenom: str
     nom: str
     postnom: Optional[str] = None
-    mail: EmailStr
+    mail: Optional[str] = None
     password: str
     telephone: Optional[str] = None
     sexe: Optional[str] = None
@@ -192,8 +192,6 @@ class AssignDroitsToGroupe(BaseModel):
 class AssignDroitsToUser(BaseModel):
     user_id: int
     droit_ids: List[int]
-
-
 
 
 

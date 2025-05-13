@@ -15,6 +15,7 @@ from fastapi import (
     status,
     Request,
     UploadFile,
+    BackgroundTasks
 )
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
@@ -25,16 +26,57 @@ from app.auth import (
     Token,
     User,
 )
-from app.service import process_kobo_data, create_user
+from app.service import process_kobo_data
 from app.schemas import UserCreate, TeamCreate, AssignUserTeams, UserUpdate, PaginatedModuleResponse, ModuleOut, ModuleCreate, ModuleUpdate, PaginatedGroupeResponse, GroupeOut, GroupeCreate, GroupeUpdate, PaginatedDroitResponse, DroitOut, DroitCreate, DroitUpdate, AssignDroitsToGroupe
 from app.database import get_db
 from app.models import Bien, Parcelle, Equipe, AgentEquipe, Utilisateur, Module, Groupe, Droit, GroupeDroit, UtilisateurDroit
 from sqlalchemy.sql import text
+from app.auth import get_password_hash
 
 router = APIRouter()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+async def create_kobo_account(user_data: UserCreate):
+    """
+    Route de test pour créer un compte KoboToolbox via l'API
+    et vérifier les utilisateurs après 1 minute
+    """
+    KOBOTOOLBOX_URL = "http://kf.hidscollect.hologram.cd"
+    KOBOTOOLBOX_ADMIN_USER = "super_admin"
+    KOBOTOOLBOX_ADMIN_PASSWORD = "xy9AhsnsRI7My2fIDYgX"
+
+    user_info = {
+        "username": user_data.login,
+        "password": user_data.password,
+        "email": user_data.mail,
+        "first_name": user_data.prenom,
+        "last_name": user_data.nom
+    }
+
+    kobotoolbox_api_url = f"{KOBOTOOLBOX_URL}/api/v2/users/"
+    headers = {'Content-Type': 'application/json'}
+
+    try:
+        response = requests.post(
+            kobotoolbox_api_url,
+            headers=headers,
+            data=json.dumps(user_info),
+            auth=(KOBOTOOLBOX_ADMIN_USER, KOBOTOOLBOX_ADMIN_PASSWORD)
+        )
+        
+        if response.status_code == 201:
+            return logger.info(f"Compte créé avec succès: {response.json()}")
+        else:
+            return logger.warning(f"Échec de la création du compte: {response.text}")
+            
+    except requests.exceptions.RequestException as e:
+        return logger.error(f"Erreur de requête {str(e)}")
+
+
+
 
 # Helper function to format personne (used in get_parcelle_details)
 def format_personne(row):
@@ -277,8 +319,66 @@ def get_user(
 
 # Create a new user
 @router.post("/users", response_model=User, tags=["Users"])
-async def create_new_user(user_data: UserCreate, current_user = Depends(get_current_active_user), db: Session = Depends(get_db)):
-    return create_user(user_data, db)
+async def create_new_user(user_data: UserCreate, background_tasks: BackgroundTasks, current_user = Depends(get_current_active_user), db: Session = Depends(get_db)):
+    try:
+        # Generate login by combining first and last name, removing whitespace, and converting to lowercase
+        login = f"{user_data.prenom}{user_data.nom}".replace(" ", "").lower()
+        
+        # Check if the user already exists
+        existing_user = db.query(Utilisateur).filter(Utilisateur.login == login).first()
+        if existing_user:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User with this login already exists")
+
+        # Handle empty string for code_chasuble
+        code_chasuble = user_data.code_chasuble if user_data.code_chasuble else None
+
+        # Check if code_chasuble is unique
+        if code_chasuble:
+            existing_code = db.query(Utilisateur).filter(Utilisateur.code_chasuble == code_chasuble).first()
+            if existing_code:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User with this code_chasuble already exists"
+                )
+
+        # Hash the password
+        hashed_password = get_password_hash(user_data.password)
+
+        # Create the new user
+        new_user = Utilisateur(
+            prenom=user_data.prenom,
+            nom=user_data.nom,
+            postnom=user_data.postnom,
+            sexe=user_data.sexe,
+            telephone=user_data.telephone,
+            login=login,
+            password=hashed_password,
+            mail=user_data.mail,
+            photo_url=user_data.photo_url,
+            code_chasuble=code_chasuble,
+            fk_groupe=user_data.fk_groupe
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        new_kobo_user: UserCreate = UserCreate(
+            prenom=user_data.prenom,
+            nom=user_data.nom,
+            login=login,
+            password="123456",
+            mail=user_data.mail,
+        )
+        background_tasks.add_task(create_kobo_account, new_kobo_user)
+        logger.info(f"User {login} created successfully")
+        return new_user
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create user: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create user: {str(e)}")
 
 
 # Fetch GeoJSON data with filters
@@ -2841,8 +2941,3 @@ def assign_droits_to_user(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
-
