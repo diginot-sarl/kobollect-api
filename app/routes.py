@@ -76,8 +76,6 @@ async def create_kobo_account(user_data: UserCreate):
         return logger.error(f"Erreur de requête {str(e)}")
 
 
-
-
 # Helper function to format personne (used in get_parcelle_details)
 def format_personne(row):
     return {
@@ -271,7 +269,7 @@ def get_user(
         query = """
             SELECT 
                 u.id, u.login, u.nom, u.postnom, u.prenom, u.date_create, 
-                u.mail, u.telephone, u.photo_url, u.code_chasuble, u.sexe,
+                u.mail, u.telephone, u.photo_url, u.code_chasuble, u.sexe, u.fk_groupe,
                 e.id AS equipe_id, e.intitule AS equipe_intitule
             FROM utilisateur u
             LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
@@ -297,6 +295,7 @@ def get_user(
             "telephone": results[0].telephone,
             "code_chasuble": results[0].code_chasuble,
             "photo_url": results[0].photo_url,
+            "fk_groupe": results[0].fk_groupe,
             "date_create": results[0].date_create.isoformat() if results[0].date_create else None,
             "teams": []
         }
@@ -1958,7 +1957,7 @@ def assign_to_teams(
 @router.get("/teams", tags=["Teams"])
 def get_teams(
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
+    page_size: int = Query(10, ge=1, le=1000),
     date_start: str = Query(None),
     date_end: str = Query(None),
     fk_quartier: int = Query(None),

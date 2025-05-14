@@ -42,6 +42,7 @@ class Bien(Base):
     fk_usage_specifique = Column(Integer, ForeignKey("usage_specifique.id"), nullable=True)
     superficie = Column(Float(precision=18), nullable=True)
     fk_agent = Column(Integer, nullable=True)
+    nombre_etage = Column(Integer, nullable=True)
 
 # Table: commune
 class Commune(Base):
