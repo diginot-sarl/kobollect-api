@@ -1131,7 +1131,6 @@ def get_populations(
     quartier: Optional[str] = Query(None),
     avenue: Optional[str] = Query(None),
     rang: Optional[str] = Query(None),
-    type_personne: Optional[str] = Query(None),
     keyword: Optional[str] = Query(None),
     current_user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -1146,7 +1145,7 @@ def get_populations(
             LEFT JOIN quartier q ON av.fk_quartier = q.id
             LEFT JOIN commune c ON q.fk_commune = c.id
             LEFT JOIN personne per ON p.fk_proprietaire = per.id
-            WHERE 1=1
+            WHERE 1=1 AND per.fk_type_personne = 1
         """
 
         # Add filters
@@ -1164,9 +1163,6 @@ def get_populations(
         if rang:
             filters.append("p.fk_rang = :rang")
             params["rang"] = rang
-        if type_personne:
-            filters.append("per.fk_type_personne = :type_personne")
-            params["type_personne"] = type_personne
         if keyword:
             keyword_filters = [
                 "per.nom LIKE :keyword",
@@ -1198,20 +1194,26 @@ def get_populations(
             WITH all_persons AS (
                 SELECT p.fk_proprietaire AS person_id
                 FROM parcelle p
+                JOIN personne per ON p.fk_proprietaire = per.id
                 WHERE p.id IN (SELECT * FROM string_split(:parcelle_ids, ','))
                 AND p.fk_proprietaire IS NOT NULL
+                AND per.fk_type_personne = 1
                 UNION
                 SELECT m.fk_personne AS person_id
                 FROM bien b
                 JOIN menage m ON b.id = m.fk_bien
+                JOIN personne per ON m.fk_personne = per.id
                 WHERE b.fk_parcelle IN (SELECT * FROM string_split(:parcelle_ids, ','))
                 AND m.fk_personne IS NOT NULL
+                AND per.fk_type_personne = 1
                 UNION
                 SELECT lb.fk_personne AS person_id
                 FROM bien b
                 JOIN location_bien lb ON b.id = lb.fk_bien
+                JOIN personne per ON lb.fk_personne = per.id
                 WHERE b.fk_parcelle IN (SELECT * FROM string_split(:parcelle_ids, ','))
                 AND lb.fk_personne IS NOT NULL
+                AND per.fk_type_personne = 1
                 UNION
                 SELECT mm.fk_personne AS person_id
                 FROM bien b
@@ -1246,8 +1248,8 @@ def get_populations(
         # Query to get person details (remove ORDER BY here since it's already sorted)
         person_details_query = """
             SELECT 
-                p.id, p.nom, p.postnom, p.prenom, p.denomination, p.sigle, p.fk_lien_parente,
-                p.nif, p.domaine_activite, p.lieu_naissance, p.date_naissance, p.profession,
+                p.id, p.nom, p.postnom, p.prenom, p.fk_lien_parente,
+                p.nif, p.lieu_naissance, p.date_naissance, p.profession,
                 p.etat_civil, p.telephone, p.adresse_mail, p.niveau_etude,
                 p.date_create,
                 tp.id AS type_personne_id, tp.intitule AS type_personne_intitule,
@@ -1321,13 +1323,10 @@ def get_populations(
             "nom": row.nom,
             "postnom": row.postnom,
             "prenom": row.prenom,
-            "denomination": row.denomination,
-            "sigle": row.sigle,
             "categorie": row.categorie,
             "lien_de_famille": row.fk_lien_parente,
             "type_personne": row.type_personne_intitule if row.type_personne_id else None,
             "nif": row.nif,
-            "domaine_activite": row.domaine_activite,
             "lieu_naissance": row.lieu_naissance,
             "date_naissance": row.date_naissance.isoformat() if row.date_naissance else None,
             "nationalite": row.nationalite,
@@ -2939,4 +2938,141 @@ def assign_droits_to_user(
         raise
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/menages", tags=["Menages"])
+def get_menages(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    commune: Optional[str] = Query(None),
+    quartier: Optional[str] = Query(None),
+    avenue: Optional[str] = Query(None),
+    rang: Optional[str] = Query(None),
+    current_user=Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Base query to get menage information
+        menage_query = """
+            SELECT 
+                m.id AS menage_id,
+                p.id AS proprietaire_id,
+                p.nom, p.postnom, p.prenom, p.date_naissance, p.sexe, 
+                p.etat_civil, p.profession, p.niveau_etude, p.lieu_naissance,
+                p.telephone, n.intitule AS nationalite,
+                c.intitule AS commune, q.intitule AS quartier,
+                av.intitule AS avenue, a.numero, r.intitule AS rang,
+                fm.intitule AS lien_parente
+            FROM menage m
+            JOIN personne p ON m.fk_personne = p.id
+            LEFT JOIN nationalite n ON p.fk_nationalite = n.id
+            LEFT JOIN bien b ON m.fk_bien = b.id
+            LEFT JOIN parcelle par ON b.fk_parcelle = par.id
+            LEFT JOIN adresse a ON par.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON par.fk_rang = r.id
+            LEFT JOIN filiation_membre fm ON p.fk_lien_parente = fm.id
+            WHERE p.fk_type_personne = 1
+        """
+
+        # Add filters
+        filters = []
+        params = {}
+        if commune:
+            filters.append("c.id = :commune")
+            params["commune"] = commune
+        if quartier:
+            filters.append("q.id = :quartier")
+            params["quartier"] = quartier
+        if avenue:
+            filters.append("av.id = :avenue")
+            params["avenue"] = avenue
+        if rang:
+            filters.append("r.id = :rang")
+            params["rang"] = rang
+
+        if filters:
+            menage_query += " AND " + " AND ".join(filters)
+
+        # Get menage data
+        menage_results = db.execute(text(menage_query), params).fetchall()
+
+        # Get member data for each menage
+        menage_data = []
+        for menage in menage_results:
+            # Get members
+            member_query = """
+                SELECT 
+                    p.id AS member_id,
+                    p.nom, p.postnom, p.prenom, p.date_naissance, p.sexe,
+                    p.etat_civil, p.profession, p.niveau_etude, p.lieu_naissance,
+                    p.telephone, n.intitule AS nationalite,
+                    fm.intitule AS lien_parente
+                FROM membre_menage mm
+                JOIN personne p ON mm.fk_personne = p.id
+                LEFT JOIN nationalite n ON p.fk_nationalite = n.id
+                LEFT JOIN filiation_membre fm ON mm.fk_filiation = fm.id
+                WHERE mm.fk_menage = :menage_id
+            """
+            members = db.execute(text(member_query), {"menage_id": menage.menage_id}).fetchall()
+
+            # Format menage data
+            menage_data.append({
+                "id": menage.menage_id,
+                "proprietaire": {
+                    "id": menage.proprietaire_id,
+                    "nom": menage.nom,
+                    "postnom": menage.postnom,
+                    "prenom": menage.prenom,
+                    "date_naissance": menage.date_naissance.isoformat() if menage.date_naissance else None,
+                    "sexe": menage.sexe,
+                    "etat_civil": menage.etat_civil,
+                    "profession": menage.profession,
+                    "niveau_etude": menage.niveau_etude,
+                    "lieu_naissance": menage.lieu_naissance,
+                    "nationalite": menage.nationalite,
+                    "telephone": menage.telephone,
+                    "lien_parente": menage.lien_parente
+                },
+                "membres": [{
+                    "id": member.member_id,
+                    "nom": member.nom,
+                    "postnom": member.postnom,
+                    "prenom": member.prenom,
+                    "date_naissance": member.date_naissance.isoformat() if member.date_naissance else None,
+                    "sexe": member.sexe,
+                    "lien_parente": member.lien_parente,
+                    "etat_civil": member.etat_civil,
+                    "profession": member.profession,
+                    "niveau_etude": member.niveau_etude,
+                    "lieu_naissance": member.lieu_naissance,
+                    "nationalite": member.nationalite,
+                    "telephone": member.telephone
+                } for member in members],
+                "adresse": {
+                    "commune": menage.commune,
+                    "quartier": menage.quartier,
+                    "avenue": menage.avenue,
+                    "numero": menage.numero,
+                    "rang": menage.rang
+                }
+            })
+
+        # Pagination
+        total = len(menage_data)
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_data = menage_data[start:end]
+
+        return {
+            "data": paginated_data,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
