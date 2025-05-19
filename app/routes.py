@@ -3,7 +3,7 @@ import requests
 import logging
 
 from datetime import timedelta
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi import (
@@ -144,11 +144,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-
-@router.get("/users/me/", response_model=User, tags=["Users"])
-def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
-    return current_user
-    
 
 @router.get("/users")
 def get_all_users(
@@ -314,6 +309,44 @@ def get_user(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class UserWithDroits(User):
+    droits: List[str] = []
+
+@router.get("/user/me/", response_model=UserWithDroits, tags=["Users"])
+def read_users_me(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    # Query user's direct droits
+    direct_droits_query = """
+        SELECT d.code 
+        FROM utilisateur_droit ud
+        JOIN droit d ON ud.fk_droit = d.id
+        WHERE ud.fk_utilisateur = :user_id
+    """
+    direct_droits = db.execute(text(direct_droits_query), {"user_id": int(current_user.id)}).fetchall()
+    
+    # Query user's group droits
+    group_droits_query = """
+        SELECT d.code 
+        FROM groupe_droit gd
+        JOIN droit d ON gd.fk_droit = d.id
+        WHERE gd.fk_groupe = :group_id
+    """
+    group_droits = []
+    if current_user.fk_groupe:
+        group_droits = db.execute(text(group_droits_query), {"group_id": current_user.fk_groupe}).fetchall()
+    
+    # Combine and deduplicate droit codes
+    droit_codes = list(set([row.code for row in direct_droits + group_droits]))
+    
+    # Return user with droits
+    return UserWithDroits(
+        **current_user.__dict__,
+        droits=droit_codes
+    )
 
 
 # Create a new user

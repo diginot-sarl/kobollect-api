@@ -187,62 +187,63 @@ def process_kobo_data(payload: dict, db: Session):
                 elif menage.get("informations_du_menage/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "proprietaire":
                     pass
                     
-                # 5. Insert into Personne (if the occupant is a locataire)
-                menage_bien = Menage(
-                    fk_personne=fk_responsable,
-                    fk_bien=fk_bien,
-                )
-                db.add(menage_bien)
-                db.flush()
-                fk_menage = menage_bien.id
-                
-                # 7. Insert additional Personnes
-                for personne in menage.get("informations_du_menage/information_sur_les_personnes", []):
+                for famille in kobo.get([]):
+                    # 5. Insert into Personne (if the occupant is a locataire)
+                    menage_bien = Menage(
+                        fk_personne=fk_responsable,
+                        fk_bien=fk_bien,
+                    )
+                    db.add(menage_bien)
+                    db.flush()
+                    fk_menage = menage_bien.id
                     
-                    personne: dict = personne
-                    
-                    if personne.get("informations_du_menage/information_sur_les_personnes/nom_3") and personne.get("informations_du_menage/information_sur_les_personnes/prenom_3"):
+                    # 7. Insert additional Personnes
+                    for personne in menage.get("informations_du_menage/information_sur_les_personnes", []):
                         
-                        # Insert into Personne
-                        new_personne = Personne(
-                            nom=personne.get("informations_du_menage/information_sur_les_personnes/nom_3"),
-                            postnom=personne.get("informations_du_menage/information_sur_les_personnes/post_nom_3"),
-                            prenom=personne.get("informations_du_menage/information_sur_les_personnes/prenom_3"),
-                            sexe=personne.get("informations_du_menage/information_sur_les_personnes/gr"),
-                            lieu_naissance=personne.get("informations_du_menage/information_sur_les_personnes/lieu_de_naissance_1"),
-                            date_naissance=personne.get("informations_du_menage/information_sur_les_personnes/date_de_naissance_1"),
-                            fk_province=(int(personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine")) if personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine") else None),
-                            district=personne.get("informations_du_menage/information_sur_les_personnes/district"),
-                            territoire=personne.get("informations_du_menage/information_sur_les_personnes/territoire"),
-                            secteur=personne.get("informations_du_menage/information_sur_les_personnes/secteur"),
-                            village=personne.get("informations_du_menage/information_sur_les_personnes/village"),
-                            profession=personne.get("informations_du_menage/information_sur_les_personnes/profession_2"),
-                            type_piece_identite=personne.get("informations_du_menage/information_sur_les_personnes/type_de_piece_d_identite"),
-                            numero_piece_identite=personne.get("informations_du_menage/information_sur_les_personnes/numero_piece_d_identite"),
-                            nom_du_pere=personne.get("informations_du_menage/information_sur_les_personnes/nom_du_pere"),
-                            nom_de_la_mere=personne.get("informations_du_menage/information_sur_les_personnes/nom_de_la_mere"),
-                            etat_civil=personne.get("informations_du_menage/information_sur_les_personnes/etat_civil"),
-                            fk_lien_parente=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
-                            telephone=personne.get("informations_du_menage/information_sur_les_personnes/n_telphone"),
-                            adresse_mail=personne.get("informations_du_menage/information_sur_les_personnes/adresse_email_3"),
-                            nombre_enfant=int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001")) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001") else None,
-                            niveau_etude=personne.get("informations_du_menage/information_sur_les_personnes/niveau_d_etudes_001"),
-                            fk_nationalite=int(personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3")) 
-                                            if personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3") else None,
-                            fk_adresse=fk_adresse,
-                            fk_agent=fk_agent,
-                        )
-                        db.add(new_personne)
-                        db.flush()
-                        fk_personne = new_personne.id
+                        personne: dict = personne
                         
-                        # 8. Insert into MembreMenage
-                        membre_menage = MembreMenage(
-                            fk_menage=fk_menage,
-                            fk_personne=fk_personne,
-                            fk_filiation=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
-                        )
-                        db.add(membre_menage)
+                        if personne.get("informations_du_menage/information_sur_les_personnes/nom_3") and personne.get("informations_du_menage/information_sur_les_personnes/prenom_3"):
+                            
+                            # Insert into Personne
+                            new_personne = Personne(
+                                nom=personne.get("informations_du_menage/information_sur_les_personnes/nom_3"),
+                                postnom=personne.get("informations_du_menage/information_sur_les_personnes/post_nom_3"),
+                                prenom=personne.get("informations_du_menage/information_sur_les_personnes/prenom_3"),
+                                sexe=personne.get("informations_du_menage/information_sur_les_personnes/gr"),
+                                lieu_naissance=personne.get("informations_du_menage/information_sur_les_personnes/lieu_de_naissance_1"),
+                                date_naissance=personne.get("informations_du_menage/information_sur_les_personnes/date_de_naissance_1"),
+                                fk_province=(int(personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine")) if personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine") else None),
+                                district=personne.get("informations_du_menage/information_sur_les_personnes/district"),
+                                territoire=personne.get("informations_du_menage/information_sur_les_personnes/territoire"),
+                                secteur=personne.get("informations_du_menage/information_sur_les_personnes/secteur"),
+                                village=personne.get("informations_du_menage/information_sur_les_personnes/village"),
+                                profession=personne.get("informations_du_menage/information_sur_les_personnes/profession_2"),
+                                type_piece_identite=personne.get("informations_du_menage/information_sur_les_personnes/type_de_piece_d_identite"),
+                                numero_piece_identite=personne.get("informations_du_menage/information_sur_les_personnes/numero_piece_d_identite"),
+                                nom_du_pere=personne.get("informations_du_menage/information_sur_les_personnes/nom_du_pere"),
+                                nom_de_la_mere=personne.get("informations_du_menage/information_sur_les_personnes/nom_de_la_mere"),
+                                etat_civil=personne.get("informations_du_menage/information_sur_les_personnes/etat_civil"),
+                                fk_lien_parente=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
+                                telephone=personne.get("informations_du_menage/information_sur_les_personnes/n_telphone"),
+                                adresse_mail=personne.get("informations_du_menage/information_sur_les_personnes/adresse_email_3"),
+                                nombre_enfant=int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001")) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001") else None,
+                                niveau_etude=personne.get("informations_du_menage/information_sur_les_personnes/niveau_d_etudes_001"),
+                                fk_nationalite=int(personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3")) 
+                                                if personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3") else None,
+                                fk_adresse=fk_adresse,
+                                fk_agent=fk_agent,
+                            )
+                            db.add(new_personne)
+                            db.flush()
+                            fk_personne = new_personne.id
+                            
+                            # 8. Insert into MembreMenage
+                            membre_menage = MembreMenage(
+                                fk_menage=fk_menage,
+                                fk_personne=fk_personne,
+                                fk_filiation=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
+                            )
+                            db.add(membre_menage)
 
         else:
             # 1. Insert into Adresse
