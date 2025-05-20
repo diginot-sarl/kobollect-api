@@ -1,6 +1,7 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, BigInteger, Date
+from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, BigInteger, Date, DateTime
 from sqlalchemy.sql.sqltypes import NVARCHAR, NCHAR
+from sqlalchemy.sql import text
 from app.database import Base
 
 # Table: access
@@ -16,7 +17,7 @@ class Adresse(Base):
     id = Column(Integer, primary_key=True, index=True)
     fk_avenue = Column(Integer, ForeignKey("avenue.id"), nullable=True)
     numero = Column(NVARCHAR(50), nullable=True)
-    fk_agent = Column(BigInteger, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: avenue
 class Avenue(Base):
@@ -41,8 +42,9 @@ class Bien(Base):
     fk_usage = Column(Integer, ForeignKey("usage.id"), nullable=True)
     fk_usage_specifique = Column(Integer, ForeignKey("usage_specifique.id"), nullable=True)
     superficie = Column(Float(precision=18), nullable=True)
-    fk_agent = Column(Integer, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     nombre_etage = Column(Integer, nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: commune
 class Commune(Base):
@@ -62,6 +64,7 @@ class Droit(Base):
     code = Column(String(50), nullable=True)
     intitule = Column(String, nullable=True)  # varchar(max)
     fk_module = Column(Integer, ForeignKey("module.id"), nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: filiation_membre
 class FiliationMembre(Base):
@@ -87,7 +90,7 @@ class Groupe(Base):
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(100), nullable=True)
     description = Column(String(500), nullable=True)
-    userCreat = Column(Integer, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: groupe_droit
 class GroupeDroit(Base):
@@ -104,7 +107,7 @@ class LocationBien(Base):
     fk_bien = Column(Integer, ForeignKey("bien.id"), nullable=True)
     date_debut = Column(Date, nullable=True)
     date_fin = Column(Date, nullable=True)
-    fk_agent = Column(BigInteger, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: logs
 class Logs(Base):
@@ -121,6 +124,8 @@ class MembreMenage(Base):
     fk_menage = Column(BigInteger, ForeignKey("menage.id"), nullable=True)
     fk_personne = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     fk_filiation = Column(BigInteger, ForeignKey("filiation_membre.id"), nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: menage
 class Menage(Base):
@@ -128,13 +133,15 @@ class Menage(Base):
     id = Column(BigInteger, primary_key=True, index=True)
     fk_personne = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     fk_bien = Column(Integer, ForeignKey("bien.id"), nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: module
 class Module(Base):
     __tablename__ = "module"
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(50), nullable=True)
-    userCreat = Column(Integer, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: nationalite
 class Nationalite(Base):
@@ -165,9 +172,10 @@ class Parcelle(Base):
     coord_corrige = Column(String, nullable=True)  # varchar(max)
     fk_proprietaire = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     fk_rang = Column(Integer, ForeignKey("rang.id"), nullable=True)
-    fk_agent = Column(Integer, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
     statut = Column(Integer, nullable=True, default=1)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: personne
 class Personne(Base):
@@ -204,8 +212,9 @@ class Personne(Base):
     adresse_mail = Column(String(100), nullable=True)
     nombre_enfant = Column(Integer, nullable=True)
     niveau_etude = Column(String(50), nullable=True)
-    fk_agent = Column(Integer, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: province
 class Province(Base):
@@ -294,6 +303,7 @@ class Utilisateur(Base):
     fk_fonction = Column(Integer, ForeignKey("fonction.id"), nullable=True)
     fk_agent_creat = Column(Integer, nullable=True)
     fk_groupe = Column(Integer, ForeignKey("groupe.id"), nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: ville
 class Ville(Base):
@@ -311,11 +321,12 @@ class Equipe(Base):
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(String(50), nullable=True)
     fk_quartier = Column(Integer, ForeignKey("quartier.id"), nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: agent_equipe
 class AgentEquipe(Base):
     __tablename__ = "agent_equipe"
     id = Column(Integer, primary_key=True, index=True)
     fk_equipe = Column(Integer, ForeignKey("equipe.id"), nullable=True)
-    fk_agent = Column(Integer, nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     

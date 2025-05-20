@@ -40,7 +40,6 @@ def get_password_hash(password: str) -> str:
 
 # User authentication
 def authenticate_user(login: str, password: str, db: Session) -> Optional[User]:
-    print(f"Authenticating user: {login}")
     user = db.query(Utilisateur).filter(Utilisateur.login == login).first()
     if not user:
         return False
@@ -80,7 +79,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     if user.etat is not None and user.etat != 1:  # Assuming etat == 1 means active
         raise HTTPException(status_code=400, detail="Inactive user")
-    print(f"user --- {user.__dict__}")
     return user
 
 # Ensure user is active

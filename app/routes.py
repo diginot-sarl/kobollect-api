@@ -1,11 +1,15 @@
 import json
+import json
 import requests
 import logging
+from collections import defaultdict
 
-from datetime import timedelta
+from datetime import timedelta, datetime, date
 from typing import Annotated, Optional, List
+from sqlalchemy import Date
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql import text, func, cast, or_  # Add Date and or_ here
 from fastapi import (
     APIRouter,
     Depends,
@@ -27,11 +31,46 @@ from app.auth import (
     User,
 )
 from app.service import process_kobo_data
-from app.schemas import UserCreate, TeamCreate, AssignUserTeams, UserUpdate, PaginatedModuleResponse, ModuleOut, ModuleCreate, ModuleUpdate, PaginatedGroupeResponse, GroupeOut, GroupeCreate, GroupeUpdate, PaginatedDroitResponse, DroitOut, DroitCreate, DroitUpdate, AssignDroitsToGroupe
+from app.schemas import (
+    UserCreate,
+    TeamCreate,
+    AssignUserTeams,
+    UserUpdate,
+    PaginatedModuleResponse,
+    ModuleOut,
+    ModuleCreate,
+    ModuleUpdate,
+    PaginatedGroupeResponse,
+    GroupeOut,
+    GroupeCreate,
+    GroupeUpdate,
+    PaginatedDroitResponse,
+    DroitOut,
+    DroitCreate,
+    DroitUpdate,
+    AssignDroitsToGroupe
+)
 from app.database import get_db
-from app.models import Bien, Parcelle, Equipe, AgentEquipe, Utilisateur, Module, Groupe, Droit, GroupeDroit, UtilisateurDroit
-from sqlalchemy.sql import text
+from app.models import (
+    Bien,
+    Parcelle,
+    Equipe,
+    AgentEquipe,
+    Utilisateur,
+    Module,
+    Groupe,
+    Droit,
+    GroupeDroit,
+    UtilisateurDroit,
+    Commune,
+    Quartier,
+    Avenue,
+    Menage,
+    MembreMenage,
+    Adresse
+)
 from app.auth import get_password_hash
+from sqlalchemy import and_
 
 router = APIRouter()
 
@@ -3109,3 +3148,434 @@ def get_menages(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/stats/agent-activity/{fk_agent}", tags=["Stats"])
+def get_agent_activity_stats(
+    fk_agent: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get agent activity statistics.
+    Returns counts of Parcelle, Bien, Menage, and MembreMenage collected,
+    along with agent information and location details.
+    """
+    # Get agent information
+    agent = db.query(
+        Utilisateur.nom,
+        Utilisateur.postnom,
+        Utilisateur.prenom,
+        Equipe.fk_quartier
+    ).join(AgentEquipe, AgentEquipe.fk_agent == Utilisateur.id)\
+     .join(Equipe, Equipe.id == AgentEquipe.fk_equipe)\
+     .filter(Utilisateur.id == fk_agent)\
+     .first()
+
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+    # Get location information
+    location = db.query(
+        Commune.intitule.label("commune"),
+        Quartier.intitule.label("quartier")
+    ).join(Quartier, Quartier.fk_commune == Commune.id)\
+     .filter(Quartier.id == agent.fk_quartier)\
+     .first()
+
+    # Get activity counts
+    parcelle_accessible_count = db.query(func.count(Parcelle.id)).filter(
+        Parcelle.fk_agent == fk_agent,
+        Parcelle.statut == 1
+    ).scalar() or 0
+
+    parcelle_inaccessible_count = db.query(func.count(Parcelle.id)).filter(
+        Parcelle.fk_agent == fk_agent,
+        Parcelle.statut == 2
+    ).scalar() or 0
+
+    bien_count = db.query(func.count(Bien.id)).filter(
+        Bien.fk_agent == fk_agent
+    ).scalar() or 0
+
+    menage_count = db.query(func.count(Menage.id)).filter(
+        Menage.fk_agent == fk_agent
+    ).scalar() or 0
+
+    membre_menage_count = db.query(func.count(MembreMenage.id)).filter(
+        MembreMenage.fk_agent == fk_agent
+    ).scalar() or 0
+
+    # Get stats for Linear Scale Chart
+    # Separate queries for each type of record
+    parcelle_accessible_stats = db.query(
+        cast(Parcelle.date_create, Date).label("date"),
+        func.count(Parcelle.id).label("parcelle_accessible_count")
+    ).filter(
+        Parcelle.fk_agent == fk_agent,
+        Parcelle.statut == 1
+    ).group_by(cast(Parcelle.date_create, Date))\
+     .all()
+
+    parcelle_inaccessible_stats = db.query(
+        cast(Parcelle.date_create, Date).label("date"),
+        func.count(Parcelle.id).label("parcelle_inaccessible_count")
+    ).filter(
+        Parcelle.fk_agent == fk_agent,
+        Parcelle.statut == 2
+    ).group_by(cast(Parcelle.date_create, Date))\
+     .all()
+
+    bien_stats = db.query(
+        cast(Bien.date_create, Date).label("date"),
+        func.count(Bien.id).label("bien_count")
+    ).filter(Bien.fk_agent == fk_agent)\
+     .group_by(cast(Bien.date_create, Date))\
+     .all()
+
+    menage_stats = db.query(
+        cast(Menage.date_create, Date).label("date"),
+        func.count(Menage.id).label("menage_count")
+    ).filter(Menage.fk_agent == fk_agent)\
+     .group_by(cast(Menage.date_create, Date))\
+     .all()
+
+    membre_menage_stats = db.query(
+        cast(MembreMenage.date_create, Date).label("date"),
+        func.count(MembreMenage.id).label("membre_menage_count")
+    ).filter(MembreMenage.fk_agent == fk_agent)\
+     .group_by(cast(MembreMenage.date_create, Date))\
+     .all()
+
+    # Combine all stats into a single dictionary
+    stats_dict = defaultdict(lambda: {
+        "parcelle_accessible_count": 0,
+        "parcelle_inaccessible_count": 0,
+        "bien_count": 0,
+        "menage_count": 0,
+        "membre_menage_count": 0
+    })
+
+    for stat in parcelle_accessible_stats:
+        stats_dict[stat.date]["parcelle_accessible_count"] = stat.parcelle_accessible_count
+
+    for stat in parcelle_inaccessible_stats:
+        stats_dict[stat.date]["parcelle_inaccessible_count"] = stat.parcelle_inaccessible_count
+
+    for stat in bien_stats:
+        stats_dict[stat.date]["bien_count"] = stat.bien_count
+
+    for stat in menage_stats:
+        stats_dict[stat.date]["menage_count"] = stat.menage_count
+
+    for stat in membre_menage_stats:
+        stats_dict[stat.date]["membre_menage_count"] = stat.membre_menage_count
+
+    # Convert the dictionary to a list of stats
+    stats = [
+        {
+            "date": date,
+            "parcelle_accessible_count": counts["parcelle_accessible_count"],
+            "parcelle_inaccessible_count": counts["parcelle_inaccessible_count"],
+            "bien_count": counts["bien_count"],
+            "menage_count": counts["menage_count"],
+            "membre_menage_count": counts["membre_menage_count"]
+        }
+        for date, counts in sorted(stats_dict.items())
+    ]
+
+    return {
+        "agent": {
+            "nom": agent.nom,
+            "postnom": agent.postnom,
+            "prenom": agent.prenom,
+            "commune": location.commune if location else None,
+            "quartier": location.quartier if location else None
+        },
+        "total_counts": {
+            "parcelle_accessible": parcelle_accessible_count,
+            "parcelle_inaccessible": parcelle_inaccessible_count,
+            "bien": bien_count,
+            "menage": menage_count,
+            "membre_menage": membre_menage_count
+        },
+        "stats": stats
+    }
+
+@router.get("/stats/all-agents-activity", tags=["Stats"])
+def get_all_agents_activity_stats(
+    date_debut: str = Query(..., description="Start date in format YYYY-MM-DD"),
+    date_fin: str = Query(..., description="End date in format YYYY-MM-DD"),
+    keyword: str = Query(None, description="Search keyword for agent's name"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get activity statistics for all agents within a date range.
+    Returns a paginated list of agents with their counts of Parcelle, Bien, Menage, and MembreMenage collected.
+    """
+    try:
+        # Validate date formats
+        start_date = datetime.strptime(date_debut, "%Y-%m-%d")
+        end_date = datetime.strptime(date_fin, "%Y-%m-%d")
+        if start_date > end_date:
+            raise ValueError("Start date must be before or equal to end date")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Subquery for accessible Parcelle count (statut = 1)
+    parcelle_accessible_subquery = db.query(
+        Parcelle.fk_agent.label("agent_id"),
+        func.count(Parcelle.id).label("parcelle_accessible_count")
+    ).filter(
+        and_(
+            cast(Parcelle.date_create, Date) >= date_debut,
+            cast(Parcelle.date_create, Date) <= date_fin,
+            Parcelle.statut == 1
+        )
+    ).group_by(Parcelle.fk_agent).subquery()
+
+    # Subquery for inaccessible Parcelle count (statut = 2)
+    parcelle_inaccessible_subquery = db.query(
+        Parcelle.fk_agent.label("agent_id"),
+        func.count(Parcelle.id).label("parcelle_inaccessible_count")
+    ).filter(
+        and_(
+            cast(Parcelle.date_create, Date) >= date_debut,
+            cast(Parcelle.date_create, Date) <= date_fin,
+            Parcelle.statut == 2
+        )
+    ).group_by(Parcelle.fk_agent).subquery()
+
+    # Subquery for Bien count
+    bien_subquery = db.query(
+        Bien.fk_agent.label("agent_id"),
+        func.count(Bien.id).label("bien_count")
+    ).filter(
+        and_(
+            cast(Bien.date_create, Date) >= date_debut,
+            cast(Bien.date_create, Date) <= date_fin
+        )
+    ).group_by(Bien.fk_agent).subquery()
+
+    # Subquery for Menage count
+    menage_subquery = db.query(
+        Bien.fk_agent.label("agent_id"),
+        func.count(Menage.id).label("menage_count")
+    ).join(Menage, Menage.fk_bien == Bien.id)\
+     .filter(
+        and_(
+            cast(Menage.date_create, Date) >= date_debut,
+            cast(Menage.date_create, Date) <= date_fin
+        )
+    ).group_by(Bien.fk_agent).subquery()
+
+    # Subquery for MembreMenage count
+    membre_menage_subquery = db.query(
+        Bien.fk_agent.label("agent_id"),
+        func.count(MembreMenage.id).label("membre_menage_count")
+    ).join(Menage, Menage.fk_bien == Bien.id)\
+     .join(MembreMenage, MembreMenage.fk_menage == Menage.id)\
+     .filter(
+        and_(
+            cast(MembreMenage.date_create, Date) >= date_debut,
+            cast(MembreMenage.date_create, Date) <= date_fin
+        )
+    ).group_by(Bien.fk_agent).subquery()
+
+    # Main query - update with new fields
+    base_query = db.query(
+        Utilisateur.id.label("agent_id"),
+        Utilisateur.nom.label("nom"),
+        Utilisateur.postnom.label("postnom"),
+        Utilisateur.prenom.label("prenom"),
+        func.coalesce(parcelle_accessible_subquery.c.parcelle_accessible_count, 0).label("parcelle_accessible_count"),
+        func.coalesce(parcelle_inaccessible_subquery.c.parcelle_inaccessible_count, 0).label("parcelle_inaccessible_count"),
+        func.coalesce(bien_subquery.c.bien_count, 0).label("bien_count"),
+        func.coalesce(menage_subquery.c.menage_count, 0).label("menage_count"),
+        func.coalesce(membre_menage_subquery.c.membre_menage_count, 0).label("membre_menage_count")
+    ).outerjoin(parcelle_accessible_subquery, parcelle_accessible_subquery.c.agent_id == Utilisateur.id)\
+     .outerjoin(parcelle_inaccessible_subquery, parcelle_inaccessible_subquery.c.agent_id == Utilisateur.id)\
+     .outerjoin(bien_subquery, bien_subquery.c.agent_id == Utilisateur.id)\
+     .outerjoin(menage_subquery, menage_subquery.c.agent_id == Utilisateur.id)\
+     .outerjoin(membre_menage_subquery, membre_menage_subquery.c.agent_id == Utilisateur.id)
+
+    # Apply keyword filter
+    if keyword:
+        base_query = base_query.filter(
+            or_(
+                Utilisateur.nom.ilike(f"%{keyword}%"),
+                Utilisateur.postnom.ilike(f"%{keyword}%"),
+                Utilisateur.prenom.ilike(f"%{keyword}%")
+            )
+        )
+
+    # Add filter to exclude agents with all zero counts
+    base_query = base_query.filter(
+        or_(
+            parcelle_accessible_subquery.c.parcelle_accessible_count > 0,
+            parcelle_inaccessible_subquery.c.parcelle_inaccessible_count > 0,
+            bien_subquery.c.bien_count > 0,
+            menage_subquery.c.menage_count > 0,
+            membre_menage_subquery.c.membre_menage_count > 0
+        )
+    )
+
+    # Get total count
+    total = base_query.count()
+
+    # Apply pagination with ORDER BY
+    agent_stats = base_query.order_by(Utilisateur.nom)\
+                           .offset((page - 1) * page_size)\
+                           .limit(page_size)\
+                           .all()
+
+    return {
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "data": [
+            {
+                "agent_id": stat.agent_id,
+                "agent_name": f"{stat.prenom or ''} {stat.nom or ''} {stat.postnom or ''}".strip(),
+                "parcelle_accessible_count": stat.parcelle_accessible_count,
+                "parcelle_inaccessible_count": stat.parcelle_inaccessible_count,
+                "bien_count": stat.bien_count,
+                "menage_count": stat.menage_count,
+                "membre_menage_count": stat.membre_menage_count
+            }
+            for stat in agent_stats
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size
+    }
+
+@router.get("/stats/all-agents-activity-by-date", tags=["Stats"])
+def get_all_agents_activity_stats_by_date(
+    date_debut: str = Query(..., description="Start date in format YYYY-MM-DD"),
+    date_fin: str = Query(..., description="End date in format YYYY-MM-DD"),
+    keyword: str = Query(None, description="Search keyword for agent's name"),
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get activity statistics grouped by date and agent within a date range.
+    Returns statistics grouped by date and agent with counts of Parcelle, Bien, Menage, and MembreMenage collected.
+    """
+    try:
+        # Validate date formats
+        start_date = datetime.strptime(date_debut, "%Y-%m-%d")
+        end_date = datetime.strptime(date_fin, "%Y-%m-%d")
+        if start_date > end_date:
+            raise ValueError("Start date must be before or equal to end date")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # Query for Parcelle count by date and agent
+    parcelle_query = db.query(
+        cast(Parcelle.date_create, Date).label("date"),
+        Parcelle.fk_agent.label("agent_id"),
+        func.count(Parcelle.id).label("parcelle_count")
+    ).filter(
+        and_(
+            cast(Parcelle.date_create, Date) >= date_debut,
+            cast(Parcelle.date_create, Date) <= date_fin
+        )
+    ).group_by(cast(Parcelle.date_create, Date), Parcelle.fk_agent).subquery()
+
+    # Query for Bien count by date and agent
+    bien_query = db.query(
+        cast(Bien.date_create, Date).label("date"),
+        Bien.fk_agent.label("agent_id"),
+        func.count(Bien.id).label("bien_count")
+    ).filter(
+        and_(
+            cast(Bien.date_create, Date) >= date_debut,
+            cast(Bien.date_create, Date) <= date_fin
+        )
+    ).group_by(cast(Bien.date_create, Date), Bien.fk_agent).subquery()
+
+    # Query for Menage count by date and agent
+    menage_query = db.query(
+        cast(Menage.date_create, Date).label("date"),
+        Bien.fk_agent.label("agent_id"),
+        func.count(Menage.id).label("menage_count")
+    ).join(Bien, Menage.fk_bien == Bien.id)\
+     .filter(
+        and_(
+            cast(Menage.date_create, Date) >= date_debut,
+            cast(Menage.date_create, Date) <= date_fin
+        )
+    ).group_by(cast(Menage.date_create, Date), Bien.fk_agent).subquery()
+
+    # Query for MembreMenage count by date and agent
+    membre_menage_query = db.query(
+        cast(MembreMenage.date_create, Date).label("date"),
+        Bien.fk_agent.label("agent_id"),
+        func.count(MembreMenage.id).label("membre_menage_count")
+    ).join(Menage, MembreMenage.fk_menage == Menage.id)\
+     .join(Bien, Menage.fk_bien == Bien.id)\
+     .filter(
+        and_(
+            cast(MembreMenage.date_create, Date) >= date_debut,
+            cast(MembreMenage.date_create, Date) <= date_fin
+        )
+    ).group_by(cast(MembreMenage.date_create, Date), Bien.fk_agent).subquery()
+
+    # Main query to combine all counts by date and agent
+    base_query = db.query(
+        func.coalesce(parcelle_query.c.date, bien_query.c.date, menage_query.c.date, membre_menage_query.c.date).label("date"),
+        func.coalesce(parcelle_query.c.agent_id, bien_query.c.agent_id, menage_query.c.agent_id, membre_menage_query.c.agent_id).label("agent_id"),
+        Utilisateur.nom.label("nom"),
+        Utilisateur.postnom.label("postnom"),
+        Utilisateur.prenom.label("prenom"),
+        func.coalesce(parcelle_query.c.parcelle_count, 0).label("parcelle_count"),
+        func.coalesce(bien_query.c.bien_count, 0).label("bien_count"),
+        func.coalesce(menage_query.c.menage_count, 0).label("menage_count"),
+        func.coalesce(membre_menage_query.c.membre_menage_count, 0).label("membre_menage_count")
+    ).outerjoin(bien_query, and_(bien_query.c.date == parcelle_query.c.date, bien_query.c.agent_id == parcelle_query.c.agent_id))\
+     .outerjoin(menage_query, and_(menage_query.c.date == parcelle_query.c.date, menage_query.c.agent_id == parcelle_query.c.agent_id))\
+     .outerjoin(membre_menage_query, and_(membre_menage_query.c.date == parcelle_query.c.date, membre_menage_query.c.agent_id == parcelle_query.c.agent_id))\
+     .join(Utilisateur, Utilisateur.id == parcelle_query.c.agent_id)
+
+    # Apply keyword filter
+    if keyword:
+        base_query = base_query.filter(
+            or_(
+                Utilisateur.nom.ilike(f"%{keyword}%"),
+                Utilisateur.postnom.ilike(f"%{keyword}%"),
+                Utilisateur.prenom.ilike(f"%{keyword}%")
+            )
+        )
+
+    # Add filter to exclude agents with all zero counts
+    base_query = base_query.filter(
+        or_(
+            parcelle_query.c.parcelle_count > 0,
+            bien_query.c.bien_count > 0,
+            menage_query.c.menage_count > 0,
+            membre_menage_query.c.membre_menage_count > 0
+        )
+    )
+
+    # Execute query and format results
+    stats_by_date = base_query.order_by("date", "agent_id").all()
+
+    return {
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "data": [
+            {
+                "date": stat.date.strftime("%Y-%m-%d"),
+                "agent_id": stat.agent_id,
+                "agent_name": f"{stat.prenom if stat.prenom else ''} {stat.nom if stat.nom else ''} {stat.postnom if stat.postnom else ''}".strip(),
+                "parcelle_count": stat.parcelle_count,
+                "bien_count": stat.bien_count,
+                "menage_count": stat.menage_count,
+                "membre_menage_count": stat.membre_menage_count
+            }
+            for stat in stats_by_date
+        ]
+    }
