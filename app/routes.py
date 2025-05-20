@@ -67,10 +67,12 @@ from app.models import (
     Avenue,
     Menage,
     MembreMenage,
-    Adresse
+    Adresse,
+    RapportRecensement
 )
 from app.auth import get_password_hash
 from sqlalchemy import and_
+from pydantic import Field, validator
 
 router = APIRouter()
 
@@ -3578,4 +3580,107 @@ def get_all_agents_activity_stats_by_date(
             }
             for stat in stats_by_date
         ]
+    }
+
+@router.get("/rapports", tags=["Rapports"])
+def get_all_rapports(
+    date_debut: str = Query(..., 
+                          description="Start date in format YYYY-MM-DD",
+                          regex=r"^\d{4}-\d{2}-\d{2}$"),
+    date_fin: str = Query(...,
+                         description="End date in format YYYY-MM-DD",
+                         regex=r"^\d{4}-\d{2}-\d{2}$"),
+    keyword: Optional[str] = Query(None, description="Search keyword for agent's name"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100),
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get all rapports with pagination and date filtering
+    """
+    # Validate date format and convert to datetime
+    try:
+        start_date = datetime.strptime(date_debut, "%Y-%m-%d")
+        end_date = datetime.strptime(date_fin, "%Y-%m-%d") + timedelta(days=1)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid date format. Please use YYYY-MM-DD"
+        )
+
+    # Validate that end date is not before start date
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="End date cannot be before start date"
+        )
+
+    query = db.query(
+        RapportRecensement,
+        Utilisateur.prenom,
+        Utilisateur.nom,
+        Utilisateur.postnom
+    ).join(
+        Utilisateur, RapportRecensement.fk_agent == Utilisateur.id
+    ).filter(
+        func.cast(RapportRecensement.date_create, Date) >= start_date,
+        func.cast(RapportRecensement.date_create, Date) < end_date
+    )
+    
+    if keyword:
+        query = query.filter(
+            or_(
+                Utilisateur.nom.ilike(f"%{keyword}%"),
+                Utilisateur.postnom.ilike(f"%{keyword}%"),
+                Utilisateur.prenom.ilike(f"%{keyword}%")
+            )
+        )
+    
+    total = query.count()
+    
+    # Add ORDER BY clause for MSSQL compatibility
+    rapports = query.order_by(RapportRecensement.date_create.desc()) \
+                   .offset((page - 1) * page_size) \
+                   .limit(page_size) \
+                   .all()
+    
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "data": [
+            {
+                **rapport[0].__dict__,
+                "agent_name": f"{rapport[1]} {rapport[2]} {rapport[3] or ''}".strip()
+            }
+            for rapport in rapports
+        ]
+    }
+
+@router.get("/rapports/{rapport_id}", tags=["Rapports"])
+def get_rapport_by_id(
+    rapport_id: int,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get a specific rapport by ID with agent details
+    """
+    rapport = db.query(
+        RapportRecensement,
+        Utilisateur.prenom,
+        Utilisateur.nom
+    ).join(
+        Utilisateur, RapportRecensement.fk_agent == Utilisateur.id
+    ).filter(
+        RapportRecensement.id == rapport_id
+    ).first()
+    
+    if not rapport:
+        raise HTTPException(status_code=404, detail="Rapport not found")
+    
+    return {
+        **rapport[0].__dict__,
+        "agent_name": f"{rapport[1]} {rapport[2]}"
     }

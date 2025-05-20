@@ -329,4 +329,24 @@ class AgentEquipe(Base):
     id = Column(Integer, primary_key=True, index=True)
     fk_equipe = Column(Integer, ForeignKey("equipe.id"), nullable=True)
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+
+# Table: rapport_recensement
+class RapportRecensement(Base):
+    __tablename__ = "rapport_recensement"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    heure_debut = Column(String(10), nullable=True)
+    heure_fin = Column(String(10), nullable=True)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+    effectif_present = Column(Integer, nullable=True)
+    effectif_absent = Column(Integer, nullable=True)
+    observation = Column(String, nullable=True)  # varchar(max)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    tache_effectue = Column(String(250), nullable=True)
+    nombre_bien_recense = Column(Integer, nullable=True)
+    incident_description = Column(String, nullable=True)  # varchar(max)
+    incident_heure = Column(String(10), nullable=True)
+    incident_recommandations = Column(String, nullable=True)  # varchar(max)
+    incident_actions_correctives = Column(String, nullable=True)  # varchar(max)
+    incident_personnes_impliquees = Column(String(250), nullable=True)
+    etat = Column(Integer, nullable=True, default=1)
     
