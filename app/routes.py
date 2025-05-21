@@ -48,7 +48,7 @@ from app.schemas import (
     DroitOut,
     DroitCreate,
     DroitUpdate,
-    AssignDroitsToGroupe
+    AssignDroitsToEntity
 )
 from app.database import get_db
 from app.models import (
@@ -197,15 +197,20 @@ def get_all_users(
     db: Session = Depends(get_db),
 ):
     try:
-        # Base query with joins to get team information
+        # Base query with joins to get user, team, and droit information
         base_query = """
             SELECT 
                 u.id, u.login, u.nom, u.postnom, u.prenom, u.date_create, 
-                u.mail, u.telephone, u.photo_url, u.code_chasuble,
-                e.id AS equipe_id, e.intitule AS equipe_intitule
+                u.mail, u.telephone, u.photo_url, u.code_chasuble, u.fk_groupe,
+                e.id AS equipe_id, e.intitule AS equipe_intitule,
+                d.id AS droit_code
             FROM utilisateur u
             LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
             LEFT JOIN equipe e ON ae.fk_equipe = e.id
+            LEFT JOIN utilisateur_droit ud ON u.id = ud.fk_utilisateur
+            LEFT JOIN droit d ON ud.fk_droit = d.id
+            LEFT JOIN groupe_droit gd ON u.fk_groupe = gd.fk_groupe
+            LEFT JOIN droit gd_d ON gd.fk_droit = gd_d.id
             WHERE 1=1
         """
 
@@ -213,7 +218,7 @@ def get_all_users(
         filters = []
         params = {}
         if name:
-            filters.append("(u.nom LIKE :name OR u.postnom LIKE :name OR u.prenom LIKE :name)")
+            filters.append("(u.nom LIKE :name OR u.postnom LIKE :name OR u.prenom LIKE :name OR u.login LIKE :name)")
             params["name"] = f"%{name}%"
         if date_start:
             try:
@@ -234,14 +239,25 @@ def get_all_users(
             query += " AND " + " AND ".join(filters)
 
         # Count total records (distinct users)
-        count_query = """
-            SELECT COUNT(DISTINCT utilisateur.id) 
-            FROM utilisateur
-            LEFT JOIN agent_equipe ON utilisateur.id = agent_equipe.fk_agent
-            WHERE 1=1
+        count_query = f"""
+            SELECT COUNT(DISTINCT subquery.id) 
+            FROM (
+                SELECT 
+                    u.id, u.login, u.nom, u.postnom, u.prenom, u.date_create, 
+                    u.mail, u.telephone, u.photo_url, u.code_chasuble, u.fk_groupe,
+                    e.id AS equipe_id, e.intitule AS equipe_intitule,
+                    1 AS dummy_column
+                FROM utilisateur u
+                LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
+                LEFT JOIN equipe e ON ae.fk_equipe = e.id
+                LEFT JOIN utilisateur_droit ud ON u.id = ud.fk_utilisateur
+                LEFT JOIN droit d ON ud.fk_droit = d.id
+                LEFT JOIN groupe_droit gd ON u.fk_groupe = gd.fk_groupe
+                LEFT JOIN droit gd_d ON gd.fk_droit = gd_d.id
+                WHERE 1=1
+                {" AND " + " AND ".join(filters) if filters else ""}
+            ) AS subquery
         """
-        if filters:
-            count_query += " AND " + " AND ".join(filters)
         total = db.execute(text(count_query), params).scalar()
 
         # Add pagination using SQL Server syntax
@@ -255,7 +271,7 @@ def get_all_users(
         # Execute query
         results = db.execute(text(query), params).fetchall()
 
-        # Format results - group teams by user
+        # Process results
         users_map = {}
         for row in results:
             if row.id not in users_map:
@@ -269,19 +285,28 @@ def get_all_users(
                     "telephone": row.telephone,
                     "code_chasuble": row.code_chasuble,
                     "photo_url": row.photo_url,
+                    "fk_groupe": row.fk_groupe,
                     "date_create": row.date_create.isoformat() if row.date_create else None,
-                    "teams": []
+                    "teams": [],
+                    "droits": set()
                 }
             
             # Add team if exists
-            if row.equipe_id:
+            if row.equipe_id and not any(t['id'] == row.equipe_id for t in users_map[row.id]["teams"]):
                 users_map[row.id]["teams"].append({
                     "id": row.equipe_id,
                     "intitule": row.equipe_intitule
                 })
+            
+            # Add droit if exists
+            if row.droit_code:
+                users_map[row.id]["droits"].add(row.droit_code)
 
-        # Convert map to list
-        users = list(users_map.values())
+        # Convert map to list and transform droits to list
+        users = [
+            {**user, "droits": list(user["droits"])}
+            for user in users_map.values()
+        ]
 
         return {
             "data": users,
@@ -292,8 +317,8 @@ def get_all_users(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
-    
+
+
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
@@ -1654,8 +1679,17 @@ def get_dashboard_stats(
             parcelle_query += " AND " + " AND ".join(filters)
             bien_query += " AND " + " AND ".join(filters)
 
-        # Get total parcelles
-        total_parcelles = db.execute(text(f"SELECT COUNT(*) FROM ({parcelle_query}) AS total"), params).scalar()
+        # Get total parcelles - split into accessible and inaccessible
+        parcelle_accessibility_query = f"""
+            SELECT 
+                SUM(CASE WHEN p.statut = 1 THEN 1 ELSE 0 END) AS accessible,
+                SUM(CASE WHEN p.statut = 2 THEN 1 ELSE 0 END) AS inaccessible
+            FROM ({parcelle_query}) AS filtered_parcelles
+            JOIN parcelle p ON filtered_parcelles.id = p.id
+        """
+        parcelle_accessibility = db.execute(text(parcelle_accessibility_query), params).fetchone()
+        total_parcelles_accessibles = parcelle_accessibility[0] or 0
+        total_parcelles_inaccessibles = parcelle_accessibility[1] or 0
 
         # Get total biens
         total_biens = db.execute(text(f"SELECT COUNT(*) FROM ({bien_query}) AS total"), params).scalar()
@@ -1820,13 +1854,16 @@ def get_dashboard_stats(
 
         # Get parcelles by quartier
         parcelles_by_quartier_query = f"""
-            SELECT q.intitule, COUNT(p.id)
+            SELECT 
+                CONCAT(q.intitule, ' (', c.intitule, ')') AS quartier_commune, 
+                COUNT(p.id) AS count
             FROM ({parcelle_query}) AS filtered_parcelles
             JOIN parcelle p ON filtered_parcelles.id = p.id
             LEFT JOIN adresse a ON p.fk_adresse = a.id
             LEFT JOIN avenue av ON a.fk_avenue = av.id
             LEFT JOIN quartier q ON av.fk_quartier = q.id
-            GROUP BY q.intitule
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            GROUP BY q.intitule, c.intitule
         """
         parcelles_by_quartier = {
             row[0] if row[0] else "Inconnu": row[1]
@@ -1835,12 +1872,16 @@ def get_dashboard_stats(
 
         # Get parcelles by avenue
         parcelles_by_avenue_query = f"""
-            SELECT av.intitule, COUNT(p.id)
+            SELECT 
+                CONCAT(av.intitule, ' (', c.intitule, ')') AS avenue_commune, 
+                COUNT(p.id) AS count
             FROM ({parcelle_query}) AS filtered_parcelles
             JOIN parcelle p ON filtered_parcelles.id = p.id
             LEFT JOIN adresse a ON p.fk_adresse = a.id
             LEFT JOIN avenue av ON a.fk_avenue = av.id
-            GROUP BY av.intitule
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            GROUP BY av.intitule, c.intitule
         """
         parcelles_by_avenue = {
             row[0] if row[0] else "Inconnu": row[1]
@@ -1848,7 +1889,8 @@ def get_dashboard_stats(
         }
 
         return {
-            "total_parcelles": total_parcelles,
+            "total_parcelles_accessibles": total_parcelles_accessibles,
+            "total_parcelles_inaccessibles": total_parcelles_inaccessibles,
             "total_biens": total_biens,
             "total_proprietaires": total_proprietaires,
             "total_population": total_population,
@@ -1860,7 +1902,7 @@ def get_dashboard_stats(
             "parcelles_by_commune": parcelles_by_commune,
             "parcelles_by_quartier": parcelles_by_quartier,
             "parcelles_by_avenue": parcelles_by_avenue,
-        } 
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -2508,7 +2550,7 @@ def create_module(
         # Create new module
         new_module = Module(
             intitule=module_data.intitule,
-            userCreat=current_user.id
+            fk_agent=current_user.id
         )
         db.add(new_module)
         db.commit()
@@ -2680,7 +2722,7 @@ def create_groupe(
         new_groupe = Groupe(
             intitule=groupe_data.intitule,
             description=groupe_data.description,
-            userCreat=current_user.id
+            fk_agent=current_user.id
         )
         db.add(new_groupe)
         db.commit()
@@ -2940,7 +2982,7 @@ def delete_droit(
 @router.post("/groupes/{groupe_id}/assign-droits", tags=["Groupes"])
 def assign_droits_to_groupe(
     groupe_id: int,
-    assign_data: AssignDroitsToGroupe,
+    assign_data: AssignDroitsToEntity,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -2988,7 +3030,7 @@ def assign_droits_to_groupe(
 @router.post("/users/{user_id}/assign-droits", tags=["Users"])
 def assign_droits_to_user(
     user_id: int,
-    droit_ids: list[int],  # List of droit IDs to assign
+    assign_data: AssignDroitsToEntity,
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -3002,7 +3044,7 @@ def assign_droits_to_user(
         db.query(UtilisateurDroit).filter(UtilisateurDroit.fk_utilisateur == user_id).delete()
 
         # Create new assignments
-        for droit_id in droit_ids:
+        for droit_id in assign_data.droit_ids:
             # Verify droit exists
             droit = db.query(Droit).filter(Droit.id == droit_id).first()
             if not droit:
@@ -3023,7 +3065,7 @@ def assign_droits_to_user(
         return {
             "message": "Droits successfully assigned to user",
             "user_id": user_id,
-            "droit_ids": droit_ids
+            "droit_ids": assign_data.droit_ids
         }
         
     except HTTPException:

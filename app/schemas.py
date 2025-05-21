@@ -186,7 +186,7 @@ class PaginatedDroitResponse(BaseModel):
     page_size: int
     module: DroitModuleOut
 
-class AssignDroitsToGroupe(BaseModel):
+class AssignDroitsToEntity(BaseModel):
     droit_ids: List[int]
 
 class AssignDroitsToUser(BaseModel):
