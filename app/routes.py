@@ -1087,6 +1087,8 @@ def get_age_pyramid(
     commune: Optional[str] = Query(None),
     quartier: Optional[str] = Query(None),
     avenue: Optional[str] = Query(None),
+    date_start: str = Query(..., description="Start date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    date_end: str = Query(..., description="End date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
     current_user=Depends(get_current_active_user),
     db: Session=Depends(get_db),
 ):
@@ -1129,12 +1131,14 @@ def get_age_pyramid(
         # Prepare parcelle IDs for IN clause
         parcelle_ids_str = ",".join(map(str, parcelle_ids))
 
-        # Query to get persons
+        # Query to get persons with date filters
         persons_query = """
         WITH related_persons AS (
             SELECT DISTINCT p.id, p.sexe, p.date_naissance
             FROM personne p
-            WHERE p.date_naissance IS NOT NULL AND p.date_naissance <= GETDATE()
+            WHERE p.date_naissance IS NOT NULL 
+            AND p.date_naissance <= GETDATE()
+            AND p.date_create BETWEEN :date_start AND :date_end
             AND (
                 -- Owners of parcelles
                 p.id IN (
@@ -1173,8 +1177,15 @@ def get_age_pyramid(
         FROM related_persons
         """.format(parcelle_ids=parcelle_ids_str)
 
-        # Execute query
-        results = db.execute(text(persons_query)).fetchall()
+        # Execute query with date parameters
+        results = db.execute(
+            text(persons_query),
+            {
+                "date_start": date_start,
+                "date_end": date_end,
+                **params
+            }
+        ).fetchall()
 
         # Log the number of persons retrieved
         logger.info(f"Retrieved {len(results)} persons with non-NULL date_naissance")
@@ -1206,6 +1217,8 @@ def get_populations(
     avenue: Optional[str] = Query(None),
     rang: Optional[str] = Query(None),
     keyword: Optional[str] = Query(None),
+    date_start: str = Query(..., description="Start date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    date_end: str = Query(..., description="End date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
     current_user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -1247,6 +1260,11 @@ def get_populations(
             ]
             filters.append(f"({' OR '.join(keyword_filters)})")
             params["keyword"] = f"%{keyword}%"
+
+        # Add date filters
+        filters.append("p.date_create BETWEEN :date_start AND :date_end")
+        params["date_start"] = date_start
+        params["date_end"] = date_end
 
         # Build final parcelle query
         if filters:
@@ -3023,6 +3041,8 @@ def get_menages(
     quartier: Optional[str] = Query(None),
     avenue: Optional[str] = Query(None),
     rang: Optional[str] = Query(None),
+    date_start: str = Query(..., description="Start date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    date_end: str = Query(..., description="End date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
     current_user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -3050,11 +3070,15 @@ def get_menages(
             LEFT JOIN rang r ON par.fk_rang = r.id
             LEFT JOIN filiation_membre fm ON p.fk_lien_parente = fm.id
             WHERE p.fk_type_personne = 1
+            AND p.date_create BETWEEN :date_start AND :date_end
         """
 
         # Add filters
         filters = []
-        params = {}
+        params = {
+            "date_start": date_start,
+            "date_end": date_end
+        }
         if commune:
             filters.append("c.id = :commune")
             params["commune"] = commune
