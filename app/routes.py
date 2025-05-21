@@ -48,7 +48,8 @@ from app.schemas import (
     DroitOut,
     DroitCreate,
     DroitUpdate,
-    AssignDroitsToEntity
+    AssignDroitsToEntity,
+    UpdatePassword
 )
 from app.database import get_db
 from app.models import (
@@ -2277,8 +2278,8 @@ async def fetch_kobo_users(
         }
 
 
-@router.put("/users/{user_id}", tags=["Users"])  # Add response_model
-async def update_user(  # Use async for better performance with FastAPI
+@router.put("/users/{user_id}", tags=["Users"])
+async def update_user(
     user_id: int,
     user_data: UserUpdate,
     current_user = Depends(get_current_active_user),
@@ -2291,11 +2292,18 @@ async def update_user(  # Use async for better performance with FastAPI
             raise HTTPException(status_code=404, detail="User not found")
 
         # Convert Pydantic model to dict and remove None values
-        update_data = user_data.dict(exclude_unset=True)
+        update_data = user_data.model_dump(exclude_unset=True)
 
-        # Update user attributes
+        # Define allowed fields based on the UserUpdate schema
+        allowed_fields = {
+            'login', 'nom', 'postnom', 'prenom', 'mail', 'code_chasuble',
+            'photo_url', 'sexe', 'telephone', 'fk_groupe'
+        }
+
+        # Update only the provided and allowed fields
         for key, value in update_data.items():
-            setattr(user, key, value)
+            if key in allowed_fields:
+                setattr(user, key, value)
 
         # Commit the changes
         db.commit()
@@ -2311,7 +2319,8 @@ async def update_user(  # Use async for better performance with FastAPI
             "code_chasuble": user.code_chasuble,
             "photo_url": user.photo_url,
             "sexe": user.sexe,
-            "telephone": user.telephone
+            "telephone": user.telephone,
+            "fk_groupe": user.fk_groupe
         }
 
     except HTTPException:
@@ -3750,3 +3759,32 @@ def get_rapport_by_id(
         **rapport[0].__dict__,
         "agent_name": f"{rapport[1]} {rapport[2]}"
     }
+
+@router.put("/users/{user_id}/update-password", tags=["Users"])
+async def update_user_password(
+    user_id: int,
+    password_data: UpdatePassword,  # Expecting {"new_password": "new_password_value"}
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update a user's password
+    """
+    try:
+        # Get the user
+        user = db.query(Utilisateur).filter(Utilisateur.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Hash the new password
+        hashed_password = get_password_hash(password_data.new_password)
+        
+        # Update the password
+        user.password = hashed_password
+        db.commit()
+
+        return {"message": "Password updated successfully"}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

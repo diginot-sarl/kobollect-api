@@ -104,7 +104,6 @@ class UserUpdate(BaseModel):
     postnom: Optional[str] = None
     prenom: Optional[str] = None
     mail: Optional[str] = None
-    password: Optional[str] = None
     code_chasuble: Optional[str] = None
     photo_url: Optional[str] = None
     sexe: Optional[str] = None
@@ -193,7 +192,8 @@ class AssignDroitsToUser(BaseModel):
     user_id: int
     droit_ids: List[int]
 
-
+class UpdatePassword(BaseModel):
+    new_password: str
 
 
 
