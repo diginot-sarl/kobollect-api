@@ -204,7 +204,8 @@ def get_all_users(
                 u.id, u.login, u.nom, u.postnom, u.prenom, u.date_create, 
                 u.mail, u.telephone, u.photo_url, u.code_chasuble, u.fk_groupe,
                 e.id AS equipe_id, e.intitule AS equipe_intitule,
-                d.id AS droit_code
+                d.id AS droit_code,
+                gd_d.id AS groupe_droit_code  -- Add this line to select group droits
             FROM utilisateur u
             LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
             LEFT JOIN equipe e ON ae.fk_equipe = e.id
@@ -247,7 +248,8 @@ def get_all_users(
                     u.id, u.login, u.nom, u.postnom, u.prenom, u.date_create, 
                     u.mail, u.telephone, u.photo_url, u.code_chasuble, u.fk_groupe,
                     e.id AS equipe_id, e.intitule AS equipe_intitule,
-                    1 AS dummy_column
+                    d.id AS droit_code,
+                    gd_d.id AS groupe_droit_code  -- Add this line to select group droits
                 FROM utilisateur u
                 LEFT JOIN agent_equipe ae ON u.id = ae.fk_agent
                 LEFT JOIN equipe e ON ae.fk_equipe = e.id
@@ -302,6 +304,9 @@ def get_all_users(
             # Add droit if exists
             if row.droit_code:
                 users_map[row.id]["droits"].add(row.droit_code)
+            # Add group droit if exists
+            if row.groupe_droit_code:  # Add this block to handle group droits
+                users_map[row.id]["droits"].add(row.groupe_droit_code)
 
         # Convert map to list and transform droits to list
         users = [
@@ -824,7 +829,13 @@ async def get_parcelles(
                 u.id AS type_personne_id, u.intitule AS type_personne_intitule,
                 c.intitule AS commune,
                 q.intitule AS quartier,
-                av.intitule AS avenue
+                av.intitule AS avenue,
+                b.id AS bien_id,
+                b.nombre_etage,
+                nb.intitule AS nature_bien,
+                un.intitule AS unite,
+                us.intitule AS usage,
+                usp.intitule AS usage_specifique
             FROM parcelle p
             LEFT JOIN personne per ON p.fk_proprietaire = per.id
             LEFT JOIN rang r ON p.fk_rang = r.id
@@ -835,6 +846,11 @@ async def get_parcelles(
             LEFT JOIN commune c ON q.fk_commune = c.id
             LEFT JOIN ville v ON c.fk_ville = v.id
             LEFT JOIN province pr ON v.fk_province = pr.id
+            LEFT JOIN bien b ON p.id = b.fk_parcelle
+            LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
+            LEFT JOIN unite un ON b.fk_unite = un.id
+            LEFT JOIN usage us ON b.fk_usage = us.id
+            LEFT JOIN usage_specifique usp ON b.fk_usage_specifique = usp.id
             WHERE 1=1
         """
 
@@ -902,30 +918,46 @@ async def get_parcelles(
 
         # Format results
         data = []
+        parcelle_map = {}
         for row in results:
-            data.append({
-                "id": row.id,
-                "numero_parcellaire": row.numero_parcellaire,
-                "superficie_calculee": row.superficie_calculee,
-                "coordonnee_geographique": row.coordonnee_geographique,
-                "date_create": row.date_create.isoformat() if row.date_create else None,
-                "statut": "Accessible" if row.statut == 1 else "Non accessible",
-                "adresse": {
-                    "commune": row.commune,
-                    "quartier": row.quartier,
-                    "avenue": row.avenue
-                },
-                "proprietaire": {
-                    "id": row.proprietaire_id,
-                    "nom": row.proprietaire_nom,
-                    "postnom": row.proprietaire_postnom,
-                    "prenom": row.proprietaire_prenom,
-                    "denomination": row.proprietaire_denomination,
-                    "sigle": row.proprietaire_sigle,
-                    "type_personne": row.type_personne_intitule if row.type_personne_id else None,
-                },
-                "rang": row.rang_intitule,
-            })
+            if row.id not in parcelle_map:
+                parcelle_map[row.id] = {
+                    "id": row.id,
+                    "numero_parcellaire": row.numero_parcellaire,
+                    "superficie_calculee": row.superficie_calculee,
+                    "coordonnee_geographique": row.coordonnee_geographique,
+                    "date_create": row.date_create.isoformat() if row.date_create else None,
+                    "statut": "Accessible" if row.statut == 1 else "Non accessible",
+                    "adresse": {
+                        "commune": row.commune,
+                        "quartier": row.quartier,
+                        "avenue": row.avenue
+                    },
+                    "proprietaire": {
+                        "id": row.proprietaire_id,
+                        "nom": row.proprietaire_nom,
+                        "postnom": row.proprietaire_postnom,
+                        "prenom": row.proprietaire_prenom,
+                        "denomination": row.proprietaire_denomination,
+                        "sigle": row.proprietaire_sigle,
+                        "type_personne": row.type_personne_intitule if row.type_personne_id else None,
+                    },
+                    "rang": row.rang_intitule,
+                    "biens": []
+                }
+            
+            if row.bien_id:
+                parcelle_map[row.id]["biens"].append({
+                    "id": row.bien_id,
+                    "nature_bien": row.nature_bien,
+                    "unite": row.unite,
+                    "usage": row.usage,
+                    "usage_specifique": row.usage_specifique,
+                    "nombre_etage": row.nombre_etage
+                })
+
+        # Convert the map to a list
+        data = list(parcelle_map.values())
 
         return {
             "data": data,
