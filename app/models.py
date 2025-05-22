@@ -350,4 +350,6 @@ class RapportRecensement(Base):
     incident_actions_correctives = Column(String, nullable=True)  # varchar(max)
     incident_personnes_impliquees = Column(String(250), nullable=True)
     etat = Column(Integer, nullable=True, default=1)
+    date = Column(Date, nullable=True)
+    objectif_atteint = Column(Integer, nullable=True, default=0)
     
