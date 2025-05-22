@@ -332,7 +332,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         # 8. Insert into Logs
         log = Logs(
             logs="Processed Kobo data",
-            id_kobo=id_kobo,
+            id_kobo=record_id,
             data_json=str(payload)
         )
         db.add(log)
