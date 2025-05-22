@@ -311,19 +311,10 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         
         # if existing_log:
         #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
-
-        heure_debut_str = kobo.get('group_bd9mw82/Heure_de_d_but')
-        heure_debut = datetime.strptime(heure_debut_str, '%H:%M') if heure_debut_str else None
-        
-        heure_fin_str = kobo.get('group_bd9mw82/Heure_de_fin')
-        heure_fin = datetime.strptime(heure_fin_str, '%H:%M') if heure_fin_str else None
-        
-        date_str = kobo.get('group_bd9mw82/Date')
-        date = datetime.strptime(heure_fin_str, '%H:%M') if date_str else None
         
         rapport_recensement = RapportRecensement(
-            heure_debut=heure_debut,
-            heure_fin=heure_fin,
+            heure_debut=str(kobo.get('group_bd9mw82/Heure_de_d_but')) if kobo.get('group_bd9mw82/Heure_de_d_but') else None,
+            heure_fin=str(kobo.get('group_bd9mw82/Heure_de_fin')) if kobo.get('group_bd9mw82/Heure_de_fin') else None,
             fk_agent=fk_agent,
             effectif_present=int(kobo.get('group_di3ui02/Effectif_pr_sent')) if kobo.get('group_di3ui02/Effectif_pr_sent') else None,
             effectif_absent=int(kobo.get('group_di3ui02/Effectif_absent')) if kobo.get('group_di3ui02/Effectif_absent') else None,
@@ -336,7 +327,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
             incident_recommandations=kobo.get('group_gt4dp59/Suggestions_Recommandations'),
             incident_actions_correctives=kobo.get('group_gt4dp59/Actions_correctives_prises'),
             incident_personnes_impliquees=kobo.get('group_gt4dp59/Personnes_impliqu_es'),
-            date=date,
+            date=str(kobo.get('group_bd9mw82/Date')) if kobo.get('group_bd9mw82/Date') else None,
             objectif_atteint=(1 if kobo.get('group_dk3nu62/Objectifs_journaliers_atteints') is not None and kobo.get('group_dk3nu62/Objectifs_journaliers_atteints') == "oui" else 0)
         )
         db.add(rapport_recensement)
