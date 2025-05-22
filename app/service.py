@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -311,9 +312,15 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         # if existing_log:
         #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
 
+        heure_debut_str = kobo.get('group_bd9mw82/Heure_de_d_but')
+        heure_debut = datetime.strptime(heure_debut_str, '%H:%M') if heure_debut_str else None
+        
+        heure_fin_str = kobo.get('group_bd9mw82/Heure_de_fin')
+        heure_fin = datetime.strptime(heure_fin_str, '%H:%M') if heure_fin_str else None
+        
         rapport_recensement = RapportRecensement(
-            heure_debut=kobo.get('group_bd9mw82/Heure_de_d_but'),
-            heure_fin=kobo.get('group_bd9mw82/Heure_de_fin'),
+            heure_debut=heure_debut,
+            heure_fin=heure_fin,
             fk_agent=fk_agent,
             effectif_present=int(kobo.get('group_di3ui02/Effectif_pr_sent')) if kobo.get('group_di3ui02/Effectif_pr_sent') else None,
             effectif_absent=int(kobo.get('group_di3ui02/Effectif_absent')) if kobo.get('group_di3ui02/Effectif_absent') else None,
