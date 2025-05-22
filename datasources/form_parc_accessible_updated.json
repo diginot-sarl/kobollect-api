@@ -1,0 +1,120 @@
+{
+  "_id": 82,
+  "formhub/uuid": "1353aa12a9cd4d4aa81858ec410ff75c",
+  "parcelle_accessible_ou_non": "oui",
+  "adresse_de_la_parcelle/commune": "11",
+  "adresse_de_la_parcelle/quartier": "2465",
+  "adresse_de_la_parcelle/agent_recenseur": "140",
+  "adresse_de_la_parcelle/avenue": "1813",
+  "adresse_de_la_parcelle/rang": "4",
+  "adresse_de_la_parcelle/numero_parcellaire": "0",
+  "adresse_de_la_parcelle/longueur": "15.0",
+  "adresse_de_la_parcelle/largeur": "10.0",
+  "adresse_de_la_parcelle/calculation": "150",
+  "adresse_de_la_parcelle/unite_de_la_superficie": "1",
+  "adresse_de_la_parcelle/coordonne_geographique": "-4.365046666666667 15.25648 435.20000000000005 6.8;-4.36503 15.256525 421.1 10.2;-4.365028333333333 15.256528333333332 420.8 9.1;-4.365046666666667 15.25648 435.20000000000005 6.8",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/le_proprietaire_habite_t_il_dans_la_parcelle": "oui",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp": "1",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_2": "Mbanza",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/prenom_2": "Mister",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Lieu_de_naissance_001": "Kinshasa",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Date_de_naissance_001": "2025-05-15",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2": "0824165828",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/adresse_email_2": "Merveilkitatshi",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/genre_2": "masculin",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/etat_civil_5": "celibatiare",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/est_il_etranger_5": "oui",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5": "5",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/profession_5": "Designer",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_du_pere_5": "Rombaut",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_de_la_mere_5": "Daniella",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Nombre_d_enfant": "5",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5": "1",
+  "informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/niveau_d_etudes_5": "licence",
+  "informations_du_menage": [
+    {
+      "informations_du_menage/informations_du_bien/numero_bien": "01",
+      "informations_du_menage/informations_du_bien/usage": "1",
+      "informations_du_menage/informations_du_bien/nature": "3",
+      "informations_du_menage/informations_du_bien/superficie": "50.0",
+      "informations_du_menage/informations_du_bien/unite_de_la_superficie_1": "1",
+      "informations_du_menage/informations_du_bien/coordonnee_geographique": "-4.365056666666666 15.256516666666668 411.1 7.9;-4.36505 15.256515000000002 410.6 8.0;-4.364908333333333 15.256628333333333 399.3 61.0;-4.365056666666666 15.256516666666668 411.1 7.9",
+      "informations_du_menage/group_ex5mk47": [
+        {
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2": "bailleur",
+          "informations_du_menage/group_ex5mk47/Ce_m_nage_est_il_habit": "oui",
+          "informations_du_menage/group_ex5mk47/information_sur_les_personnes": [
+            {
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/nom_3": "Gyresse",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/prenom_3": "Henry",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/gr": "masculin",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/lieu_de_naissance_1": "Kinshasa",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/date_de_naissance_1": "2025-05-15",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/est_il_etranger": "oui",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/nationalite_3": "3",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/profession_2": "Develloper",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/type_de_piece_d_identite": "1",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/numero_piece_d_identite": "0000",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/nom_du_pere": "Hans",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/nom_de_la_mere": "Hylr",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/etat_civil": "celibatiare",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente": "3",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/n_telphone": "0924376890",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/nombre_d_enfants_001": "5",
+              "informations_du_menage/group_ex5mk47/information_sur_les_personnes/niveau_d_etudes_001": "master"
+            }
+          ]
+        },
+        {
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2": "bailleur",
+          "informations_du_menage/group_ex5mk47/Ce_m_nage_est_il_habit": "non"
+        }
+      ]
+    },
+    {
+      "informations_du_menage/informations_du_bien/numero_bien": "09",
+      "informations_du_menage/informations_du_bien/usage": "1",
+      "informations_du_menage/informations_du_bien/nature": "10",
+      "informations_du_menage/informations_du_bien/superficie": "50.0",
+      "informations_du_menage/informations_du_bien/unite_de_la_superficie_1": "1",
+      "informations_du_menage/informations_du_bien/coordonnee_geographique": "-4.364911666666667 15.256633333333331 398.5 7.6;-4.365046666666667 15.256501666666669 398.5 7.8;-4.365128333333333 15.256468333333332 383.90000000000003 7.4;-4.3651333333333335 15.256456666666669 391.20000000000005 7.2;-4.364911666666667 15.256633333333331 398.5 7.6",
+      "informations_du_menage/group_ex5mk47": [
+        {
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2": "occupant",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/type_de_personne": "1",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/nom": "Fine",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/post_nom": "July",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/prenom": "Julie",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/n_telephone": "0899877890",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/genre": "feminin",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/est_il_etranger_4": "oui",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/nationalite_4": "31",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/type_de_piece_d_identite_4": "2",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/numero_piece_d_identite_4": "000002229899",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/nom_du_pere_4": "Gyly",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/nom_de_la_mere_4": "Ghaly",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/etat_civil_4": "celibatiare",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/lien_de_parente_4": "2",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/lieu_de_naissance": "Kinshasa",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/date_de_naissance": "2025-05-15",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/profession": "Secretaire",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/nombre_d_enfants": "7",
+          "informations_du_menage/group_ex5mk47/informations_de_l_occupant/niveau_d_etudes": "licence",
+          "informations_du_menage/group_ex5mk47/Ce_m_nage_est_il_habit": "oui"
+        }
+      ]
+    }
+  ],
+  "__version__": "vvDWXLnZBWQ7JgVdFRvp25",
+  "meta/instanceID": "uuid:3fb60beb-4399-4583-8fa0-1e22fea9c0e7",
+  "_xform_id_string": "aDhg4mBz2tqANBb6eT9Sn4",
+  "_uuid": "3fb60beb-4399-4583-8fa0-1e22fea9c0e7",
+  "_attachments": [],
+  "_status": "submitted_via_web",
+  "_geolocation": [],
+  "_submission_time": "2025-05-15T17:02:56",
+  "_tags": [],
+  "_notes": [],
+  "_validation_status": {},
+  "_submitted_by": "sergeluele"
+}
