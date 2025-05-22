@@ -306,10 +306,10 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
             fk_agent = 1  # Default agent ID if not found
         
         # Check if the ID already exists in the logs table
-        existing_log = db.query(Logs).filter(Logs.id_kobo == id_kobo).first()
+        # existing_log = db.query(Logs).filter(Logs.id_kobo == id_kobo).first()
         
-        if existing_log:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+        # if existing_log:
+        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
 
         rapport_recensement = RapportRecensement(
             heure_debut=kobo.get('group_bd9mw82/Heure_de_d_but'),
