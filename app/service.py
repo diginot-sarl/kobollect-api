@@ -318,6 +318,9 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         heure_fin_str = kobo.get('group_bd9mw82/Heure_de_fin')
         heure_fin = datetime.strptime(heure_fin_str, '%H:%M') if heure_fin_str else None
         
+        date_str = kobo.get('group_bd9mw82/Date')
+        date = datetime.strptime(heure_fin_str, '%H:%M') if date_str else None
+        
         rapport_recensement = RapportRecensement(
             heure_debut=heure_debut,
             heure_fin=heure_fin,
@@ -333,7 +336,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
             incident_recommandations=kobo.get('group_gt4dp59/Suggestions_Recommandations'),
             incident_actions_correctives=kobo.get('group_gt4dp59/Actions_correctives_prises'),
             incident_personnes_impliquees=kobo.get('group_gt4dp59/Personnes_impliqu_es'),
-            date=kobo.get('group_bd9mw82/Date'),
+            date=date,
             objectif_atteint=(1 if kobo.get('group_dk3nu62/Objectifs_journaliers_atteints') is not None and kobo.get('group_dk3nu62/Objectifs_journaliers_atteints') == "oui" else 0)
         )
         db.add(rapport_recensement)
