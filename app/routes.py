@@ -30,7 +30,7 @@ from app.auth import (
     Token,
     User,
 )
-from app.service import process_kobo_data
+from app.service import process_recensement_form, process_rapport_superviseur_form
 from app.schemas import (
     UserCreate,
     TeamCreate,
@@ -168,7 +168,27 @@ async def process_kobo(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_kobo_data(payload, db)
+    return process_recensement_form(payload, db)
+
+
+# Process Kobo data from Kobotoolbox
+@router.post("/import-rapport-superviseur", tags=["Kobo"])
+async def process_rapport_superviseur(request: Request, db: Session = Depends(get_db)):
+    try:
+        # Parse the raw JSON body
+        payload = await request.json()
+        
+        # Validate that payload is a dictionary
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+                
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+    
+    # Process the payload using the service function
+    return process_rapport_superviseur_form(payload, db)
 
 
 @router.post("/token", response_model=Token, tags=["Authentication"])

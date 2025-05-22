@@ -342,7 +342,8 @@ class RapportRecensement(Base):
     observation = Column(String, nullable=True)  # varchar(max)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
     tache_effectue = Column(String(250), nullable=True)
-    nombre_bien_recense = Column(Integer, nullable=True)
+    nombre_parcelles_accessibles = Column(Integer, nullable=True)
+    nombre_parcelles_non_accessibles = Column(Integer, nullable=True) ### 1.
     incident_description = Column(String, nullable=True)  # varchar(max)
     incident_heure = Column(String(10), nullable=True)
     incident_recommandations = Column(String, nullable=True)  # varchar(max)

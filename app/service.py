@@ -2,18 +2,18 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 import logging
-from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage
+from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement
 
 logger = logging.getLogger(__name__)
 
-def process_kobo_data(payload: dict, db: Session):
+def process_recensement_form(payload: dict, db: Session):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
     logger.info(f"Données kobo : {kobo}")
 
     try:
-        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo ==kobo["_submitted_by"]).first()
+        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
         else:
@@ -284,6 +284,65 @@ def process_kobo_data(payload: dict, db: Session):
         logger.info(f"Données insérées pour l'entrée _id={record_id}")
         return {"status": "success", "message": f"Données insérées pour l'entrée _id={record_id}"}
 
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
+
+
+def process_rapport_superviseur_form(payload: dict, db: Session):
+    kobo: dict = payload
+    record_id = kobo.get("id", kobo.get("_id"))
+    
+    id_kobo = f"rapports_superviseurs_{record_id}"
+    
+    logger.info(f"Données kobo : {kobo}")
+
+    try:
+        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo == kobo["_submitted_by"]).first()
+        if existing_agent:
+            fk_agent = existing_agent.id
+        else:
+            fk_agent = 1  # Default agent ID if not found
+        
+        # Check if the ID already exists in the logs table
+        existing_log = db.query(Logs).filter(Logs.id_kobo == id_kobo).first()
+        
+        if existing_log:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+
+        rapport_recensement = RapportRecensement(
+            heure_debut=kobo.get('group_bd9mw82/Heure_de_d_but'),
+            heure_fin=kobo.get('group_bd9mw82/Heure_de_fin'),
+            fk_agent=fk_agent,
+            effectif_present=kobo.get('group_di3ui02/Effectif_pr_sent'),
+            effectif_absent=kobo.get('group_di3ui02/Effectif_absent'),
+            observation=kobo.get('group_di3ui02/Remarques_sur_l_quipe'),
+            tache_effectue=kobo.get(''),
+            nombre_parcelles_accessibles=kobo.get('group_dk3nu62/nombre_parcelles_accessibles'),
+            nombre_parcelles_non_accessibles=kobo.get('group_dk3nu62/nombre_parcelles_nonaccessible'),
+            incident_description=kobo.get('group_gt4dp59/Description_de_l_incident'),
+            incident_heure=kobo.get('group_gt4dp59/Heure_de_l_incident'),
+            incident_recommandations=kobo.get('group_gt4dp59/Suggestions_Recommandations'),
+            incident_actions_correctives=kobo.get('group_gt4dp59/Actions_correctives_prises'),
+            incident_personnes_impliquees=kobo.get('group_gt4dp59/Personnes_impliqu_es'),
+        )
+        db.add(rapport_recensement)
+        
+        # 8. Insert into Logs
+        log = Logs(
+            logs="Processed Kobo data",
+            id_kobo=id_kobo,
+            data_json=str(payload)
+        )
+        db.add(log)
+
+        # Commit the transaction
+        db.commit()
+        
+        logger.info(f"Données insérées pour l'entrée _id={record_id}")
+        return {"status": "success", "message": f"Données insérées pour l'entrée _id={record_id}"}
+        
     except Exception as e:
         db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
