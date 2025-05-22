@@ -295,8 +295,6 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
-    id_kobo = f"rapports_superviseurs_{record_id}"
-    
     logger.info(f"Données kobo : {kobo}")
 
     try:
@@ -306,11 +304,11 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         else:
             fk_agent = 1  # Default agent ID if not found
         
-        # Check if the ID already exists in the logs table
-        # existing_log = db.query(Logs).filter(Logs.id_kobo == id_kobo).first()
-        
-        # if existing_log:
-        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+        # Extract just the time part (HH:MM:SS) from the incident_heure
+        incident_heure = kobo.get('group_gt4dp59/Heure_de_l_incident')
+        if incident_heure:
+            incident_heure = incident_heure.split('T')[-1].split('.')[0]  # Get just the time part
+            incident_heure = incident_heure[:8]  # Truncate to HH:MM:SS format
         
         rapport_recensement = RapportRecensement(
             heure_debut=str(kobo.get('group_bd9mw82/Heure_de_d_but')) if kobo.get('group_bd9mw82/Heure_de_d_but') else None,
@@ -323,7 +321,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
             nombre_parcelles_accessibles=int(kobo.get('group_dk3nu62/nombre_parcelles_accessibles')) if kobo.get('group_dk3nu62/nombre_parcelles_accessibles') else None,
             nombre_parcelles_non_accessibles=(int(kobo.get('group_dk3nu62/nombre_parcelles_nonaccessible')) if kobo.get('group_dk3nu62/nombre_parcelles_nonaccessible') else None),
             incident_description=kobo.get('group_gt4dp59/Description_de_l_incident'),
-            incident_heure=kobo.get('group_gt4dp59/Heure_de_l_incident'),
+            incident_heure=incident_heure,  # Use the truncated time
             incident_recommandations=kobo.get('group_gt4dp59/Suggestions_Recommandations'),
             incident_actions_correctives=kobo.get('group_gt4dp59/Actions_correctives_prises'),
             incident_personnes_impliquees=kobo.get('group_gt4dp59/Personnes_impliqu_es'),
