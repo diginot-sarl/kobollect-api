@@ -8,7 +8,7 @@ class UserCreate(BaseModel):
     nom: str
     postnom: Optional[str] = None
     mail: Optional[str] = None
-    password: str
+    password: Optional[str] = None
     telephone: Optional[str] = None
     sexe: Optional[str] = None
     photo_url: Optional[str] = None

@@ -92,7 +92,7 @@ async def create_kobo_account(user_data: UserCreate):
 
     user_info = {
         "username": user_data.login,
-        "password": user_data.password,
+        "password": 123456,
         "email": user_data.mail,
         "first_name": user_data.prenom,
         "last_name": user_data.nom
@@ -490,7 +490,6 @@ async def create_new_user(user_data: UserCreate, background_tasks: BackgroundTas
             prenom=user_data.prenom,
             nom=user_data.nom,
             login=login,
-            password=123456,
             mail=user_data.mail,
         )
         background_tasks.add_task(create_kobo_account, new_kobo_user)
