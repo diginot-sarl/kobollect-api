@@ -81,6 +81,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+@router.post("/create-user-kobo", tags=["Kobo"])
 async def create_kobo_account(user_data: UserCreate):
     """
     Route de test pour créer un compte KoboToolbox via l'API
@@ -88,7 +89,7 @@ async def create_kobo_account(user_data: UserCreate):
     """
     KOBOTOOLBOX_URL = "http://kf.hidscollect.hologram.cd"
     KOBOTOOLBOX_ADMIN_USER = "super_admin"
-    KOBOTOOLBOX_ADMIN_PASSWORD = "xy9AhsnsRI7My2fIDYgX"
+    KOBOTOOLBOX_ADMIN_PASSWORD = 123456
 
     user_info = {
         "username": user_data.login,
@@ -490,10 +491,14 @@ async def create_new_user(user_data: UserCreate, background_tasks: BackgroundTas
             prenom=user_data.prenom,
             nom=user_data.nom,
             login=login,
+            password=user_data.password,
             mail=user_data.mail,
         )
+        
         background_tasks.add_task(create_kobo_account, new_kobo_user)
+        
         logger.info(f"User {login} created successfully")
+        
         return new_user
 
     except HTTPException:
