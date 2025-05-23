@@ -21,9 +21,9 @@ def process_recensement_form(payload: dict, db: Session):
             fk_agent = 1  # Default agent ID if not found
         
         # Check if the ID already exists in the logs table
-        existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
-        if existing_log:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+        # existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
+        # if existing_log:
+        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
 
         # Initialize variables
         fk_proprietaire = None
@@ -68,18 +68,29 @@ def process_recensement_form(payload: dict, db: Session):
                 nom_de_la_mere=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_de_la_mere_5"),
                 nombre_enfant=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Nombre_d_enfant")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Nombre_d_enfant") else None,
                 etat_civil=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/etat_civil_5"),
+                
                 fk_lien_parente=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5") else None,
+                
                 niveau_etude=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/niveau_d_etudes_5"),
                 
                 telephone=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/n_telephone_2"),
+                
                 adresse_mail=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/adresse_email_2"),
                 
                 denomination=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/denomination_2"),
+                
                 sigle=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/sigle_2"),
+                
                 numero_impot=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/numero_d_impot_2"),
+                
                 rccm=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/rccm_2"),
+                
                 id_nat=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/id_nat_2"),
+                
                 domaine_activite=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/domaine_d_activite_2"),
+                
+                etranger=(1 if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/est_il_etranger_5") is not None and kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/est_il_etranger_5") == "oui" else None),
+                
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
             )
@@ -124,71 +135,95 @@ def process_recensement_form(payload: dict, db: Session):
                     fk_usage_specifique=int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
                                          if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
                     fk_agent=fk_agent,
+                    numero_bien=menage.get("informations_du_menage/informations_du_bien/numero_bien")
                 )
                 db.add(bien)
                 db.flush()
                 fk_bien = bien.id
                 
-                # 4. Insert Locataire into Personne (if the occupant is a locataire)
-                if menage.get("informations_du_menage/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "locataire":
-                    
-                    responsable = Personne(
-                        nom=menage.get("informations_du_menage/informations_de_l_occupant/nom"),
-                        postnom=menage.get("informations_du_menage/informations_de_l_occupant/post_nom"),
-                        prenom=menage.get("informations_du_menage/informations_de_l_occupant/prenom"),
-                        sexe=menage.get("informations_du_menage/informations_de_l_occupant/genre"),
-                        fk_type_personne=int(menage.get("informations_du_menage/informations_de_l_occupant/type_de_personne")) if menage.get("informations_du_menage/informations_de_l_occupant/type_de_personne") else None,
+                for group_menage in menage.get("informations_du_menage/group_ex5mk47", []):
+                    group_menage: dict = group_menage
+                
+                    # 4. Insert Locataire into Personne (if the occupant is a locataire)
+                    if group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "locataire":
                         
-                        lieu_naissance=menage.get("informations_du_menage/informations_de_l_occupant/lieu_de_naissance"),
-                        date_naissance=menage.get("informations_du_menage/informations_de_l_occupant/date_de_naissance"),
-                        fk_province=int(menage.get("informations_du_menage/informations_de_l_occupant/province_4")) if menage.get("informations_du_menage/informations_de_l_occupant/province_4") else None,
-                        district=menage.get("informations_du_menage/informations_de_l_occupant/district_4"),
-                        territoire=menage.get("informations_du_menage/informations_de_l_occupant/territoire_4"),
-                        secteur=menage.get("informations_du_menage/informations_de_l_occupant/secteur_4"),
-                        village=menage.get("informations_du_menage/informations_de_l_occupant/village_4"),
-                        
-                        fk_nationalite=int(menage.get("informations_du_menage/informations_de_l_occupant/nationalite_4")) if menage.get("informations_du_menage/informations_de_l_occupant/nationalite_4") else None,
-                        profession=menage.get("informations_du_menage/informations_de_l_occupant/profession"),
-                        
-                        type_piece_identite=menage.get("informations_du_menage/informations_de_l_occupant/type_de_piece_d_identite_4"),
-                        numero_piece_identite=menage.get("informations_du_menage/informations_de_l_occupant/numero_piece_d_identite_4"),
-                        nom_du_pere=menage.get("informations_du_menage/informations_de_l_occupant/nom_du_pere_4"),
-                        nom_de_la_mere=menage.get("informations_du_menage/informations_de_l_occupant/nom_de_la_mere_4"),
-                        etat_civil=menage.get("informations_du_menage/informations_de_l_occupant/etat_civil_4"),
-                        fk_lien_parente=int(menage.get("informations_du_menage/informations_de_l_occupant/lien_de_parente_4")) if menage.get("informations_du_menage/informations_de_l_occupant/lien_de_parente_4") else None,
-                        
-                        telephone=menage.get("informations_du_menage/informations_de_l_occupant/n_telephone"),
-                        adresse_mail=menage.get("informations_du_menage/informations_de_l_occupant/adresse_email"),
-                        
-                        nombre_enfant=int(menage.get("informations_du_menage/informations_de_l_occupant/nombre_d_enfants")) if menage.get("informations_du_menage/informations_de_l_occupant/nombre_d_enfants") else None,
-                        niveau_etude=menage.get("informations_du_menage/informations_de_l_occupant/niveau_d_etudes"),
-                        
-                        denomination=menage.get("informations_du_menage/informations_de_l_occupant/denomination"),
-                        sigle=menage.get("informations_du_menage/informations_de_l_occupant/sigle"),
-                        numero_impot=menage.get("informations_du_menage/informations_de_l_occupant/numero_d_impot"),
-                        rccm=menage.get("informations_du_menage/informations_de_l_occupant/rccm"),
-                        id_nat=menage.get("informations_du_menage/informations_de_l_occupant/id_nat"),
-                        domaine_activite=menage.get("informations_du_menage/informations_de_l_occupant/domaine_d_activite"),
-                        fk_adresse=fk_adresse,
-                        fk_agent=fk_agent,
-                    )
-                    db.add(responsable)
-                    db.flush()
-                    fk_responsable = responsable.id
+                        responsable = Personne(
+                            nom=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nom"),
+                            
+                            postnom=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/post_nom"),
+                            
+                            prenom=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/prenom"),
+                            
+                            sexe=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/genre"),
+                            
+                            fk_type_personne=int(group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/type_de_personne")) if group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/type_de_personne") else None,
+                            
+                            lieu_naissance=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/lieu_de_naissance"),
+                            date_naissance=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/date_de_naissance"),
+                            fk_province=int(group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/province_4")) if group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/province_4") else None,
+                            
+                            district=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/district_4"),
+                            
+                            territoire=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/territoire_4"),
+                            
+                            secteur=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/secteur_4"),
+                            
+                            village=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/village_4"),
+                            
+                            fk_nationalite=int(group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nationalite_4")) if group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nationalite_4") else None,
+                            
+                            profession=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/profession"),
+                            
+                            type_piece_identite=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/type_de_piece_d_identite_4"),
+                            
+                            numero_piece_identite=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/numero_piece_d_identite_4"),
+                            
+                            nom_du_pere=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nom_du_pere_4"),
+                            
+                            nom_de_la_mere=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nom_de_la_mere_4"),
+                            
+                            etat_civil=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/etat_civil_4"),
+                            
+                            fk_lien_parente=int(group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/lien_de_parente_4")) if group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/lien_de_parente_4") else None,
+                            
+                            telephone=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/n_telephone"),
+                            
+                            adresse_mail=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/adresse_email"),
+                            
+                            nombre_enfant=int(group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nombre_d_enfants")) if group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nombre_d_enfants") else None,
+                            
+                            niveau_etude=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/niveau_d_etudes"),
+                            
+                            denomination=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/denomination"),
+                            
+                            sigle=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/sigle"),
+                            
+                            numero_impot=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/numero_d_impot"),
+                            
+                            rccm=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/rccm"),
+                            
+                            id_nat=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/id_nat"),
+                            
+                            domaine_activite=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/domaine_d_activite"),
+                            
+                            etranger=(1 if kobo.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/est_il_etranger_4") is not None and kobo.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/est_il_etranger_4") == "oui" else None),
+                            
+                            fk_adresse=fk_adresse,
+                            fk_agent=fk_agent,
+                        )
+                        db.add(responsable)
+                        db.flush()
+                        fk_responsable = responsable.id
 
-                    # 6. Insert into LocationBien (if the occupant is a locataire)
-                    location_bien = LocationBien(
-                        fk_personne=fk_responsable,
-                        fk_bien=fk_bien,
-                        fk_agent=fk_agent,
-                    )
-                    db.add(location_bien)
-                    db.flush()
-                    
-                elif menage.get("informations_du_menage/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") == "proprietaire":
-                    pass
-                    
-                for famille in kobo.get([]):
+                        # 6. Insert into LocationBien (if the occupant is a locataire)
+                        location_bien = LocationBien(
+                            fk_personne=fk_responsable,
+                            fk_bien=fk_bien,
+                            fk_agent=fk_agent,
+                        )
+                        db.add(location_bien)
+                        db.flush()
+                        
                     # 5. Insert into Personne (if the occupant is a locataire)
                     menage_bien = Menage(
                         fk_personne=fk_responsable,
@@ -199,40 +234,40 @@ def process_recensement_form(payload: dict, db: Session):
                     fk_menage = menage_bien.id
                     
                     # 7. Insert additional Personnes
-                    for personne in menage.get("informations_du_menage/information_sur_les_personnes", []):
-                        
+                    for personne in menage.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes", []):
                         personne: dict = personne
                         
                         if personne.get("informations_du_menage/information_sur_les_personnes/nom_3") and personne.get("informations_du_menage/information_sur_les_personnes/prenom_3"):
                             
                             # Insert into Personne
                             new_personne = Personne(
-                                nom=personne.get("informations_du_menage/information_sur_les_personnes/nom_3"),
-                                postnom=personne.get("informations_du_menage/information_sur_les_personnes/post_nom_3"),
-                                prenom=personne.get("informations_du_menage/information_sur_les_personnes/prenom_3"),
-                                sexe=personne.get("informations_du_menage/information_sur_les_personnes/gr"),
-                                lieu_naissance=personne.get("informations_du_menage/information_sur_les_personnes/lieu_de_naissance_1"),
-                                date_naissance=personne.get("informations_du_menage/information_sur_les_personnes/date_de_naissance_1"),
-                                fk_province=(int(personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine")) if personne.get("informations_du_menage/information_sur_les_personnes/province_d_origine") else None),
-                                district=personne.get("informations_du_menage/information_sur_les_personnes/district"),
-                                territoire=personne.get("informations_du_menage/information_sur_les_personnes/territoire"),
-                                secteur=personne.get("informations_du_menage/information_sur_les_personnes/secteur"),
-                                village=personne.get("informations_du_menage/information_sur_les_personnes/village"),
-                                profession=personne.get("informations_du_menage/information_sur_les_personnes/profession_2"),
-                                type_piece_identite=personne.get("informations_du_menage/information_sur_les_personnes/type_de_piece_d_identite"),
-                                numero_piece_identite=personne.get("informations_du_menage/information_sur_les_personnes/numero_piece_d_identite"),
-                                nom_du_pere=personne.get("informations_du_menage/information_sur_les_personnes/nom_du_pere"),
-                                nom_de_la_mere=personne.get("informations_du_menage/information_sur_les_personnes/nom_de_la_mere"),
-                                etat_civil=personne.get("informations_du_menage/information_sur_les_personnes/etat_civil"),
-                                fk_lien_parente=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
-                                telephone=personne.get("informations_du_menage/information_sur_les_personnes/n_telphone"),
-                                adresse_mail=personne.get("informations_du_menage/information_sur_les_personnes/adresse_email_3"),
-                                nombre_enfant=int(personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001")) if personne.get("informations_du_menage/information_sur_les_personnes/nombre_d_enfants_001") else None,
-                                niveau_etude=personne.get("informations_du_menage/information_sur_les_personnes/niveau_d_etudes_001"),
-                                fk_nationalite=int(personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3")) 
-                                                if personne.get("informations_du_menage/information_sur_les_personnes/nationalite_3") else None,
+                                nom=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nom_3"),
+                                postnom=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/post_nom_3"),
+                                prenom=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/prenom_3"),
+                                sexe=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/gr"),
+                                lieu_naissance=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lieu_de_naissance_1"),
+                                date_naissance=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/date_de_naissance_1"),
+                                fk_province=(int(personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/province_d_origine")) if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/province_d_origine") else None),
+                                district=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/district"),
+                                territoire=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/territoire"),
+                                secteur=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/secteur"),
+                                village=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/village"),
+                                profession=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/profession_2"),
+                                type_piece_identite=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/type_de_piece_d_identite"),
+                                numero_piece_identite=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/numero_piece_d_identite"),
+                                nom_du_pere=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nom_du_pere"),
+                                nom_de_la_mere=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nom_de_la_mere"),
+                                etat_civil=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/etat_civil"),
+                                fk_lien_parente=int(personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente") else None,
+                                telephone=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/n_telphone"),
+                                adresse_mail=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/adresse_email_3"),
+                                nombre_enfant=int(personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nombre_d_enfants_001")) if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nombre_d_enfants_001") else None,
+                                niveau_etude=personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/niveau_d_etudes_001"),
+                                fk_nationalite=int(personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nationalite_3")) 
+                                                if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nationalite_3") else None,
                                 fk_adresse=fk_adresse,
                                 fk_agent=fk_agent,
+                                etranger=(1 if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/est_il_etranger") is not None and personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/est_il_etranger") == "oui" else None)
                             )
                             db.add(new_personne)
                             db.flush()
@@ -242,7 +277,7 @@ def process_recensement_form(payload: dict, db: Session):
                             membre_menage = MembreMenage(
                                 fk_menage=fk_menage,
                                 fk_personne=fk_personne,
-                                fk_filiation=int(personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/information_sur_les_personnes/lien_de_parente") else None,
+                                fk_filiation=int(personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente") else None,
                             )
                             db.add(membre_menage)
 

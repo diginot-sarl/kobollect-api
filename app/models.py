@@ -33,6 +33,7 @@ class Avenue(Base):
 class Bien(Base):
     __tablename__ = "bien"
     id = Column(Integer, primary_key=True, index=True)
+    numero_bien = Column(String(10), nullable=True)  # varchar(max)
     coordinates = Column(String, nullable=True)  # varchar(max)
     coord_projected = Column(String, nullable=True)  # varchar(max)
     coord_corrige = Column(String, nullable=True)  # varchar(max)
@@ -214,6 +215,7 @@ class Personne(Base):
     niveau_etude = Column(String(50), nullable=True)
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
+    etranger = Column(Integer, nullable=True, default=0)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: province
