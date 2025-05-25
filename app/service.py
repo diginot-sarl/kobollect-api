@@ -89,7 +89,7 @@ def process_recensement_form(payload: dict, db: Session):
                 
                 denomination=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/denomination_2"),
                 
-                fk_forme_juridique=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2") else None,
+                fk_forme_juridique=(int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2") else None),
                 
                 sigle=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/sigle_2"),
                 
@@ -136,17 +136,27 @@ def process_recensement_form(payload: dict, db: Session):
                 # 4. Insert into Bien
                 bien = Bien(                    
                     coordinates=menage.get("informations_du_menage/informations_du_bien/coordonnee_geographique"),
+                    
                     superficie=menage.get("informations_du_menage/informations_du_bien/superficie"),
+                    
                     fk_parcelle=fk_parcelle,
-                    fk_nature_bien=int(menage.get("informations_du_menage/informations_du_bien/nature")) 
-                                    if menage.get("informations_du_menage/informations_du_bien/nature") else None,
-                    fk_unite=int(menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
-                              if menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None,
-                    fk_usage=int(menage.get("informations_du_menage/informations_du_bien/usage")) 
-                              if menage.get("informations_du_menage/informations_du_bien/usage") else None,
-                    fk_usage_specifique=int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
-                                         if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
+                    
+                    fk_nature_bien=(int(menage.get("informations_du_menage/informations_du_bien/nature")) 
+                                    if menage.get("informations_du_menage/informations_du_bien/nature") else None),
+                    
+                    fk_unite=(int(menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
+                              if menage.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None),
+                    
+                    fk_usage=(int(menage.get("informations_du_menage/informations_du_bien/usage")) 
+                              if menage.get("informations_du_menage/informations_du_bien/usage") else None),
+                    
+                    fk_usage_specifique=(int(menage.get("informations_du_menage/informations_du_bien/usage_specifique")) 
+                                         if menage.get("informations_du_menage/informations_du_bien/usage_specifique") else None),
+                    
+                    nombre_etage=(int(kobo.get("informations_du_menage/informations_du_bien/nombre_d_etages")) if kobo.get("informations_du_menage/informations_du_bien/nombre_d_etages") else None),
+                    
                     fk_agent=fk_agent,
+                    
                     numero_bien=menage.get("informations_du_menage/informations_du_bien/numero_bien")
                 )
                 db.add(bien)
@@ -442,13 +452,14 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
             sexe=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/genre_2"),
             
             lieu_naissance=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Lieu_de_naissance_001"),
+            
             date_naissance=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Date_de_naissance_001"),
             
-            fk_type_personne=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp") else None,
+            fk_type_personne=(int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/tp") else None),
             
-            fk_nationalite=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5") else None,
+            fk_nationalite=(int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nationalite_5") else None),
             
-            fk_province=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5") else None,
+            fk_province=(int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/province_d_origine_5") else None),
             
             district=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/district_5"),
             
@@ -468,11 +479,11 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
             
             nom_de_la_mere=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_de_la_mere_5"),
             
-            nombre_enfant=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Nombre_d_enfant")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Nombre_d_enfant") else None,
+            nombre_enfant=(int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Nombre_d_enfant")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/Nombre_d_enfant") else None),
             
             etat_civil=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/etat_civil_5"),
             
-            fk_lien_parente=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5") else None,
+            fk_lien_parente=(int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/lien_de_parente_5") else None),
             
             niveau_etude=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/niveau_d_etudes_5"),
             
@@ -482,7 +493,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
             
             denomination=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/denomination_2"),
             
-            fk_forme_juridique=int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2") else None,
+            fk_forme_juridique=(int(kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2")) if kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/forme_juridique_2") else None),
             
             sigle=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/sigle_2"),
             
@@ -684,7 +695,7 @@ def process_immeuble_form(payload: dict, db: Session):
                 
                 fk_rang=int(kobo.get("informations_immeuble/adresse_de_la_parcelle/rang")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/rang") else None,
                 
-                nombre_etage=int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None,
+                nombre_etage=(int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None),
                 
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
@@ -706,7 +717,7 @@ def process_immeuble_form(payload: dict, db: Session):
                 
                 fk_agent=fk_agent,
                 
-                nombre_etage=int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None,
+                nombre_etage=(int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None),
             )
             db.add(immeuble)
             db.flush()
@@ -774,7 +785,7 @@ def process_immeuble_form(payload: dict, db: Session):
                     
                     rccm=appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/rccm_20"),
                     
-                    fk_forme_juridique=int(appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/forme_juridique_20")) if appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/forme_juridique_20") else None,
+                    fk_forme_juridique=(int(appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/forme_juridique_20")) if appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/forme_juridique_20") else None),
                     
                     id_nat=appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/id_nat_20"),
                     
