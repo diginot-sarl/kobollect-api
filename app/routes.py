@@ -1398,6 +1398,7 @@ def get_populations(
         parcelle_ids = [row[0] for row in db.execute(text(parcelle_query), params).fetchall()]
 
         if not parcelle_ids:
+            logger.info("Not parcelle_ids")
             return {
                 "data": [],
                 "total": 0,
