@@ -19,8 +19,7 @@ from fastapi import (
     status,
     Request,
     UploadFile,
-    BackgroundTasks
-)
+    BackgroundTasks)
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -30,7 +29,11 @@ from app.auth import (
     Token,
     User,
 )
-from app.service import process_recensement_form, process_rapport_superviseur_form, process_parcelles_non_baties_form
+from app.service import (
+    process_recensement_form,
+    process_rapport_superviseur_form,
+    process_parcelles_non_baties_form,
+    process_immeuble_form)
 from app.schemas import (
     UserCreate,
     TeamCreate,
@@ -49,8 +52,7 @@ from app.schemas import (
     DroitCreate,
     DroitUpdate,
     AssignDroitsToEntity,
-    UpdatePassword
-)
+    UpdatePassword)
 from app.database import get_db
 from app.models import (
     Bien,
@@ -69,8 +71,7 @@ from app.models import (
     Menage,
     MembreMenage,
     Adresse,
-    RapportRecensement
-)
+    RapportRecensement)
 from app.auth import get_password_hash
 from sqlalchemy import and_
 from pydantic import Field, validator
@@ -210,6 +211,26 @@ async def process_parcelles_non_baties(request: Request, db: Session = Depends(g
     
     # Process the payload using the service function
     return process_parcelles_non_baties_form(payload, db)
+
+
+# Process Kobo data from Kobotoolbox
+@router.post("/import-immeuble", tags=["Kobo"])
+async def process_immeuble(request: Request, db: Session = Depends(get_db)):
+    try:
+        # Parse the raw JSON body
+        payload = await request.json()
+        
+        # Validate that payload is a dictionary
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+                
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+    
+    # Process the payload using the service function
+    return process_immeuble_form(payload, db)
 
 
 @router.post("/token", response_model=Token, tags=["Authentication"])

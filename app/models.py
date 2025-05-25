@@ -18,6 +18,7 @@ class Adresse(Base):
     fk_avenue = Column(Integer, ForeignKey("avenue.id"), nullable=True)
     numero = Column(NVARCHAR(50), nullable=True)
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: avenue
 class Avenue(Base):
@@ -44,7 +45,10 @@ class Bien(Base):
     fk_usage_specifique = Column(Integer, ForeignKey("usage_specifique.id"), nullable=True)
     superficie = Column(Float(precision=18), nullable=True)
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+    fk_bien_parent = Column(Integer, ForeignKey("bien.id"), nullable=True)
+    fk_proprietaire = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     nombre_etage = Column(Integer, nullable=True)
+    numero_etage = Column(Integer, nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: commune
@@ -176,6 +180,7 @@ class Parcelle(Base):
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
     statut = Column(Integer, nullable=True, default=1)
+    nombre_etage = Column(Integer, nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: personne
@@ -215,6 +220,7 @@ class Personne(Base):
     niveau_etude = Column(String(50), nullable=True)
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     fk_adresse = Column(Integer, ForeignKey("adresse.id"), nullable=True)
+    fk_forme_juridique = Column(Integer, ForeignKey("Forme_juridique.id"), nullable=True)
     etranger = Column(Integer, nullable=True, default=0)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
