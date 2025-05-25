@@ -518,6 +518,7 @@ async def create_new_user(user_data: UserCreate, background_tasks: BackgroundTas
             sexe=user_data.sexe,
             telephone=user_data.telephone,
             login=login,
+            id_kobo=login,
             password=hashed_password,
             mail=user_data.mail,
             photo_url=user_data.photo_url,
