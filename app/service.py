@@ -14,7 +14,7 @@ def process_recensement_form(payload: dict, db: Session):
     logger.info(f"Données kobo : {kobo}")
 
     try:
-        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo == kobo["_submitted_by"]).first()
+        existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
         else:
@@ -358,7 +358,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
     logger.info(f"Données kobo : {kobo}")
 
     try:
-        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo == kobo["_submitted_by"]).first()
+        existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
         else:
@@ -417,7 +417,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
     logger.info(f"Données kobo : {kobo}")
 
     try:
-        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo == kobo["_submitted_by"]).first()
+        existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
         else:
@@ -575,7 +575,7 @@ def process_immeuble_form(payload: dict, db: Session):
     logger.info(f"Données kobo : {kobo}")
 
     try:
-        existing_agent = db.query(Utilisateur).filter(Utilisateur.id_kobo == kobo["_submitted_by"]).first()
+        existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
         else:
