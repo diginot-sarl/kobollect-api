@@ -286,13 +286,13 @@ def get_all_users(
             params["name"] = f"%{name}%"
         if date_start:
             try:
-                filters.append("CAST(u.date_create AS DATE) >= :date_start")
+                filters.append("CAST(u.date_create AS DATE) >= CAST(:date_start AS DATE)")
                 params["date_start"] = date_start
             except Exception:
                 pass
         if date_end:
             try:
-                filters.append("CAST(u.date_create AS DATE) <= :date_end")
+                filters.append("CAST(u.date_create AS DATE) <= CAST(:date_end AS DATE)")
                 params["date_end"] = date_end
             except Exception:
                 pass
@@ -637,10 +637,10 @@ async def get_geojson(
         filters = []
         params = {}
         if date_start:
-            filters.append("CAST(p.date_create AS DATE) >= :date_start" if type == "parcelle" else "CAST(b.date_create AS DATE) >= :date_start")
+            filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
             params["date_start"] = date_start
         if date_end:
-            filters.append("CAST(p.date_create AS DATE) <= :date_end" if type == "parcelle" else "CAST(b.date_create AS DATE) <= :date_end")
+            filters.append("CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)")
             params["date_end"] = date_end
         if province:
             filters.append("pr.id = :province")
@@ -924,10 +924,10 @@ async def get_parcelles(
         filters = []
         params = {}
         if date_start:
-            filters.append("CAST(p.date_create AS DATE) >= :date_start")
+            filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
             params["date_start"] = date_start
         if date_end:
-            filters.append("CAST(p.date_create AS DATE) <= :date_end")
+            filters.append("CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)")
             params["date_end"] = date_end
         if province:
             filters.append("pr.id = :province")
@@ -1386,7 +1386,8 @@ def get_populations(
             params["keyword"] = f"%{keyword}%"
 
         # Add date filters
-        filters.append("p.date_create BETWEEN :date_start AND :date_end")
+        filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
+        filters.append("CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)")
         params["date_start"] = date_start
         params["date_end"] = date_end
 
@@ -1768,10 +1769,10 @@ def get_dashboard_stats(
             filters.append("nb.id = :nature")
             params["nature"] = nature
         if date_start:
-            filters.append("CAST(p.date_create AS DATE) >= :date_start")
+            filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
             params["date_start"] = date_start
         if date_end:
-            filters.append("CAST(p.date_create AS DATE) <= :date_end")
+            filters.append("CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)")
             params["date_end"] = date_end
 
         # Build final queries
@@ -2217,10 +2218,10 @@ def get_teams(
         filters = []
         params = {}
         if date_start:
-            filters.append("CAST(e.date_create AS DATE) >= :date_start")
+            filters.append("CAST(e.date_create AS DATE) >= CAST(:date_start AS DATE)")
             params["date_start"] = date_start
         if date_end:
-            filters.append("CAST(e.date_create AS DATE) <= :date_end")
+            filters.append("CAST(e.date_create AS DATE) <= CAST(:date_end AS DATE)")
             params["date_end"] = date_end
         if fk_quartier:
             filters.append("e.fk_quartier = :fk_quartier")
@@ -3220,7 +3221,8 @@ def get_menages(
             LEFT JOIN rang r ON par.fk_rang = r.id
             LEFT JOIN filiation_membre fm ON p.fk_lien_parente = fm.id
             WHERE p.fk_type_personne = 1
-            AND p.date_create BETWEEN :date_start AND :date_end
+            AND CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)
+            AND CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)
         """
 
         # Add filters
