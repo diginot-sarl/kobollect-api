@@ -253,6 +253,7 @@ def process_recensement_form(payload: dict, db: Session):
                     menage_bien = Menage(
                         fk_personne=fk_responsable,
                         fk_bien=fk_bien,
+                        fk_agent=fk_agent,
                     )
                     db.add(menage_bien)
                     db.flush()
@@ -303,6 +304,7 @@ def process_recensement_form(payload: dict, db: Session):
                                 fk_menage=fk_menage,
                                 fk_personne=fk_personne,
                                 fk_filiation=int(personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente") else None,
+                                fk_agent=fk_agent,
                             )
                             db.add(membre_menage)
 
@@ -334,7 +336,7 @@ def process_recensement_form(payload: dict, db: Session):
     
         # 8. Insert into Logs
         log = Logs(
-            logs="Processed Kobo data",
+            logs="process_recensement_form",
             id_kobo=record_id,
             data_json=str(payload)
         )
@@ -392,7 +394,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         
         # 8. Insert into Logs
         log = Logs(
-            logs="Processed Kobo data",
+            logs="process_rapport_superviseur_form",
             id_kobo=record_id,
             data_json=str(payload)
         )
@@ -551,7 +553,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
     
         # 8. Insert into Logs
         log = Logs(
-            logs="Processed Kobo data",
+            logs="process_parcelles_non_baties_form",
             id_kobo=record_id,
             data_json=str(payload)
         )
@@ -916,6 +918,7 @@ def process_immeuble_form(payload: dict, db: Session):
                     menage_bien = Menage(
                         fk_personne=fk_proprietaire_appart,
                         fk_bien=fk_bien,
+                        fk_agent=fk_agent,
                     )
                     db.add(menage_bien)
                     db.flush()
@@ -990,6 +993,7 @@ def process_immeuble_form(payload: dict, db: Session):
                                 fk_menage=fk_menage,
                                 fk_personne=fk_personne,
                                 fk_filiation=int(personne.get("informations_immeuble/group_no51r46/group_if9yu58/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_immeuble/group_no51r46/group_if9yu58/information_sur_les_personnes/lien_de_parente") else None,
+                                fk_agent=fk_agent,
                             )
                             db.add(membre_menage)
                 
@@ -1018,7 +1022,7 @@ def process_immeuble_form(payload: dict, db: Session):
     
         # 8. Insert into Logs
         log = Logs(
-            logs="Processed Kobo data",
+            logs="process_immeuble_form",
             id_kobo=record_id,
             data_json=str(payload)
         )
