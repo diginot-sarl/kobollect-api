@@ -121,6 +121,7 @@ class Logs(Base):
     logs = Column(String, nullable=True)  # varchar(max)
     id_kobo = Column(Integer, nullable=True)
     data_json = Column(String, nullable=True)  # varchar(max)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
 
 # Table: membre_menage
 class MembreMenage(Base):

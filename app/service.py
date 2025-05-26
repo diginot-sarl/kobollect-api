@@ -336,7 +336,8 @@ def process_recensement_form(payload: dict, db: Session):
         log = Logs(
             logs="process_recensement_form",
             id_kobo=record_id,
-            data_json=str(payload)
+            data_json=str(payload),
+            fk_agent=fk_agent,
         )
         db.add(log)
 
@@ -394,7 +395,8 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         log = Logs(
             logs="process_rapport_superviseur_form",
             id_kobo=record_id,
-            data_json=str(payload)
+            data_json=str(payload),
+            fk_agent=fk_agent,
         )
         db.add(log)
 
@@ -553,7 +555,8 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
         log = Logs(
             logs="process_parcelles_non_baties_form",
             id_kobo=record_id,
-            data_json=str(payload)
+            data_json=str(payload),
+            fk_agent=fk_agent,
         )
         db.add(log)
 
@@ -1020,7 +1023,8 @@ def process_immeuble_form(payload: dict, db: Session):
         log = Logs(
             logs="process_immeuble_form",
             id_kobo=record_id,
-            data_json=str(payload)
+            data_json=str(payload),
+            fk_agent=fk_agent,
         )
         db.add(log)
 
