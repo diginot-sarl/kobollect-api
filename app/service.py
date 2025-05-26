@@ -834,7 +834,7 @@ def process_immeuble_form(payload: dict, db: Session):
                     if menage.get("informations_immeuble/group_no51r46/group_if9yu58/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") != "bailleur":
                     
                         responsable = Personne(
-                            nom=menage.get("informations_immeuble/group_no51r46/group_vv8fm85/nom"),##
+                            nom=menage.get("informations_immeuble/group_no51r46/group_if9yu58/informations_de_l_occupant/nom"),##
                     
                             postnom=menage.get("informations_immeuble/group_no51r46/group_if9yu58/informations_de_l_occupant/post_nom"),##
                             

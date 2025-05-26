@@ -1262,7 +1262,8 @@ def get_age_pyramid(
             FROM personne p
             WHERE p.date_naissance IS NOT NULL 
             AND p.date_naissance <= GETDATE()
-            AND p.date_create BETWEEN :date_start AND :date_end
+            AND CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)
+            AND CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)
             AND (
                 -- Owners of parcelles
                 p.id IN (
