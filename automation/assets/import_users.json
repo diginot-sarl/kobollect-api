@@ -1,0 +1,1962 @@
+[
+  {
+    "id": 3,
+    "username": "manasseekie",
+    "is_superuser": false,
+    "date_joined": "2025-05-07T09:36:13Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 4,
+    "username": "bahizireisrael",
+    "is_superuser": false,
+    "date_joined": "2025-05-07T10:29:06Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 5,
+    "username": "emilebola",
+    "is_superuser": false,
+    "date_joined": "2025-05-12T12:25:46Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 6,
+    "username": "aarondizele",
+    "is_superuser": false,
+    "date_joined": "2025-05-12T12:36:34Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 7,
+    "username": "patrickekembe",
+    "is_superuser": false,
+    "date_joined": "2025-05-13T14:16:02Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 8,
+    "username": "nickkazika",
+    "is_superuser": true,
+    "date_joined": "2025-05-13T14:19:24Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "nick.kazika@hologram.cd",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 9,
+    "username": "jacquesmumpe",
+    "is_superuser": true,
+    "date_joined": "2025-05-13T14:20:34Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "jacques.mumpe@hologram.cd",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 10,
+    "username": "aarondizele1",
+    "is_superuser": false,
+    "date_joined": "2025-05-13T22:03:35Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "aaron.dizele@hologram.cd",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 11,
+    "username": "rosembala",
+    "is_superuser": false,
+    "date_joined": "2025-05-13T22:56:45Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 12,
+    "username": "bienvenueyokadi",
+    "is_superuser": false,
+    "date_joined": "2025-05-13T23:02:07Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 13,
+    "username": "eliseeeloka",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T08:39:06Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 14,
+    "username": "adoumuselu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T08:42:40Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 15,
+    "username": "alphonsembala",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:08:44Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 16,
+    "username": "soozimulekwa",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:09:00Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 17,
+    "username": "freddynkoyi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:10:35Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 18,
+    "username": "pamphileesebi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:11:22Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 19,
+    "username": "dechademassa",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:12:22Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 20,
+    "username": "donatienkadima",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:12:24Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 21,
+    "username": "platiniekofo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:13:05Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 22,
+    "username": "deborahashambi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:14:13Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 23,
+    "username": "anaclekayembe",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:14:46Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 24,
+    "username": "albertmayulu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:14:48Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 25,
+    "username": "delphinmawete",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:15:42Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 26,
+    "username": "martineeladi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:16:02Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 27,
+    "username": "pierrentumba",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:16:33Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 28,
+    "username": "celioseno",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:18:00Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 29,
+    "username": "coorqmbwala",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:18:47Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 30,
+    "username": "kalambayimulanga",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:18:55Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 31,
+    "username": "crqmassa",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:19:42Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 32,
+    "username": "carinemawete",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:19:56Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 33,
+    "username": "hortencekapia",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:20:26Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 34,
+    "username": "bankokomasamba",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:20:37Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 35,
+    "username": "charlyilumu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:21:13Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 36,
+    "username": "stanelmatondo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:21:19Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 37,
+    "username": "rodricksefu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:21:57Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 38,
+    "username": "marieluzayamo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:22:05Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 39,
+    "username": "mbungukalimasi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:22:41Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 40,
+    "username": "obedbotuna",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:22:45Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 41,
+    "username": "bibianemwenda",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:23:58Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 42,
+    "username": "raymondkandadikani",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:25:23Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 43,
+    "username": "fabienmbala",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:25:31Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 44,
+    "username": "alidormpiana",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:26:11Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 45,
+    "username": "jean-baptistebuassa",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:26:23Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 46,
+    "username": "antoinnettetoko",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:26:59Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 47,
+    "username": "brigittendaya",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:27:37Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 48,
+    "username": "jossartbamikina",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:27:46Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 49,
+    "username": "kwatmalumba",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:28:39Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 50,
+    "username": "tshbwabwambuyi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:31:21Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 51,
+    "username": "pamphilekanda",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:33:37Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 52,
+    "username": "heritierkassongolua",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:33:47Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 53,
+    "username": "christinemugaruka",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:34:03Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 54,
+    "username": "paulbosembe",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:34:26Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 55,
+    "username": "jeanbomango",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:35:04Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 56,
+    "username": "sergeluele",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:35:05Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 57,
+    "username": "mariamukiongo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:35:49Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 58,
+    "username": "selestinbiayi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:35:50Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 59,
+    "username": "solangemukumbi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:36:18Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 60,
+    "username": "bibichenyabyamo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:36:30Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 61,
+    "username": "christellenyabyamo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:37:22Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 62,
+    "username": "jacqueskazoa",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:38:06Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 63,
+    "username": "urbainkabeya",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:38:28Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 64,
+    "username": "phinemonduini",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:38:45Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 65,
+    "username": "bibicheilunga",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:38:52Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 66,
+    "username": "patricemangwata",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:39:13Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 67,
+    "username": "rogermonduini",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:39:45Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 68,
+    "username": "godelivekabayi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:39:47Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 69,
+    "username": "ritchunamononga",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:40:27Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 70,
+    "username": "delphinkankolo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:40:33Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 71,
+    "username": "nadineyokadi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:41:04Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 72,
+    "username": "dorcaskabeya",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:41:12Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 73,
+    "username": "lepetilesse",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:41:44Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 74,
+    "username": "cracemawowso",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:41:46Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 75,
+    "username": "willymavungu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:42:29Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 76,
+    "username": "rosebilonda",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:43:13Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 77,
+    "username": "boulotmpambi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:43:15Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 78,
+    "username": "laurianeilunga",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:43:36Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 79,
+    "username": "renekimbuku",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:43:56Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 80,
+    "username": "mariemenga",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:44:05Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 81,
+    "username": "gilbertdiku",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:44:34Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 82,
+    "username": "freddypumbulu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:44:57Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 83,
+    "username": "esthermatoto",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:45:06Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 84,
+    "username": "rachelashel",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:45:20Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 85,
+    "username": "laurentmahenzi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:46:01Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 86,
+    "username": "christophelosele",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:46:02Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 87,
+    "username": "fistonmawana",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:46:39Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 88,
+    "username": "sylvainmpiana",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:46:52Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 89,
+    "username": "fannykimbangu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:47:05Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 90,
+    "username": "graciapika",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:47:19Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 91,
+    "username": "aimeetayeye",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:47:39Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 92,
+    "username": "patricetshiteya",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:47:54Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 93,
+    "username": "laurenemaduka",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:48:26Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 94,
+    "username": "davidkoy",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:48:32Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 95,
+    "username": "florykambale",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:48:49Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 96,
+    "username": "gervaisdibwe",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:49:15Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 97,
+    "username": "josephmbokolo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:49:35Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 98,
+    "username": "gracemawana",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:50:01Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 99,
+    "username": "tshibandamusawu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:50:29Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 100,
+    "username": "ghislaintshiyombo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:50:54Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 101,
+    "username": "jean-pierrendongo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:53:17Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 102,
+    "username": "athanasaseke",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:53:57Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 103,
+    "username": "guelordmayulu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:54:58Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 104,
+    "username": "evaristemulonso",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:55:33Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 105,
+    "username": "jonaskomaloni",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:55:47Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 106,
+    "username": "pierrebosombela",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:56:10Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 107,
+    "username": "claudendombe",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:56:51Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 108,
+    "username": "genevievenkuyi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:56:56Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 109,
+    "username": "armelmakiona",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:57:36Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 110,
+    "username": "chifatamfuka",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:58:13Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 111,
+    "username": "alainolons",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:58:22Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 112,
+    "username": "vanellyebengo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:58:56Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 113,
+    "username": "agnessieta",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T10:59:13Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 114,
+    "username": "albertinealenfuname",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:00:38Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 115,
+    "username": "ghanaluse",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:01:30Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 116,
+    "username": "cesarkonga",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:01:57Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 117,
+    "username": "freddybulankay",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:02:19Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 118,
+    "username": "josephbompondja",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:02:43Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 119,
+    "username": "jacquesmulumba",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:02:51Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 120,
+    "username": "ketshiamohonene",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:03:48Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 121,
+    "username": "amosbokulutu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:04:08Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 122,
+    "username": "joelntumba",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:05:24Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 123,
+    "username": "deborahmiafuna",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:07:10Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 124,
+    "username": "bernardbosange",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:07:57Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 125,
+    "username": "degaullekutwendikoko",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:10:22Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 126,
+    "username": "casmiretshikungulu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:11:07Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 127,
+    "username": "victorinemputu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:12:12Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 128,
+    "username": "joseengiayi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:12:58Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 129,
+    "username": "gabingalamulume",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:13:38Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 130,
+    "username": "stermwehu",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:15:01Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 131,
+    "username": "oscardnsale",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:15:35Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 132,
+    "username": "georginemakiese",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:16:24Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 133,
+    "username": "marieayoyo",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:16:55Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 134,
+    "username": "clementmabudi",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:17:37Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 135,
+    "username": "andrenkanga",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:18:14Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 136,
+    "username": "jeanmangituka",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:19:01Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 137,
+    "username": "bertrandkoko",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T11:19:38Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 138,
+    "username": "thethenzenze",
+    "is_superuser": false,
+    "date_joined": "2025-05-14T16:29:14Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 139,
+    "username": "sostenekembe",
+    "is_superuser": false,
+    "date_joined": "2025-05-15T15:45:05Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "merveilkitatshima@gmail.com",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 140,
+    "username": "merveillekitatshima",
+    "is_superuser": false,
+    "date_joined": "2025-05-23T09:31:26Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "merveille.kitatshima@hologram.cd",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 141,
+    "username": "rombautasome",
+    "is_superuser": false,
+    "date_joined": "2025-05-23T12:42:26Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  },
+  {
+    "id": 142,
+    "username": "kabongobilumbu",
+    "is_superuser": false,
+    "date_joined": "2025-05-26T10:09:47Z",
+    "last_login": null,
+    "is_active": true,
+    "email": "",
+    "asset_count": 0,
+    "metadata": {
+      "name": "",
+      "organization": ""
+    }
+  }
+]
