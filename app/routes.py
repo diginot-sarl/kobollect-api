@@ -9,7 +9,7 @@ from typing import Annotated, Optional, List
 from sqlalchemy import Date
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql import text, func, cast, or_  # Add Date and or_ here
+from sqlalchemy.sql import text, func, cast, and_, or_  # Add Date and or_ here
 from fastapi import (
     APIRouter,
     Depends,
@@ -73,13 +73,43 @@ from app.models import (
     Adresse,
     RapportRecensement)
 from app.auth import get_password_hash
-from sqlalchemy import and_
-from pydantic import Field, validator
 
 router = APIRouter()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Helper function to format personne (used in get_parcelle_details)
+def format_personne(row):
+    return {
+        "id": row.id,
+        "nom": row.nom,
+        "postnom": row.postnom,
+        "prenom": row.prenom,
+        "denomination": row.denomination,
+        "sigle": row.sigle,
+    }
+    
+# Helper function to parse coordinates
+def parse_coordinates(coord_str):
+    # If coord_str is already an array, return it directly
+    if isinstance(coord_str, list):
+        return coord_str
+    # If coord_str is None or empty, return None
+    if not coord_str:
+        return None
+    points = []
+    for part in coord_str.split(';'):
+        vals = part.strip().split()
+        if len(vals) >= 2:
+            try:
+                lat = float(vals[0])
+                lng = float(vals[1])
+                points.append([lat, lng])
+            except Exception:
+                continue
+    return points if points else None
 
 
 @router.post("/create-user-kobo", tags=["Kobo"])
@@ -119,43 +149,9 @@ async def create_kobo_account(user_data: UserCreate):
     except requests.exceptions.RequestException as e:
         return logger.error(f"Erreur de requête {str(e)}")
 
-
-# Helper function to format personne (used in get_parcelle_details)
-def format_personne(row):
-    return {
-        "id": row.id,
-        "nom": row.nom,
-        "postnom": row.postnom,
-        "prenom": row.prenom,
-        "denomination": row.denomination,
-        "sigle": row.sigle,
-    }
-    
-
-# Helper function to parse coordinates
-def parse_coordinates(coord_str):
-    # If coord_str is already an array, return it directly
-    if isinstance(coord_str, list):
-        return coord_str
-    # If coord_str is None or empty, return None
-    if not coord_str:
-        return None
-    points = []
-    for part in coord_str.split(';'):
-        vals = part.strip().split()
-        if len(vals) >= 2:
-            try:
-                lat = float(vals[0])
-                lng = float(vals[1])
-                points.append([lat, lng])
-            except Exception:
-                continue
-    return points if points else None
-
-
 # Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
-async def process_kobo(request: Request, db: Session = Depends(get_db)):
+async def process_kobo(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -170,7 +166,7 @@ async def process_kobo(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_recensement_form(payload, db)
+    return process_recensement_form(payload, db, background_tasks)
 
 
 # Process Kobo data from Kobotoolbox
@@ -195,7 +191,7 @@ async def process_rapport_superviseur(request: Request, db: Session = Depends(ge
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-parcelle-non-batie", tags=["Kobo"])
-async def process_parcelles_non_baties(request: Request, db: Session = Depends(get_db)):
+async def process_parcelles_non_baties(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -210,12 +206,12 @@ async def process_parcelles_non_baties(request: Request, db: Session = Depends(g
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_parcelles_non_baties_form(payload, db)
+    return process_parcelles_non_baties_form(payload, db, background_tasks)
 
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-immeuble", tags=["Kobo"])
-async def process_immeuble(request: Request, db: Session = Depends(get_db)):
+async def process_immeuble(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -230,7 +226,7 @@ async def process_immeuble(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_immeuble_form(payload, db)
+    return process_immeuble_form(payload, db, background_tasks)
 
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
