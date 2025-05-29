@@ -39,8 +39,8 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
 
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=int(kobo["adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
-                numero=kobo["adresse_de_la_parcelle/numero_parcellaire"],
+                fk_avenue=int(kobo.get("adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
+                numero=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
                 fk_agent=fk_agent,
             )
             db.add(adresse)
@@ -319,8 +319,8 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
         else:
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=int(kobo["Parcelle_non_accessible/avenue_1"]),  # Assuming this is an ID
-                numero=kobo["Parcelle_non_accessible/numero_parcellaire_1"],
+                fk_avenue=int(kobo.get("Parcelle_non_accessible/avenue_1")),  # Assuming this is an ID
+                numero=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
                 fk_agent=fk_agent,
             )
             db.add(adresse)
@@ -447,8 +447,8 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
 
         # 1. Insert into Adresse
         adresse = Adresse(
-            fk_avenue=int(kobo["adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
-            numero=kobo["adresse_de_la_parcelle/numero_parcellaire"],
+            fk_avenue=int(kobo.get("adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
+            numero=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
             fk_agent=fk_agent,
         )
         db.add(adresse)
@@ -619,8 +619,8 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
 
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=int(kobo["informations_immeuble/adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
-                numero=kobo["informations_immeuble/adresse_de_la_parcelle/numero_parcellaire"],
+                fk_avenue=int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
+                numero=kobo.get("informations_immeuble/adresse_de_la_parcelle/numero_parcellaire"),
                 fk_agent=fk_agent,
             )
             db.add(adresse)
@@ -1025,8 +1025,8 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
         else:
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=int(kobo["Parcelle_non_accessible/avenue_1"]),  # Assuming this is an ID
-                numero=kobo["Parcelle_non_accessible/numero_parcellaire_1"],
+                fk_avenue=int(kobo.get("Parcelle_non_accessible/avenue_1")),  # Assuming this is an ID
+                numero=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
                 fk_agent=fk_agent,
             )
             db.add(adresse)
