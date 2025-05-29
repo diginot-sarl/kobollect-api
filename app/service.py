@@ -1,13 +1,13 @@
 # app/service.py
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 import logging
 from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement
-from datetime import datetime
+from app.utils import generate_nif
 
 logger = logging.getLogger(__name__)
 
-def process_recensement_form(payload: dict, db: Session):
+def process_recensement_form(payload: dict, db: Session, background_tasks: BackgroundTasks):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
@@ -39,8 +39,8 @@ def process_recensement_form(payload: dict, db: Session):
 
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=(int(kobo.get("adresse_de_la_parcelle/avenue")) if kobo.get("adresse_de_la_parcelle/avenue") else None),  # Assuming this is an ID
-                numero=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
+                fk_avenue=int(kobo["adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
+                numero=kobo["adresse_de_la_parcelle/numero_parcellaire"],
                 fk_agent=fk_agent,
             )
             db.add(adresse)
@@ -49,7 +49,12 @@ def process_recensement_form(payload: dict, db: Session):
 
             # 2. Insert Propriétaire into Personne
             
+            nif = generate_nif()
+            
             proprietaire = Personne(
+                
+                nif=nif,
+                
                 nom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_2"),
                 
                 postnom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/post_nom_2"),
@@ -169,7 +174,12 @@ def process_recensement_form(payload: dict, db: Session):
                     # 4. Insert Locataire into Personne (if the occupant is a locataire)
                     if group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") != "bailleur":
                         
+                        nif = generate_nif()
+                        
                         responsable = Personne(
+                            
+                            nif=nif,
+                            
                             nom=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/nom"),##
                             
                             postnom=group_menage.get("informations_du_menage/group_ex5mk47/informations_de_l_occupant/post_nom"),##
@@ -309,8 +319,8 @@ def process_recensement_form(payload: dict, db: Session):
         else:
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=(int(kobo.get("Parcelle_non_accessible/avenue_1")) if kobo.get("Parcelle_non_accessible/avenue_1") else None),  # Assuming this is an ID
-                numero=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
+                fk_avenue=int(kobo["Parcelle_non_accessible/avenue_1"]),  # Assuming this is an ID
+                numero=kobo["Parcelle_non_accessible/numero_parcellaire_1"],
                 fk_agent=fk_agent,
             )
             db.add(adresse)
@@ -412,7 +422,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
 
 
-def process_parcelles_non_baties_form(payload: dict, db: Session):
+def process_parcelles_non_baties_form(payload: dict, db: Session, background_tasks: BackgroundTasks):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
@@ -426,16 +436,19 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
             fk_agent = 1  # Default agent ID if not found
 
         # Initialize variables
+        nif = generate_nif()
+        
         coordonnee_geographique = None
         superficie_parcelle_egale_bien = False
+        
         if kobo.get("adresse_de_la_parcelle/La_maison_occupe_t_elle_toute_") == "oui":
             superficie_parcelle_egale_bien = True
             coordonnee_geographique = kobo.get("informations_du_menage/coordonnee_geographique")
 
         # 1. Insert into Adresse
         adresse = Adresse(
-            fk_avenue=(int(kobo.get("adresse_de_la_parcelle/avenue")) if kobo.get("adresse_de_la_parcelle/avenue") else None),  # Assuming this is an ID
-            numero=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
+            fk_avenue=int(kobo["adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
+            numero=kobo["adresse_de_la_parcelle/numero_parcellaire"],
             fk_agent=fk_agent,
         )
         db.add(adresse)
@@ -445,6 +458,9 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
         # 2. Insert Propriétaire into Personne
         
         proprietaire = Personne(
+            
+            nif=nif,
+            
             nom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_2"),
             
             postnom=kobo.get("informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/post_nom_2"),
@@ -571,7 +587,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
 
 
-def process_immeuble_form(payload: dict, db: Session):
+def process_immeuble_form(payload: dict, db: Session, background_tasks: BackgroundTasks):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
@@ -602,9 +618,9 @@ def process_immeuble_form(payload: dict, db: Session):
         if kobo.get("parcelle_accessible_ou_non") == "oui":
 
             # 1. Insert into Adresse
-            adresse = Adresse(                
-                fk_avenue=(int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue") else None),  # Assuming this is an ID
-                numero=kobo.get("informations_immeuble/adresse_de_la_parcelle/numero_parcellaire"),
+            adresse = Adresse(
+                fk_avenue=int(kobo["informations_immeuble/adresse_de_la_parcelle/avenue"]),  # Assuming this is an ID
+                numero=kobo["informations_immeuble/adresse_de_la_parcelle/numero_parcellaire"],
                 fk_agent=fk_agent,
             )
             db.add(adresse)
@@ -613,7 +629,12 @@ def process_immeuble_form(payload: dict, db: Session):
             
             if kobo.get("informations_immeuble/Il_y_a_t_il_un_propri_taire_un") == "oui":
                 
+                nif = generate_nif()
+                
                 proprietaire = Personne(
+                    
+                    nif=nif,
+                    
                     nom=kobo.get("informations_immeuble/informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/nom_2"),
                     
                     postnom=kobo.get("informations_immeuble/informations_du_proprietaire_de_la_parcelle_si_le_proprietaire_habite_t_il_dans_la_parcelle_non/post_nom_2"),
@@ -731,7 +752,12 @@ def process_immeuble_form(payload: dict, db: Session):
                 
                 fk_proprietaire_appart = None
                 
+                nif = generate_nif()
+                
                 proprietaire_appart = Personne(
+                    
+                    nif=nif,
+                    
                     nom=appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/nom_20"),
                     
                     postnom=appartment.get("informations_immeuble/group_no51r46/group_vv8fm85/post_nom_20"),
@@ -999,8 +1025,8 @@ def process_immeuble_form(payload: dict, db: Session):
         else:
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=int(kobo.get("Parcelle_non_accessible/avenue_1")) if kobo.get("Parcelle_non_accessible/avenue_1") else None,  # Assuming this is an ID
-                numero=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),                
+                fk_avenue=int(kobo["Parcelle_non_accessible/avenue_1"]),  # Assuming this is an ID
+                numero=kobo["Parcelle_non_accessible/numero_parcellaire_1"],
                 fk_agent=fk_agent,
             )
             db.add(adresse)
