@@ -37,4 +37,8 @@ def base36_encode(number):
         base36 = alphabet[i] + base36
     return base36 or '0'
 
-    
+def safe_int(value):
+    try:
+        return int(value)
+    except ValueError:
+        return None
