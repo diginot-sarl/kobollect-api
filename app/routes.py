@@ -878,12 +878,13 @@ async def get_parcelles(
     accessibilite: int = Query(None, description="Filter by accessibility: 1 for accessible, 2 for inaccessible"),  # Changed to int
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    fk_agent: int = Query(None)
 ):
     try:
         # Base query with all necessary joins
         base_query = """
             SELECT 
-                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, p.date_create, p.statut,
+                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, p.date_create, p.statut,p.fk_agent,
                 per.id AS proprietaire_id, per.nom AS proprietaire_nom, per.postnom AS proprietaire_postnom,
                 per.prenom AS proprietaire_prenom, per.denomination AS proprietaire_denomination,
                 per.sigle AS proprietaire_sigle, per.fk_type_personne AS proprietaire_type_id,
@@ -919,6 +920,9 @@ async def get_parcelles(
         # Add filters
         filters = []
         params = {}
+        if fk_agent:
+            filters.append("p.fk_agent = :fk_agent")
+            params["fk_agent"] = fk_agent
         if date_start:
             filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
             params["date_start"] = date_start
@@ -1005,7 +1009,8 @@ async def get_parcelles(
                         "type_personne": row.type_personne_intitule if row.type_personne_id else None,
                     },
                     "rang": row.rang_intitule,
-                    "biens": []
+                    "biens": [],
+                    "fk_agent": row.fk_agent
                 }
             
             if row.bien_id:
@@ -3328,6 +3333,8 @@ def get_menages(
 @router.get("/stats/agent-activity/{fk_agent}", tags=["Stats"])
 def get_agent_activity_stats(
     fk_agent: int,
+    date_debut: str = Query(..., description="Start date in format YYYY-MM-DD"),
+    date_fin: str = Query(..., description="End date in format YYYY-MM-DD"),
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -3340,55 +3347,68 @@ def get_agent_activity_stats(
     agent = db.query(
         Utilisateur.nom,
         Utilisateur.postnom,
-        Utilisateur.prenom,
-        Equipe.fk_quartier
-    ).join(AgentEquipe, AgentEquipe.fk_agent == Utilisateur.id)\
-     .join(Equipe, Equipe.id == AgentEquipe.fk_equipe)\
-     .filter(Utilisateur.id == fk_agent)\
+        Utilisateur.prenom
+    ).filter(Utilisateur.id == fk_agent)\
      .first()
 
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    # Get location information
-    location = db.query(
-        Commune.intitule.label("commune"),
-        Quartier.intitule.label("quartier")
-    ).join(Quartier, Quartier.fk_commune == Commune.id)\
-     .filter(Quartier.id == agent.fk_quartier)\
-     .first()
+    # Try to get quartier information
+    agent_equipe = db.query(Equipe.fk_quartier)\
+        .join(AgentEquipe, AgentEquipe.fk_equipe == Equipe.id)\
+        .filter(AgentEquipe.fk_agent == fk_agent)\
+        .first()
+    
+    quartier = agent_equipe.fk_quartier if agent_equipe else None
+    agent = {**agent._asdict(), "fk_quartier": quartier}
 
-    # Get activity counts
+    # Get location information
+    location = None
+    if agent["fk_quartier"]:
+        location = db.query(
+            Commune.intitule.label("commune"),
+            Quartier.intitule.label("quartier")
+        ).join(Quartier, Quartier.fk_commune == Commune.id)\
+         .filter(Quartier.id == agent["fk_quartier"])\
+         .first()
+
+    # Get activity counts with date range filter using cast
     parcelle_accessible_count = db.query(func.count(Parcelle.id)).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 1
+        Parcelle.statut == 1,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     parcelle_inaccessible_count = db.query(func.count(Parcelle.id)).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 2
+        Parcelle.statut == 2,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     bien_count = db.query(func.count(Bien.id)).filter(
-        Bien.fk_agent == fk_agent
+        Bien.fk_agent == fk_agent,
+        cast(Bien.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     menage_count = db.query(func.count(Menage.id)).filter(
-        Menage.fk_agent == fk_agent
+        Menage.fk_agent == fk_agent,
+        cast(Menage.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     membre_menage_count = db.query(func.count(MembreMenage.id)).filter(
-        MembreMenage.fk_agent == fk_agent
+        MembreMenage.fk_agent == fk_agent,
+        cast(MembreMenage.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
-    # Get stats for Linear Scale Chart
-    # Separate queries for each type of record
+    # Get stats for Linear Scale Chart with date range filter using cast
     parcelle_accessible_stats = db.query(
         cast(Parcelle.date_create, Date).label("date"),
         func.count(Parcelle.id).label("parcelle_accessible_count")
     ).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 1
+        Parcelle.statut == 1,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).group_by(cast(Parcelle.date_create, Date))\
      .all()
 
@@ -3397,29 +3417,36 @@ def get_agent_activity_stats(
         func.count(Parcelle.id).label("parcelle_inaccessible_count")
     ).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 2
+        Parcelle.statut == 2,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).group_by(cast(Parcelle.date_create, Date))\
      .all()
 
     bien_stats = db.query(
         cast(Bien.date_create, Date).label("date"),
         func.count(Bien.id).label("bien_count")
-    ).filter(Bien.fk_agent == fk_agent)\
-     .group_by(cast(Bien.date_create, Date))\
+    ).filter(
+        Bien.fk_agent == fk_agent,
+        cast(Bien.date_create, Date).between(date_debut, date_fin)
+    ).group_by(cast(Bien.date_create, Date))\
      .all()
 
     menage_stats = db.query(
         cast(Menage.date_create, Date).label("date"),
         func.count(Menage.id).label("menage_count")
-    ).filter(Menage.fk_agent == fk_agent)\
-     .group_by(cast(Menage.date_create, Date))\
+    ).filter(
+        Menage.fk_agent == fk_agent,
+        cast(Menage.date_create, Date).between(date_debut, date_fin)
+    ).group_by(cast(Menage.date_create, Date))\
      .all()
 
     membre_menage_stats = db.query(
         cast(MembreMenage.date_create, Date).label("date"),
         func.count(MembreMenage.id).label("membre_menage_count")
-    ).filter(MembreMenage.fk_agent == fk_agent)\
-     .group_by(cast(MembreMenage.date_create, Date))\
+    ).filter(
+        MembreMenage.fk_agent == fk_agent,
+        cast(MembreMenage.date_create, Date).between(date_debut, date_fin)
+    ).group_by(cast(MembreMenage.date_create, Date))\
      .all()
 
     # Combine all stats into a single dictionary
@@ -3461,9 +3488,9 @@ def get_agent_activity_stats(
 
     return {
         "agent": {
-            "nom": agent.nom,
-            "postnom": agent.postnom,
-            "prenom": agent.prenom,
+            "nom": agent.get("nom"),
+            "postnom": agent.get("postnom"),
+            "prenom": agent.get("prenom"),
             "commune": location.commune if location else None,
             "quartier": location.quartier if location else None
         },
