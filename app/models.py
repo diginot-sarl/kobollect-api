@@ -1,7 +1,8 @@
 # app/models.py
 from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, BigInteger, Date, DateTime
-from sqlalchemy.sql.sqltypes import NVARCHAR, NCHAR
 from sqlalchemy.sql import text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql.sqltypes import NVARCHAR, NCHAR
 from app.database import Base
 
 # Table: access
@@ -19,6 +20,10 @@ class Adresse(Base):
     numero = Column(NVARCHAR(50), nullable=True)
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    
+    avenue = relationship("Avenue", back_populates="adresses")
+    parcelles = relationship("Parcelle", back_populates="adresse")  # Added parcelles relationship
+
 
 # Table: avenue
 class Avenue(Base):
@@ -29,6 +34,9 @@ class Avenue(Base):
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(String, nullable=True)  # varchar(max)
     fk_quartier = Column(Integer, ForeignKey("quartier.id"), nullable=True)
+    
+    quartier = relationship("Quartier", back_populates="avenues")
+    adresses = relationship("Adresse", back_populates="avenue")
 
 # Table: bien
 class Bien(Base):
@@ -50,6 +58,10 @@ class Bien(Base):
     nombre_etage = Column(Integer, nullable=True)
     numero_etage = Column(Integer, nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    
+    parcelle = relationship("Parcelle", back_populates="biens")
+    proprietaire = relationship("Personne", back_populates="biens")
+    menages = relationship("Menage", back_populates="bien")
 
 # Table: commune
 class Commune(Base):
@@ -61,6 +73,8 @@ class Commune(Base):
     shape = Column(Text, nullable=True)
     agent_Creat = Column(Integer, nullable=True)
     fk_ville = Column(Integer, ForeignKey("ville.id"), nullable=True)
+    
+    quartiers = relationship("Quartier", back_populates="commune")
 
 # Table: droit
 class Droit(Base):
@@ -132,6 +146,10 @@ class MembreMenage(Base):
     fk_filiation = Column(BigInteger, ForeignKey("filiation_membre.id"), nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+    
+    menage = relationship("Menage", back_populates="membres")
+    personne = relationship("Personne", back_populates="membre_menages")
+    filiation = relationship("FiliationMembre")
 
 # Table: menage
 class Menage(Base):
@@ -141,6 +159,10 @@ class Menage(Base):
     fk_bien = Column(Integer, ForeignKey("bien.id"), nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+    
+    personne = relationship("Personne", back_populates="menages")
+    bien = relationship("Bien", back_populates="menages")
+    membres = relationship("MembreMenage", back_populates="menage")
 
 # Table: module
 class Module(Base):
@@ -183,6 +205,11 @@ class Parcelle(Base):
     statut = Column(Integer, nullable=True, default=1)
     nombre_etage = Column(Integer, nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    
+    adresse = relationship("Adresse", back_populates="parcelles")
+    rang = relationship("Rang")
+    proprietaire = relationship("Personne", back_populates="parcelles")
+    biens = relationship("Bien", back_populates="parcelle")
 
 # Table: personne
 class Personne(Base):
@@ -224,6 +251,13 @@ class Personne(Base):
     fk_forme_juridique = Column(Integer, ForeignKey("Forme_juridique.id"), nullable=True)
     etranger = Column(Integer, nullable=True, default=0)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    
+    nationalite = relationship("Nationalite")
+    lien_parente = relationship("FiliationMembre")
+    menages = relationship("Menage", back_populates="personne")
+    membre_menages = relationship("MembreMenage", back_populates="personne")
+    parcelles = relationship("Parcelle", back_populates="proprietaire")
+    biens = relationship("Bien", back_populates="proprietaire")
 
 # Table: province
 class Province(Base):
@@ -243,6 +277,9 @@ class Quartier(Base):
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(String, nullable=True)  # varchar(max)
     fk_commune = Column(Integer, ForeignKey("commune.id"), nullable=True)
+    
+    commune = relationship("Commune", back_populates="quartiers")
+    avenues = relationship("Avenue", back_populates="quartier")
 
 # Table: rang
 class Rang(Base):

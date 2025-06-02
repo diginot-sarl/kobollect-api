@@ -9,7 +9,7 @@ from typing import Annotated, Optional, List
 from sqlalchemy import Date
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql import text, func, cast, or_  # Add Date and or_ here
+from sqlalchemy.sql import text, func, cast, and_, or_  # Add Date and or_ here
 from fastapi import (
     APIRouter,
     Depends,
@@ -73,13 +73,43 @@ from app.models import (
     Adresse,
     RapportRecensement)
 from app.auth import get_password_hash
-from sqlalchemy import and_
-from pydantic import Field, validator
 
 router = APIRouter()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Helper function to format personne (used in get_parcelle_details)
+def format_personne(row):
+    return {
+        "id": row.id,
+        "nom": row.nom,
+        "postnom": row.postnom,
+        "prenom": row.prenom,
+        "denomination": row.denomination,
+        "sigle": row.sigle,
+    }
+    
+# Helper function to parse coordinates
+def parse_coordinates(coord_str):
+    # If coord_str is already an array, return it directly
+    if isinstance(coord_str, list):
+        return coord_str
+    # If coord_str is None or empty, return None
+    if not coord_str:
+        return None
+    points = []
+    for part in coord_str.split(';'):
+        vals = part.strip().split()
+        if len(vals) >= 2:
+            try:
+                lat = float(vals[0])
+                lng = float(vals[1])
+                points.append([lat, lng])
+            except Exception:
+                continue
+    return points if points else None
 
 
 @router.post("/create-user-kobo", tags=["Kobo"])
@@ -119,43 +149,9 @@ async def create_kobo_account(user_data: UserCreate):
     except requests.exceptions.RequestException as e:
         return logger.error(f"Erreur de requête {str(e)}")
 
-
-# Helper function to format personne (used in get_parcelle_details)
-def format_personne(row):
-    return {
-        "id": row.id,
-        "nom": row.nom,
-        "postnom": row.postnom,
-        "prenom": row.prenom,
-        "denomination": row.denomination,
-        "sigle": row.sigle,
-    }
-    
-
-# Helper function to parse coordinates
-def parse_coordinates(coord_str):
-    # If coord_str is already an array, return it directly
-    if isinstance(coord_str, list):
-        return coord_str
-    # If coord_str is None or empty, return None
-    if not coord_str:
-        return None
-    points = []
-    for part in coord_str.split(';'):
-        vals = part.strip().split()
-        if len(vals) >= 2:
-            try:
-                lat = float(vals[0])
-                lng = float(vals[1])
-                points.append([lat, lng])
-            except Exception:
-                continue
-    return points if points else None
-
-
 # Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
-async def process_kobo(request: Request, db: Session = Depends(get_db)):
+async def process_kobo(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -170,7 +166,7 @@ async def process_kobo(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_recensement_form(payload, db)
+    return process_recensement_form(payload, db, background_tasks)
 
 
 # Process Kobo data from Kobotoolbox
@@ -195,7 +191,7 @@ async def process_rapport_superviseur(request: Request, db: Session = Depends(ge
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-parcelle-non-batie", tags=["Kobo"])
-async def process_parcelles_non_baties(request: Request, db: Session = Depends(get_db)):
+async def process_parcelles_non_baties(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -210,12 +206,12 @@ async def process_parcelles_non_baties(request: Request, db: Session = Depends(g
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_parcelles_non_baties_form(payload, db)
+    return process_parcelles_non_baties_form(payload, db, background_tasks)
 
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-immeuble", tags=["Kobo"])
-async def process_immeuble(request: Request, db: Session = Depends(get_db)):
+async def process_immeuble(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -230,7 +226,7 @@ async def process_immeuble(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_immeuble_form(payload, db)
+    return process_immeuble_form(payload, db, background_tasks)
 
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
@@ -882,12 +878,13 @@ async def get_parcelles(
     accessibilite: int = Query(None, description="Filter by accessibility: 1 for accessible, 2 for inaccessible"),  # Changed to int
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    fk_agent: int = Query(None)
 ):
     try:
         # Base query with all necessary joins
         base_query = """
             SELECT 
-                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, p.date_create, p.statut,
+                p.id, p.numero_parcellaire, p.superficie_calculee, p.coordonnee_geographique, p.date_create, p.statut,p.fk_agent,
                 per.id AS proprietaire_id, per.nom AS proprietaire_nom, per.postnom AS proprietaire_postnom,
                 per.prenom AS proprietaire_prenom, per.denomination AS proprietaire_denomination,
                 per.sigle AS proprietaire_sigle, per.fk_type_personne AS proprietaire_type_id,
@@ -923,6 +920,9 @@ async def get_parcelles(
         # Add filters
         filters = []
         params = {}
+        if fk_agent:
+            filters.append("p.fk_agent = :fk_agent")
+            params["fk_agent"] = fk_agent
         if date_start:
             filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
             params["date_start"] = date_start
@@ -1009,7 +1009,8 @@ async def get_parcelles(
                         "type_personne": row.type_personne_intitule if row.type_personne_id else None,
                     },
                     "rang": row.rang_intitule,
-                    "biens": []
+                    "biens": [],
+                    "fk_agent": row.fk_agent
                 }
             
             if row.bien_id:
@@ -3199,7 +3200,7 @@ def get_menages(
     db: Session = Depends(get_db),
 ):
     try:
-        # Base query to get menage information
+        # Base query to get menage information with SQL Server pagination
         menage_query = """
             SELECT 
                 m.id AS menage_id,
@@ -3230,7 +3231,9 @@ def get_menages(
         filters = []
         params = {
             "date_start": date_start,
-            "date_end": date_end
+            "date_end": date_end,
+            "offset": (page - 1) * page_size,
+            "page_size": page_size
         }
         if commune:
             filters.append("c.id = :commune")
@@ -3248,13 +3251,35 @@ def get_menages(
         if filters:
             menage_query += " AND " + " AND ".join(filters)
 
-        # Get menage data
+        # Add SQL Server-compatible pagination
+        menage_query += " ORDER BY m.id OFFSET :offset ROWS FETCH NEXT :page_size ROWS ONLY"
+
+        # Get total count for pagination
+        count_query = """
+            SELECT COUNT(*) 
+            FROM menage m
+            JOIN personne p ON m.fk_personne = p.id
+            LEFT JOIN bien b ON m.fk_bien = b.id
+            LEFT JOIN parcelle par ON b.fk_parcelle = par.id
+            LEFT JOIN adresse a ON par.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON par.fk_rang = r.id
+            WHERE p.fk_type_personne = 1
+            AND CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)
+            AND CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)
+        """
+        if filters:
+            count_query += " AND " + " AND ".join(filters)
+
+        # Execute queries
+        total = db.execute(text(count_query), params).scalar()
         menage_results = db.execute(text(menage_query), params).fetchall()
 
         # Get member data for each menage
         menage_data = []
         for menage in menage_results:
-            # Get members
             member_query = """
                 SELECT 
                     p.id AS member_id,
@@ -3312,14 +3337,8 @@ def get_menages(
                 }
             })
 
-        # Pagination
-        total = len(menage_data)
-        start = (page - 1) * page_size
-        end = start + page_size
-        paginated_data = menage_data[start:end]
-
         return {
-            "data": paginated_data,
+            "data": menage_data,
             "total": total,
             "page": page,
             "page_size": page_size,
@@ -3332,6 +3351,8 @@ def get_menages(
 @router.get("/stats/agent-activity/{fk_agent}", tags=["Stats"])
 def get_agent_activity_stats(
     fk_agent: int,
+    date_debut: str = Query(..., description="Start date in format YYYY-MM-DD"),
+    date_fin: str = Query(..., description="End date in format YYYY-MM-DD"),
     current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -3344,55 +3365,68 @@ def get_agent_activity_stats(
     agent = db.query(
         Utilisateur.nom,
         Utilisateur.postnom,
-        Utilisateur.prenom,
-        Equipe.fk_quartier
-    ).join(AgentEquipe, AgentEquipe.fk_agent == Utilisateur.id)\
-     .join(Equipe, Equipe.id == AgentEquipe.fk_equipe)\
-     .filter(Utilisateur.id == fk_agent)\
+        Utilisateur.prenom
+    ).filter(Utilisateur.id == fk_agent)\
      .first()
 
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    # Get location information
-    location = db.query(
-        Commune.intitule.label("commune"),
-        Quartier.intitule.label("quartier")
-    ).join(Quartier, Quartier.fk_commune == Commune.id)\
-     .filter(Quartier.id == agent.fk_quartier)\
-     .first()
+    # Try to get quartier information
+    agent_equipe = db.query(Equipe.fk_quartier)\
+        .join(AgentEquipe, AgentEquipe.fk_equipe == Equipe.id)\
+        .filter(AgentEquipe.fk_agent == fk_agent)\
+        .first()
+    
+    quartier = agent_equipe.fk_quartier if agent_equipe else None
+    agent = {**agent._asdict(), "fk_quartier": quartier}
 
-    # Get activity counts
+    # Get location information
+    location = None
+    if agent["fk_quartier"]:
+        location = db.query(
+            Commune.intitule.label("commune"),
+            Quartier.intitule.label("quartier")
+        ).join(Quartier, Quartier.fk_commune == Commune.id)\
+         .filter(Quartier.id == agent["fk_quartier"])\
+         .first()
+
+    # Get activity counts with date range filter using cast
     parcelle_accessible_count = db.query(func.count(Parcelle.id)).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 1
+        Parcelle.statut == 1,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     parcelle_inaccessible_count = db.query(func.count(Parcelle.id)).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 2
+        Parcelle.statut == 2,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     bien_count = db.query(func.count(Bien.id)).filter(
-        Bien.fk_agent == fk_agent
+        Bien.fk_agent == fk_agent,
+        cast(Bien.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     menage_count = db.query(func.count(Menage.id)).filter(
-        Menage.fk_agent == fk_agent
+        Menage.fk_agent == fk_agent,
+        cast(Menage.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
     membre_menage_count = db.query(func.count(MembreMenage.id)).filter(
-        MembreMenage.fk_agent == fk_agent
+        MembreMenage.fk_agent == fk_agent,
+        cast(MembreMenage.date_create, Date).between(date_debut, date_fin)
     ).scalar() or 0
 
-    # Get stats for Linear Scale Chart
-    # Separate queries for each type of record
+    # Get stats for Linear Scale Chart with date range filter using cast
     parcelle_accessible_stats = db.query(
         cast(Parcelle.date_create, Date).label("date"),
         func.count(Parcelle.id).label("parcelle_accessible_count")
     ).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 1
+        Parcelle.statut == 1,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).group_by(cast(Parcelle.date_create, Date))\
      .all()
 
@@ -3401,29 +3435,36 @@ def get_agent_activity_stats(
         func.count(Parcelle.id).label("parcelle_inaccessible_count")
     ).filter(
         Parcelle.fk_agent == fk_agent,
-        Parcelle.statut == 2
+        Parcelle.statut == 2,
+        cast(Parcelle.date_create, Date).between(date_debut, date_fin)
     ).group_by(cast(Parcelle.date_create, Date))\
      .all()
 
     bien_stats = db.query(
         cast(Bien.date_create, Date).label("date"),
         func.count(Bien.id).label("bien_count")
-    ).filter(Bien.fk_agent == fk_agent)\
-     .group_by(cast(Bien.date_create, Date))\
+    ).filter(
+        Bien.fk_agent == fk_agent,
+        cast(Bien.date_create, Date).between(date_debut, date_fin)
+    ).group_by(cast(Bien.date_create, Date))\
      .all()
 
     menage_stats = db.query(
         cast(Menage.date_create, Date).label("date"),
         func.count(Menage.id).label("menage_count")
-    ).filter(Menage.fk_agent == fk_agent)\
-     .group_by(cast(Menage.date_create, Date))\
+    ).filter(
+        Menage.fk_agent == fk_agent,
+        cast(Menage.date_create, Date).between(date_debut, date_fin)
+    ).group_by(cast(Menage.date_create, Date))\
      .all()
 
     membre_menage_stats = db.query(
         cast(MembreMenage.date_create, Date).label("date"),
         func.count(MembreMenage.id).label("membre_menage_count")
-    ).filter(MembreMenage.fk_agent == fk_agent)\
-     .group_by(cast(MembreMenage.date_create, Date))\
+    ).filter(
+        MembreMenage.fk_agent == fk_agent,
+        cast(MembreMenage.date_create, Date).between(date_debut, date_fin)
+    ).group_by(cast(MembreMenage.date_create, Date))\
      .all()
 
     # Combine all stats into a single dictionary
@@ -3465,9 +3506,9 @@ def get_agent_activity_stats(
 
     return {
         "agent": {
-            "nom": agent.nom,
-            "postnom": agent.postnom,
-            "prenom": agent.prenom,
+            "nom": agent.get("nom"),
+            "postnom": agent.get("postnom"),
+            "prenom": agent.get("prenom"),
             "commune": location.commune if location else None,
             "quartier": location.quartier if location else None
         },

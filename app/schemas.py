@@ -195,7 +195,54 @@ class AssignDroitsToUser(BaseModel):
 class UpdatePassword(BaseModel):
     new_password: str
 
+class ProprietaireResponse(BaseModel):
+    id: Optional[int]
+    nom: Optional[str]
+    postnom: Optional[str]
+    prenom: Optional[str]
+    date_naissance: Optional[str]
+    sexe: Optional[str]
+    etat_civil: Optional[str]
+    profession: Optional[str]
+    niveau_etude: Optional[str]
+    lieu_naissance: Optional[str]
+    nationalite: Optional[str]
+    telephone: Optional[str]
+    lien_parente: Optional[str]
 
+class MembreResponse(BaseModel):
+    id: Optional[int]
+    nom: Optional[str]
+    postnom: Optional[str]
+    prenom: Optional[str]
+    date_naissance: Optional[str]
+    sexe: Optional[str]
+    lien_parente: Optional[str]
+    etat_civil: Optional[str]
+    profession: Optional[str]
+    niveau_etude: Optional[str]
+    lieu_naissance: Optional[str]
+    nationalite: Optional[str]
+    telephone: Optional[str]
+
+class AdresseResponse(BaseModel):
+    commune: Optional[str]
+    quartier: Optional[str]
+    avenue: Optional[str]
+    numero: Optional[str]
+    rang: Optional[str]
+
+class MenageResponse(BaseModel):
+    id: int
+    proprietaire: ProprietaireResponse
+    membres: List[MembreResponse]
+    adresse: AdresseResponse
+
+class MenagesResponse(BaseModel):
+    data: List[MenageResponse]
+    total: int
+    page: int
+    page_size: int
 
 
 
