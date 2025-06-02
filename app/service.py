@@ -5,6 +5,7 @@ import logging
 from app.models import (
     Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement)
 from app.utils import generate_nif, safe_int
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,9 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
     record_id = kobo.get("id", kobo.get("_id"))
     
     logger.info(f"Données kobo : {kobo}")
+    
+    date_create_str = kobo.get("_submission_time")
+    date_create = datetime.fromisoformat(date_create_str) if date_create_str else None
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -43,6 +47,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                 fk_avenue=safe_int(kobo.get("adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
                 numero=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
                 fk_agent=fk_agent,
+                date_create=date_create,
             )
             db.add(adresse)
             db.flush()  # Flush to get the inserted ID
@@ -111,6 +116,8 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                 
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
+                
+                date_create=date_create,
             )
             db.add(proprietaire)
             db.flush()
@@ -128,6 +135,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
+                date_create=date_create,
             )
             db.add(parcelle)
             db.flush()
@@ -163,7 +171,9 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                     
                     fk_agent=fk_agent,
                     
-                    numero_bien=menage.get("informations_du_menage/informations_du_bien/numero_bien")
+                    numero_bien=menage.get("informations_du_menage/informations_du_bien/numero_bien"),
+                    
+                    date_create=date_create,
                 )
                 db.add(bien)
                 db.flush()
@@ -246,6 +256,8 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                             
                             fk_adresse=fk_adresse,
                             fk_agent=fk_agent,
+                            
+                            date_create=date_create,
                         )
                         db.add(responsable)
                         db.flush()
@@ -265,6 +277,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                         fk_personne=fk_responsable,
                         fk_bien=fk_bien,
                         fk_agent=fk_agent,
+                        date_create=date_create,
                     )
                     db.add(menage_bien)
                     db.flush()
@@ -302,6 +315,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                                             if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/nationalite_3") else None,
                             fk_adresse=fk_adresse,
                             fk_agent=fk_agent,
+                            date_create=date_create,
                             etranger=(1 if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/est_il_etranger") is not None and personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/est_il_etranger") == "oui" else None)
                         )
                         db.add(new_personne)
@@ -314,6 +328,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                             fk_personne=fk_personne,
                             fk_filiation=safe_int(personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes/lien_de_parente") else None,
                             fk_agent=fk_agent,
+                            date_create=date_create,
                         )
                         db.add(membre_menage)
 
@@ -323,6 +338,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                 fk_avenue=safe_int(kobo.get("Parcelle_non_accessible/avenue_1")),  # Assuming this is an ID
                 numero=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
                 fk_agent=fk_agent,
+                date_create=date_create,
             )
             db.add(adresse)
             db.flush()  # Flush to get the inserted ID
@@ -336,7 +352,8 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
-                statut=2
+                statut=2,
+                date_create=date_create,
             )
             db.add(parcelle)
             db.flush()
@@ -349,6 +366,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
             id_kobo=record_id,
             data_json=str(payload),
             fk_agent=fk_agent,
+            date_create=date_create,
         )
         db.add(log)
 
@@ -366,8 +384,6 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
 def process_rapport_superviseur_form(payload: dict, db: Session):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
-    
-    logger.info(f"Données kobo : {kobo}")
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -427,7 +443,8 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
-    logger.info(f"Données kobo : {kobo}")
+    date_create_str = kobo.get("_submission_time")
+    date_create = datetime.fromisoformat(date_create_str) if date_create_str else None
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -451,6 +468,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
             fk_avenue=safe_int(kobo.get("adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
             numero=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
             fk_agent=fk_agent,
+            date_create=date_create,
         )
         db.add(adresse)
         db.flush()  # Flush to get the inserted ID
@@ -528,6 +546,8 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
             
             fk_adresse=fk_adresse,
             fk_agent=fk_agent,
+            
+            date_create=date_create,
         )
         db.add(proprietaire)
         db.flush()
@@ -535,16 +555,28 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
 
         # 3. Insert into Parcelle
         parcelle = Parcelle(
+            
             numero_parcellaire=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
+            
             fk_unite=safe_int(kobo.get("adresse_de_la_parcelle/unite_de_la_superficie")) if kobo.get("adresse_de_la_parcelle/unite_de_la_superficie") else None,
+            
             longueur=float(kobo.get("adresse_de_la_parcelle/longueur")) if kobo.get("adresse_de_la_parcelle/longueur") else None,
+            
             largeur=float(kobo.get("adresse_de_la_parcelle/largeur")) if kobo.get("adresse_de_la_parcelle/largeur") else None,
+            
             superficie_calculee=float(kobo.get("adresse_de_la_parcelle/calculation")) if kobo.get("adresse_de_la_parcelle/calculation") else None,
+            
             coordonnee_geographique=coordonnee_geographique if superficie_parcelle_egale_bien else kobo.get("adresse_de_la_parcelle/coordonne_geographique"),
+            
             fk_rang=safe_int(kobo.get("adresse_de_la_parcelle/rang")) if kobo.get("adresse_de_la_parcelle/rang") else None,
+            
             fk_proprietaire=fk_proprietaire,
+            
             fk_adresse=fk_adresse,
+            
             fk_agent=fk_agent,
+            
+            date_create=date_create,
         )
         db.add(parcelle)
         db.flush()
@@ -553,18 +585,27 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
         
         bien = Bien(                    
             coordinates=kobo.get("informations_du_menage/informations_du_bien/coordonnee_geographique"),
+            
             superficie=kobo.get("informations_du_menage/informations_du_bien/superficie"),
+            
             fk_parcelle=fk_parcelle,
+            
             fk_nature_bien=safe_int(kobo.get("informations_du_menage/informations_du_bien/nature")) 
                             if kobo.get("informations_du_menage/informations_du_bien/nature") else None,
+            
             fk_unite=safe_int(kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
                         if kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None,
+            
             fk_usage=safe_int(kobo.get("informations_du_menage/informations_du_bien/usage")) 
                         if kobo.get("informations_du_menage/informations_du_bien/usage") else None,
+            
             fk_usage_specifique=safe_int(kobo.get("informations_du_menage/informations_du_bien/usage_specifique")) 
                                     if kobo.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
             fk_agent=fk_agent,
-            numero_bien=kobo.get("informations_du_menage/informations_du_bien/numero_bien")
+            
+            numero_bien=kobo.get("informations_du_menage/informations_du_bien/numero_bien"),
+            
+            date_create=date_create,
         )
         db.add(bien)
     
@@ -574,6 +615,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
             id_kobo=record_id,
             data_json=str(payload),
             fk_agent=fk_agent,
+            date_create=date_create,
         )
         db.add(log)
 
@@ -592,7 +634,9 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
-    logger.info(f"Données kobo : {kobo}")
+    
+    date_create_str = kobo.get("_submission_time")
+    date_create = datetime.fromisoformat(date_create_str) if date_create_str else None
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -623,6 +667,7 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                 fk_avenue=safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
                 numero=kobo.get("informations_immeuble/adresse_de_la_parcelle/numero_parcellaire"),
                 fk_agent=fk_agent,
+                date_create=date_create,
             )
             db.add(adresse)
             db.flush()  # Flush to get the inserted ID
@@ -633,6 +678,8 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                 nif = generate_nif()
                 
                 proprietaire = Personne(
+                    
+                    date_create=date_create,
                     
                     nif=nif,
                     
@@ -725,6 +772,8 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
+                
+                date_create=date_create,
             )
             db.add(parcelle)
             db.flush()
@@ -732,6 +781,9 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
 
             # Insert into Bien (Immeuble)
             immeuble = Bien(
+                
+                date_create=date_create,
+                
                 numero_bien=kobo.get("informations_immeuble/informations_du_bien/numero_bien"),
                 
                 coordinates=kobo.get("informations_immeuble/informations_du_bien/coordonnee_geographique"),
@@ -756,6 +808,8 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                 nif = generate_nif()
                 
                 proprietaire_appart = Personne(
+                
+                    date_create=date_create,
                     
                     nif=nif,
                     
@@ -847,10 +901,16 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                     fk_unite=(safe_int(appartment.get("informations_immeuble/group_no51r46/group_gy9pw51/unite_de_la_superficie_1")) if appartment.get("informations_immeuble/group_no51r46/group_gy9pw51/unite_de_la_superficie_1") else None),
                     
                     fk_nature_bien=3,
+                    
                     fk_parcelle=fk_parcelle,
+                    
                     fk_agent=fk_agent,
+                    
                     fk_bien_parent=fk_immeuble,
+                    
                     fk_proprietaire=fk_proprietaire_appart,
+                
+                    date_create=date_create,
                 )
                 db.add(bien)
                 db.flush()
@@ -862,6 +922,9 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                     if menage.get("informations_immeuble/group_no51r46/group_if9yu58/informations_de_l_occupant/occupant_est_locataire_ou_proprietaire_2") != "bailleur":
                     
                         responsable = Personne(
+                
+                            date_create=date_create,
+                
                             nom=menage.get("informations_immeuble/group_no51r46/group_if9yu58/informations_de_l_occupant/nom"),##
                     
                             postnom=menage.get("informations_immeuble/group_no51r46/group_if9yu58/informations_de_l_occupant/post_nom"),##
@@ -947,6 +1010,7 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                         fk_personne=fk_proprietaire_appart,
                         fk_bien=fk_bien,
                         fk_agent=fk_agent,
+                        date_create=date_create,
                     )
                     db.add(menage_bien)
                     db.flush()
@@ -958,6 +1022,9 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                             
                         # Insert into Personne
                         new_personne = Personne(
+                
+                            date_create=date_create,
+                            
                             nom=personne.get("informations_immeuble/group_no51r46/group_if9yu58/information_sur_les_personnes/nom_3"),
                             
                             postnom=personne.get("informations_immeuble/group_no51r46/group_if9yu58/information_sur_les_personnes/post_nom_3"),
@@ -1020,6 +1087,7 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                             fk_personne=fk_personne,
                             fk_filiation=safe_int(personne.get("informations_immeuble/group_no51r46/group_if9yu58/information_sur_les_personnes/lien_de_parente")) if personne.get("informations_immeuble/group_no51r46/group_if9yu58/information_sur_les_personnes/lien_de_parente") else None,
                             fk_agent=fk_agent,
+                            date_create=date_create,
                         )
                         db.add(membre_menage)
                 
@@ -1029,6 +1097,8 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                 fk_avenue=safe_int(kobo.get("Parcelle_non_accessible/avenue_1")),  # Assuming this is an ID
                 numero=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
                 fk_agent=fk_agent,
+                
+                date_create=date_create,
             )
             db.add(adresse)
             db.flush()  # Flush to get the inserted ID
@@ -1042,7 +1112,9 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
                 fk_agent=fk_agent,
-                statut=2
+                statut=2,
+                
+                date_create=date_create,
             )
             db.add(parcelle)            
     
@@ -1052,6 +1124,7 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
             id_kobo=record_id,
             data_json=str(payload),
             fk_agent=fk_agent,
+            date_create=date_create,
         )
         db.add(log)
 

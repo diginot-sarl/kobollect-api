@@ -136,6 +136,7 @@ class Logs(Base):
     id_kobo = Column(Integer, nullable=True)
     data_json = Column(String, nullable=True)  # varchar(max)
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: membre_menage
 class MembreMenage(Base):
