@@ -3200,7 +3200,7 @@ def get_menages(
     db: Session = Depends(get_db),
 ):
     try:
-        # Base query to get menage information
+        # Base query to get menage information with SQL Server pagination
         menage_query = """
             SELECT 
                 m.id AS menage_id,
@@ -3231,7 +3231,9 @@ def get_menages(
         filters = []
         params = {
             "date_start": date_start,
-            "date_end": date_end
+            "date_end": date_end,
+            "offset": (page - 1) * page_size,
+            "page_size": page_size
         }
         if commune:
             filters.append("c.id = :commune")
@@ -3249,13 +3251,35 @@ def get_menages(
         if filters:
             menage_query += " AND " + " AND ".join(filters)
 
-        # Get menage data
+        # Add SQL Server-compatible pagination
+        menage_query += " ORDER BY m.id OFFSET :offset ROWS FETCH NEXT :page_size ROWS ONLY"
+
+        # Get total count for pagination
+        count_query = """
+            SELECT COUNT(*) 
+            FROM menage m
+            JOIN personne p ON m.fk_personne = p.id
+            LEFT JOIN bien b ON m.fk_bien = b.id
+            LEFT JOIN parcelle par ON b.fk_parcelle = par.id
+            LEFT JOIN adresse a ON par.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON par.fk_rang = r.id
+            WHERE p.fk_type_personne = 1
+            AND CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)
+            AND CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)
+        """
+        if filters:
+            count_query += " AND " + " AND ".join(filters)
+
+        # Execute queries
+        total = db.execute(text(count_query), params).scalar()
         menage_results = db.execute(text(menage_query), params).fetchall()
 
         # Get member data for each menage
         menage_data = []
         for menage in menage_results:
-            # Get members
             member_query = """
                 SELECT 
                     p.id AS member_id,
@@ -3313,14 +3337,8 @@ def get_menages(
                 }
             })
 
-        # Pagination
-        total = len(menage_data)
-        start = (page - 1) * page_size
-        end = start + page_size
-        paginated_data = menage_data[start:end]
-
         return {
-            "data": paginated_data,
+            "data": menage_data,
             "total": total,
             "page": page,
             "page_size": page_size,

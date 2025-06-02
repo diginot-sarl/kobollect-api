@@ -2,7 +2,8 @@
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks, HTTPException, status
 import logging
-from app.models import Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement
+from app.models import (
+    Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement)
 from app.utils import generate_nif, safe_int
 
 logger = logging.getLogger(__name__)
@@ -270,7 +271,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                     fk_menage = menage_bien.id
                     
                     # 7. Insert additional Personnes
-                    for personne in menage.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes", []):
+                    for personne in group_menage.get("informations_du_menage/group_ex5mk47/information_sur_les_personnes", []):
                         personne: dict = personne
                             
                         # Insert into Personne
@@ -551,19 +552,19 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
         
         
         bien = Bien(                    
-            coordinates=kobo.get("informations_du_menage/coordonnee_geographique"),
-            superficie=kobo.get("informations_du_menage/superficie"),
+            coordinates=kobo.get("informations_du_menage/informations_du_bien/coordonnee_geographique"),
+            superficie=kobo.get("informations_du_menage/informations_du_bien/superficie"),
             fk_parcelle=fk_parcelle,
-            fk_nature_bien=safe_int(kobo.get("informations_du_menage/nature")) 
-                            if kobo.get("informations_du_menage/nature") else None,
-            fk_unite=safe_int(kobo.get("informations_du_menage/unite_de_la_superficie_1")) 
-                        if kobo.get("informations_du_menage/unite_de_la_superficie_1") else None,
-            fk_usage=safe_int(kobo.get("informations_du_menage/usage")) 
-                        if kobo.get("informations_du_menage/usage") else None,
-            fk_usage_specifique=safe_int(kobo.get("informations_du_menage/usage_specifique")) 
-                                    if kobo.get("informations_du_menage/usage_specifique") else None,
+            fk_nature_bien=safe_int(kobo.get("informations_du_menage/informations_du_bien/nature")) 
+                            if kobo.get("informations_du_menage/informations_du_bien/nature") else None,
+            fk_unite=safe_int(kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
+                        if kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None,
+            fk_usage=safe_int(kobo.get("informations_du_menage/informations_du_bien/usage")) 
+                        if kobo.get("informations_du_menage/informations_du_bien/usage") else None,
+            fk_usage_specifique=safe_int(kobo.get("informations_du_menage/informations_du_bien/usage_specifique")) 
+                                    if kobo.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
             fk_agent=fk_agent,
-            numero_bien=kobo.get("informations_du_menage/numero_bien")
+            numero_bien=kobo.get("informations_du_menage/informations_du_bien/numero_bien")
         )
         db.add(bien)
     
