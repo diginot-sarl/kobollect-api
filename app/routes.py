@@ -3943,30 +3943,17 @@ async def process_logs(db: Session = Depends(get_db)):
 
     try:
         # Fetch all logs from the database
-        # logs = db.query(Logs).all()
-        # logs = db.query(Logs).order_by(Logs.date_create.desc()).limit(5).all()
-        ids = [801]
-        # ids = [
-        #     107, 132, 138, 139, 144, 155, 173, 176, 270, 329, 334, 368, 369, 378, 380,
-        #     408, 409, 481, 484, 497, 530, 571, 576, 586, 651, 666, 673, 725, 776, 800,
-        #     801, 804, 806
-        # ]
-        logs = db.query(Logs).filter(Logs.id.in_(ids)).all()
+        logs = db.query(Logs).where(Logs.logs != 'process_rapport_superviseur_form').all()
         
-        first = remove_trailing_commas(logs[0].data_json)
-        logger.info(f"First log data: {first}")
+        logger.info(f"Fetched {len(logs)} logs for processing")
 
         # Loop over each log
         for log in logs:
-            try:
-                data_json: str = log.data_json
-            
-                cleaned_json = remove_trailing_commas(data_json)
+            try:            
+                data_json = remove_trailing_commas(log.data_json)
                 
-                json_data = json.loads(cleaned_json)
-                
-                logger.info(f"Processing log ID {log.id} with {json_data}")
-                
+                json_data = json5.loads(data_json)
+                                
                 # Validate that payload is a dictionary
                 if not isinstance(json_data, dict):
                     raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
