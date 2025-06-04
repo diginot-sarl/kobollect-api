@@ -1,4 +1,6 @@
 # app/service.py
+import pendulum
+import pytz
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks, HTTPException, status
 import logging
@@ -15,8 +17,14 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
     
     logger.info(f"Données kobo : {kobo}")
     
-    date_create_str = kobo.get("_submission_time")
-    date_create = datetime.fromisoformat(date_create_str) if date_create_str else None
+    # Parse _submission_time, assuming it's in UTC
+    date_create_str: str = kobo.get("_submission_time")
+    try:
+        # Parse as UTC and keep timezone-aware for DATETIMEOFFSET
+        date_create = datetime.fromisoformat(date_create_str.replace("Z", "+00:00")).replace(tzinfo=pytz.UTC)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid date format for _submission_time: {date_create_str}")
+        date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -366,7 +374,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
             id_kobo=record_id,
             data_json=str(payload),
             fk_agent=fk_agent,
-            date_create=date_create,
+            date_submission=date_create,
         )
         db.add(log)
 
@@ -384,6 +392,15 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
 def process_rapport_superviseur_form(payload: dict, db: Session):
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
+    
+    # Parse _submission_time, assuming it's in UTC
+    date_create_str: str = kobo.get("_submission_time")
+    try:
+        # Parse as UTC and keep timezone-aware for DATETIMEOFFSET
+        date_create = datetime.fromisoformat(date_create_str.replace("Z", "+00:00")).replace(tzinfo=pytz.UTC)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid date format for _submission_time: {date_create_str}")
+        date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -424,6 +441,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
             id_kobo=record_id,
             data_json=str(payload),
             fk_agent=fk_agent,
+            date_submission=date_create,
         )
         db.add(log)
 
@@ -443,8 +461,14 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
-    date_create_str = kobo.get("_submission_time")
-    date_create = datetime.fromisoformat(date_create_str) if date_create_str else None
+    # Parse _submission_time, assuming it's in UTC
+    date_create_str: str = kobo.get("_submission_time")
+    try:
+        # Parse as UTC and keep timezone-aware for DATETIMEOFFSET
+        date_create = datetime.fromisoformat(date_create_str.replace("Z", "+00:00")).replace(tzinfo=pytz.UTC)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid date format for _submission_time: {date_create_str}")
+        date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -615,7 +639,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
             id_kobo=record_id,
             data_json=str(payload),
             fk_agent=fk_agent,
-            date_create=date_create,
+            date_submission=date_create,
         )
         db.add(log)
 
@@ -634,9 +658,14 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
-    
-    date_create_str = kobo.get("_submission_time")
-    date_create = datetime.fromisoformat(date_create_str) if date_create_str else None
+    # Parse _submission_time, assuming it's in UTC
+    date_create_str: str = kobo.get("_submission_time")
+    try:
+        # Parse as UTC and keep timezone-aware for DATETIMEOFFSET
+        date_create = datetime.fromisoformat(date_create_str.replace("Z", "+00:00")).replace(tzinfo=pytz.UTC)
+    except (ValueError, TypeError):
+        logger.error(f"Invalid date format for _submission_time: {date_create_str}")
+        date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
@@ -1124,7 +1153,7 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
             id_kobo=record_id,
             data_json=str(payload),
             fk_agent=fk_agent,
-            date_create=date_create,
+            date_submission=date_create,
         )
         db.add(log)
 

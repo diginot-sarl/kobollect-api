@@ -1,5 +1,5 @@
 import json
-import json
+import json5
 import requests
 import logging
 from collections import defaultdict
@@ -71,8 +71,10 @@ from app.models import (
     Menage,
     MembreMenage,
     Adresse,
+    Logs,
     RapportRecensement)
 from app.auth import get_password_hash
+from app.utils import remove_trailing_commas
 
 router = APIRouter()
 
@@ -3931,3 +3933,138 @@ async def update_user_password(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/process-logs", tags=["Logs"])
+async def process_logs(db: Session = Depends(get_db)):
+    failed_log_ids = []  # List to store IDs of logs that failed
+    
+    logger.info("Starting to process logs...")
+
+    try:
+        # Fetch all logs from the database
+        # logs = db.query(Logs).all()
+        # logs = db.query(Logs).order_by(Logs.date_create.desc()).limit(5).all()
+        ids = [801]
+        # ids = [
+        #     107, 132, 138, 139, 144, 155, 173, 176, 270, 329, 334, 368, 369, 378, 380,
+        #     408, 409, 481, 484, 497, 530, 571, 576, 586, 651, 666, 673, 725, 776, 800,
+        #     801, 804, 806
+        # ]
+        logs = db.query(Logs).filter(Logs.id.in_(ids)).all()
+        
+        first = remove_trailing_commas(logs[0].data_json)
+        logger.info(f"First log data: {first}")
+
+        # Loop over each log
+        for log in logs:
+            try:
+                data_json: str = log.data_json
+            
+                cleaned_json = remove_trailing_commas(data_json)
+                
+                json_data = json.loads(cleaned_json)
+                
+                logger.info(f"Processing log ID {log.id} with {json_data}")
+                
+                # Validate that payload is a dictionary
+                if not isinstance(json_data, dict):
+                    raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+                
+                # Process based on log type
+                if log.logs == "process_recensement_form":
+                    logger.info(f"Start processing LOGS id {log.id} for RECENSEMENT FORM")
+                    response = requests.post(
+                        "https://api.hidscollect.com:9443/api/v1/import-from-kobo",
+                        json=json_data
+                    )
+                    if response.status_code != 200:
+                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
+                        failed_log_ids.append(log.id)
+
+                elif log.logs == "process_rapport_superviseur_form":
+                    continue
+
+                elif log.logs == "process_parcelles_non_baties_form":
+                    logger.info(f"Start processing LOGS id {log.id} for PARCELLE NON BATIE FORM")
+                    response = requests.post(
+                        "https://api.hidscollect.com:9443/api/v1/import-parcelle-non-batie",
+                        json=json_data
+                    )
+                    if response.status_code != 200:
+                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
+                        failed_log_ids.append(log.id)
+
+                elif log.logs == "process_immeuble_form":
+                    logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
+                    response = requests.post(
+                        "https://api.hidscollect.com:9443/api/v1/import-immeuble",
+                        json=json_data
+                    )
+                    if response.status_code != 200:
+                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
+                        failed_log_ids.append(log.id)
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON data for log ID {log.id}: {e}")
+                failed_log_ids.append(log.id)
+                continue
+            except Exception as e:
+                logger.error(f"Error processing log ID {log.id}: {str(e)}")
+                failed_log_ids.append(log.id)
+                continue
+
+        # Return the list of failed log IDs
+        return {"message": "Logs processed successfully", "failed_log_ids": failed_log_ids}
+
+    except Exception as e:
+        logger.error(f"Unexpected error in process_logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+    
+    
+@router.get("/process-logs-recensement/{id_log}", tags=["Logs"])
+async def process_logs(id_log: int, db: Session = Depends(get_db)):
+    try:
+        # Parse the raw JSON body
+        logs = db.query(Logs).where(Logs.logs == "process_recensement_form").where(Logs.id == id_log).first()
+        
+        data_json: str = logs.data_json
+        
+        valid_json_string = (
+            data_json.replace("'", '"')
+            .replace("None", "null")
+            .replace("True", "true")
+            .replace("False", "false")
+            .replace("[None, None]", "[]")
+        )
+        
+        cleaned_json = remove_trailing_commas(valid_json_string)
+        
+        payload = json.loads(cleaned_json)
+        
+        logger.info(f"Processing log ID {logs.id} with json5")
+        
+        # Validate that payload is a dictionary
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+                
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+    
+    try:
+        # Case 1: Send request to "/import-from-kobo" route
+        response = requests.post(
+            "https://api.hidscollect.com:9443/api/v1/import-from-kobo",
+            json=payload
+        )
+        if response.status_code != 200:
+            raise HTTPException(status_code=400, detail=f"Failed to process {response.text}")
+
+        # Return the list of failed log IDs
+        return {"message": "Logs processed successfully"}
+
+    except Exception as e:
+        logger.error(f"Unexpected error in process_logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
