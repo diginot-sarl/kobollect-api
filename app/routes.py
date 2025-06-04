@@ -596,7 +596,7 @@ async def get_geojson(
                 LEFT JOIN rang r ON p.fk_rang = r.id
                 WHERE 1=1
             """
-        else:
+        elif type == "bien":
             # Base query for biens
             query = """
                 SELECT
@@ -667,7 +667,7 @@ async def get_geojson(
             query += " AND " + " AND ".join(filters)
 
         # Count total records
-        count_query = f"SELECT COUNT(*) FROM ({query}) AS total"
+        count_query = f"SELECT COUNT(DISTINCT b.id) FROM ({query}) AS total"
         total = db.execute(text(count_query), params).scalar()
 
         # Add pagination using SQL Server syntax
