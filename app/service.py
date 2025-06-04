@@ -43,10 +43,11 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
         
         coordonnee_geographique = None
         superficie_parcelle_egale_bien = False
-        if kobo.get("adresse_de_la_parcelle/La_maison_occupe_t_elle_toute_") == "oui":
+        if kobo.get("adresse_de_la_parcelle/La_maison_occupe_t_elle_toute_") == "oui" or kobo.get("adresse_de_la_parcelle/coordonne_geographique") is None:
             first_bien: dict = kobo.get("informations_du_menage", [])[0]
             superficie_parcelle_egale_bien = True
             coordonnee_geographique = (first_bien.get("informations_du_menage/informations_du_bien/coordonnee_geographique") if first_bien.get("informations_du_menage/informations_du_bien/coordonnee_geographique") else None)
+        
         
         if kobo.get("parcelle_accessible_ou_non") == "oui":
 
