@@ -568,78 +568,83 @@ async def get_geojson(
     db: Session = Depends(get_db),
 ):
     try:
-        if type == "parcelle":
-            # Base query for parcelles
-            query = """
-                SELECT
-                    p.id,
-                    p.coordonnee_geographique,
-                    p.date_create,
-                    a.numero AS adresse_numero,
-                    av.intitule AS avenue,
-                    q.intitule AS quartier,
-                    c.intitule AS commune,
-                    per.nom AS proprietaire_nom,
-                    per.postnom AS proprietaire_postnom,
-                    per.prenom AS proprietaire_prenom,
-                    per.denomination AS proprietaire_denomination,
-                    tp.intitule AS type_personne
-                FROM parcelle p
-                LEFT JOIN adresse a ON p.fk_adresse = a.id
-                LEFT JOIN avenue av ON a.fk_avenue = av.id
-                LEFT JOIN quartier q ON av.fk_quartier = q.id
-                LEFT JOIN commune c ON q.fk_commune = c.id
-                LEFT JOIN personne per ON p.fk_proprietaire = per.id
-                LEFT JOIN type_personne tp ON per.fk_type_personne = tp.id
-                LEFT JOIN ville v ON c.fk_ville = v.id
-                LEFT JOIN province pr ON v.fk_province = pr.id
-                LEFT JOIN rang r ON p.fk_rang = r.id
-                WHERE 1=1
-            """
-        elif type == "bien":
-            # Base query for biens
-            query = """
-                SELECT
-                    b.id,
-                    b.coordinates,
-                    b.date_create,
-                    nb.intitule AS nature,
-                    CONCAT(u.nom, ' ', u.prenom) AS recense_par,
-                    a.numero AS adresse_numero,
-                    av.intitule AS avenue,
-                    q.intitule AS quartier,
-                    c.intitule AS commune,
-                    per.nom AS proprietaire_nom,
-                    per.postnom AS proprietaire_postnom,
-                    per.prenom AS proprietaire_prenom,
-                    per.denomination AS proprietaire_denomination,
-                    tp.intitule AS type_personne
-                FROM bien b
-                LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
-                LEFT JOIN utilisateur u ON b.fk_agent = u.id
-                LEFT JOIN parcelle p ON b.fk_parcelle = p.id
-                LEFT JOIN menage m ON b.id = m.fk_bien
-                LEFT JOIN personne per ON m.fk_personne = per.id
-                LEFT JOIN type_personne tp ON per.fk_type_personne = tp.id
-                LEFT JOIN adresse a ON p.fk_adresse = a.id
-                LEFT JOIN avenue av ON a.fk_avenue = av.id
-                LEFT JOIN quartier q ON av.fk_quartier = q.id
-                LEFT JOIN commune c ON q.fk_commune = c.id
-                LEFT JOIN ville v ON c.fk_ville = v.id
-                LEFT JOIN province pr ON v.fk_province = pr.id
-                LEFT JOIN rang r ON p.fk_rang = r.id
-                WHERE 1=1
-            """
+        # Base queries
+        parcelle_query = """
+            SELECT
+                p.id,
+                p.coordonnee_geographique,
+                p.date_create,
+                a.numero AS adresse_numero,
+                av.intitule AS avenue,
+                q.intitule AS quartier,
+                c.intitule AS commune,
+                per.nom AS proprietaire_nom,
+                per.postnom AS proprietaire_postnom,
+                per.prenom AS proprietaire_prenom,
+                per.denomination AS proprietaire_denomination,
+                tp.intitule AS type_personne
+            FROM parcelle p
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN personne per ON p.fk_proprietaire = per.id
+            LEFT JOIN type_personne tp ON per.fk_type_personne = tp.id
+            LEFT JOIN ville v ON c.fk_ville = v.id
+            LEFT JOIN province pr ON v.fk_province = pr.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            WHERE 1=1
+        """
+        
+        bien_query = """
+            SELECT DISTINCT
+                b.id,
+                b.coordinates,
+                b.date_create,
+                nb.intitule AS nature,
+                CONCAT(u.nom, ' ', u.prenom) AS recense_par,
+                a.numero AS adresse_numero,
+                av.intitule AS avenue,
+                q.intitule AS quartier,
+                c.intitule AS commune,
+                per.nom AS proprietaire_nom,
+                per.postnom AS proprietaire_postnom,
+                per.prenom AS proprietaire_prenom,
+                per.denomination AS proprietaire_denomination,
+                tp.intitule AS type_personne
+            FROM bien b
+            LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
+            LEFT JOIN utilisateur u ON b.fk_agent = u.id
+            LEFT JOIN parcelle p ON b.fk_parcelle = p.id
+            LEFT JOIN personne per ON b.fk_proprietaire = per.id
+            LEFT JOIN type_personne tp ON per.fk_type_personne = tp.id
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN ville v ON c.fk_ville = v.id
+            LEFT JOIN province pr ON v.fk_province = pr.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            WHERE 1=1
+        """
 
-        # Add filters
+        query = parcelle_query if type == "parcelle" else bien_query
+        date_field = "p.date_create" if type == "parcelle" else "b.date_create"
+
+        # Initialize filters and parameters
         filters = []
         params = {}
+        join_clauses = []
+
+        # Date filters
         if date_start:
-            filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
+            filters.append(f"CAST({date_field} AS DATE) >= CAST(:date_start AS DATE)")
             params["date_start"] = date_start
         if date_end:
-            filters.append("CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)")
+            filters.append(f"CAST({date_field} AS DATE) <= CAST(:date_end AS DATE)")
             params["date_end"] = date_end
+
+        # Location filters
         if province:
             filters.append("pr.id = :province")
             params["province"] = province
@@ -662,15 +667,43 @@ async def get_geojson(
             filters.append("nb.id = :nature")
             params["nature"] = nature
 
-        # Build final query
+        # Apply filters
         if filters:
             query += " AND " + " AND ".join(filters)
 
-        # Count total records
-        count_query = f"SELECT COUNT(DISTINCT b.id) FROM ({query}) AS total"
-        total = db.execute(text(count_query), params).scalar()
+        # Count total records with optimized queries
+        if type == "bien":
+            # Efficient count query for biens
+            count_query = "SELECT COUNT(DISTINCT b.id) FROM bien b"
+            
+            # Add joins only if needed for filters
+            if any(f in filters for f in ["pr.id", "v.id", "c.id", "q.id", "av.id", "r.id"]):
+                count_query += """
+                    LEFT JOIN parcelle p ON b.fk_parcelle = p.id
+                    LEFT JOIN adresse a ON p.fk_adresse = a.id
+                    LEFT JOIN avenue av ON a.fk_avenue = av.id
+                    LEFT JOIN quartier q ON av.fk_quartier = q.id
+                    LEFT JOIN commune c ON q.fk_commune = c.id
+                    LEFT JOIN ville v ON c.fk_ville = v.id
+                    LEFT JOIN province pr ON v.fk_province = pr.id
+                    LEFT JOIN rang r ON p.fk_rang = r.id
+                """
+            if "nb.id" in filters:
+                count_query += " LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id"
+            
+            # Apply filters to count query
+            if filters:
+                # Remove date field prefix for count query
+                count_filters = [f.replace(date_field, "b.date_create") for f in filters]
+                count_query += " WHERE " + " AND ".join(count_filters)
+                
+            total = db.execute(text(count_query), params).scalar()
+        else:
+            # Standard count for parcelles
+            count_query = f"SELECT COUNT(*) FROM ({query}) AS total"
+            total = db.execute(text(count_query), params).scalar()
 
-        # Add pagination using SQL Server syntax
+        # Add pagination
         query += f"""
             ORDER BY {"p.id" if type == "parcelle" else "b.id"} DESC
             OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
@@ -682,45 +715,32 @@ async def get_geojson(
         results = db.execute(text(query), params).fetchall()
 
         # Format results
+        common_fields = {
+            "id": lambda row: str(row.id),
+            "coordinates": lambda row: row.coordonnee_geographique if type == "parcelle" else row.coordinates,
+            "adresse": lambda row: {
+                "numero": row.adresse_numero,
+                "avenue": row.avenue,
+                "quartier": row.quartier,
+                "commune": row.commune
+            },
+            "proprietaire": lambda row: {
+                "nom": row.proprietaire_nom,
+                "postnom": row.proprietaire_postnom,
+                "prenom": row.proprietaire_prenom,
+                "denomination": row.proprietaire_denomination,
+                "type_personne": row.type_personne
+            },
+            "date": lambda row: row.date_create.isoformat() if row.date_create else None,
+        }
+
         if type == "parcelle":
-            data = [{
-                "id": str(row.id),
-                "coordinates": row.coordonnee_geographique,
-                "adresse": {
-                    "numero": row.adresse_numero,
-                    "avenue": row.avenue,
-                    "quartier": row.quartier,
-                    "commune": row.commune
-                },
-                "proprietaire": {
-                    "nom": row.proprietaire_nom,
-                    "postnom": row.proprietaire_postnom,
-                    "prenom": row.proprietaire_prenom,
-                    "denomination": row.proprietaire_denomination,
-                    "type_personne": row.type_personne
-                },
-                "date": row.date_create.isoformat() if row.date_create else None,
-            } for row in results]
+            data = [{key: func(row) for key, func in common_fields.items()} for row in results]
         else:
             data = [{
-                "id": str(row.id),
-                "coordinates": row.coordinates,
+                **{key: func(row) for key, func in common_fields.items()},
                 "recense_par": row.recense_par,
-                "nature": row.nature,
-                "adresse": {
-                    "numero": row.adresse_numero,
-                    "avenue": row.avenue,
-                    "quartier": row.quartier,
-                    "commune": row.commune
-                },
-                "proprietaire": {
-                    "nom": row.proprietaire_nom,
-                    "postnom": row.proprietaire_postnom,
-                    "prenom": row.proprietaire_prenom,
-                    "denomination": row.proprietaire_denomination,
-                    "type_personne": row.type_personne
-                },
-                "date": row.date_create.isoformat() if row.date_create else None,
+                "nature": row.nature
             } for row in results]
 
         return {
@@ -731,6 +751,8 @@ async def get_geojson(
         }
 
     except Exception as e:
+        import traceback
+        logger.error(f"Error in get_geojson: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Fetch provinces
