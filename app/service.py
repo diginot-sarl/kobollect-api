@@ -361,7 +361,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
             # 2. Insert into Parcelle
             parcelle = Parcelle(
                 numero_parcellaire=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
-                coordonnee_geographique=str(kobo.get("Parcelle_non_accessible/coordonne_geographique_1")) if kobo.get("Parcelle_non_accessible/coordonne_geographique_1") else None,
+                coordonnee_geographique=kobo.get("Parcelle_non_accessible/coordonne_geographique_1"),
                 fk_rang=safe_int(kobo.get("Parcelle_non_accessible/rang_1")) if kobo.get("Parcelle_non_accessible/rang_1") else None,
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
