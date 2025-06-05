@@ -1,5 +1,4 @@
 # app/service.py
-import pendulum
 import pytz
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks, HTTPException, status
@@ -39,14 +38,20 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
         #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
 
         # Initialize variables
-        fk_proprietaire = None
-        
+        fk_proprietaire = None    
         coordonnee_geographique = None
         superficie_parcelle_egale_bien = False
-        if kobo.get("adresse_de_la_parcelle/La_maison_occupe_t_elle_toute_") == "oui" or kobo.get("adresse_de_la_parcelle/coordonne_geographique") is None:
-            first_bien: dict = kobo.get("informations_du_menage", [])[0]
-            superficie_parcelle_egale_bien = True
-            coordonnee_geographique = (first_bien.get("informations_du_menage/informations_du_bien/coordonnee_geographique") if first_bien.get("informations_du_menage/informations_du_bien/coordonnee_geographique") else None)
+
+        # Check if we need to use household coordinates
+        if kobo.get("adresse_de_la_parcelle/La_maison_occupe_t_elle_toute_") == "oui" or \
+        kobo.get("adresse_de_la_parcelle/coordonne_geographique") is None:
+            
+            # Only process if household data exists
+            biens = kobo.get("informations_du_menage", [])
+            if biens:  # Guard against empty list
+                first_bien = biens[0]
+                superficie_parcelle_egale_bien = True
+                coordonnee_geographique = (first_bien.get("informations_du_menage/informations_du_bien/coordonnee_geographique") if first_bien.get("informations_du_menage/informations_du_bien/coordonnee_geographique") else None)
         
         
         if kobo.get("parcelle_accessible_ou_non") == "oui":
@@ -356,7 +361,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
             # 2. Insert into Parcelle
             parcelle = Parcelle(
                 numero_parcellaire=kobo.get("Parcelle_non_accessible/numero_parcellaire_1"),
-                coordonnee_geographique=kobo.get("Parcelle_non_accessible/coordonne_geographique_1"),
+                coordonnee_geographique=str(kobo.get("Parcelle_non_accessible/coordonne_geographique_1")) if kobo.get("Parcelle_non_accessible/coordonne_geographique_1") else None,
                 fk_rang=safe_int(kobo.get("Parcelle_non_accessible/rang_1")) if kobo.get("Parcelle_non_accessible/rang_1") else None,
                 fk_proprietaire=fk_proprietaire,
                 fk_adresse=fk_adresse,
