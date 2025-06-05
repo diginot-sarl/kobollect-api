@@ -14,8 +14,6 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
     kobo: dict = payload
     record_id = kobo.get("id", kobo.get("_id"))
     
-    logger.info(f"Données kobo : {kobo}")
-    
     # Parse _submission_time, assuming it's in UTC
     date_create_str: str = kobo.get("_submission_time")
     try:
@@ -26,16 +24,17 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
         date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
+        # Check if the ID already exists in the logs table
+        existing_log = db.query(Logs).filter(Logs.id_kobo == record_id, Logs.logs == 'process_recensement_form').first()
+        if existing_log:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+        
+        # Check if the agent exists in the database
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
         else:
             fk_agent = 1  # Default agent ID if not found
-        
-        # Check if the ID already exists in the logs table
-        # existing_log = db.query(Logs).filter(Logs.id_kobo == record_id).first()
-        # if existing_log:
-        #     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Le formulaire avec ID {record_id} déjà existante.")
 
         # Initialize variables
         fk_proprietaire = None    
@@ -409,6 +408,12 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
         date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
+        # Check if the ID already exists in the logs table
+        existing_log = db.query(Logs).filter(Logs.id_kobo == record_id, Logs.logs == "process_rapport_superviseur_form").first()
+        if existing_log:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+        
+        # Check if the agent exists in the database
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
@@ -477,6 +482,12 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
         date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
+        # Check if the ID already exists in the logs table
+        existing_log = db.query(Logs).filter(Logs.id_kobo == record_id, Logs.logs == "process_parcelles_non_baties_form").first()
+        if existing_log:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+        
+        # Check if the agent exists in the database
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
@@ -674,6 +685,12 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
         date_create = datetime.now(pytz.UTC)  # Fallback to current UTC time
 
     try:
+        # Check if the ID already exists in the logs table
+        existing_log = db.query(Logs).filter(Logs.id_kobo == record_id, Logs.logs == "process_immeuble_form").first()
+        if existing_log:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Le formulaire avec ID {record_id} déjà existante.")
+        
+        # Check if the agent exists in the database
         existing_agent = db.query(Utilisateur).filter(Utilisateur.login == kobo["_submitted_by"]).first()
         if existing_agent:
             fk_agent = existing_agent.id
