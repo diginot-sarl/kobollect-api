@@ -4,8 +4,8 @@ import requests
 import logging
 from collections import defaultdict
 
-from datetime import timedelta, datetime, date
-from typing import Annotated, Optional, List
+from datetime import timedelta, datetime
+from typing import Optional, List
 from sqlalchemy import Date
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -47,7 +47,6 @@ from app.schemas import (
     GroupeOut,
     GroupeCreate,
     GroupeUpdate,
-    PaginatedDroitResponse,
     DroitOut,
     DroitCreate,
     DroitUpdate,
@@ -67,10 +66,8 @@ from app.models import (
     UtilisateurDroit,
     Commune,
     Quartier,
-    Avenue,
     Menage,
     MembreMenage,
-    Adresse,
     Logs,
     RapportRecensement)
 from app.auth import get_password_hash

@@ -44,6 +44,8 @@ def base36_encode(number):
     return base36 or '0'
 
 def safe_int(value):
+    if value is None:
+        return None
     try:
         return int(value)
     except ValueError:
@@ -51,7 +53,6 @@ def safe_int(value):
     
     
 def remove_trailing_commas(py_dict_str: str) -> str:
-    
     # Fix missing commas between adjacent objects in arrays
     py_dict_str = re.sub(r'\}\s*\{', '},{', py_dict_str)
     
