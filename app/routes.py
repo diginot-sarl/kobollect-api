@@ -3964,7 +3964,7 @@ async def process_logs(db: Session = Depends(get_db)):
 
     try:
         # Fetch all logs from the database
-        logs = db.query(Logs).where(Logs.logs != 'process_rapport_superviseur_form').all()
+        logs = db.query(Logs).all()
         
         logger.info(f"Fetched {len(logs)} logs for processing")
 
@@ -3983,7 +3983,8 @@ async def process_logs(db: Session = Depends(get_db)):
                 if log.logs == "process_recensement_form":
                     logger.info(f"Start processing LOGS id {log.id} for RECENSEMENT FORM")
                     response = requests.post(
-                        "https://api.hidscollect.com:9443/api/v1/import-from-kobo",
+                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-from-kobo",
+                        # "https://api.hidscollect.com:9443/api/v1/import-from-kobo",
                         json=json_data
                     )
                     if response.status_code != 200:
@@ -3991,12 +3992,21 @@ async def process_logs(db: Session = Depends(get_db)):
                         failed_log_ids.append(log.id)
 
                 elif log.logs == "process_rapport_superviseur_form":
-                    continue
+                    logger.info(f"Start processing LOGS id {log.id} for RAPPORT SUPERVISEUR FORM")
+                    response = requests.post(
+                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-rapport-superviseur",
+                        # "https://api.hidscollect.com:9443/api/v1/import-rapport-superviseur",
+                        json=json_data
+                    )
+                    if response.status_code != 200:
+                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
+                        failed_log_ids.append(log.id)
 
                 elif log.logs == "process_parcelles_non_baties_form":
                     logger.info(f"Start processing LOGS id {log.id} for PARCELLE NON BATIE FORM")
                     response = requests.post(
-                        "https://api.hidscollect.com:9443/api/v1/import-parcelle-non-batie",
+                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-parcelle-non-batie",
+                        # "https://api.hidscollect.com:9443/api/v1/import-parcelle-non-batie",
                         json=json_data
                     )
                     if response.status_code != 200:
@@ -4006,7 +4016,8 @@ async def process_logs(db: Session = Depends(get_db)):
                 elif log.logs == "process_immeuble_form":
                     logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
                     response = requests.post(
-                        "https://api.hidscollect.com:9443/api/v1/import-immeuble",
+                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-immeuble",
+                        # "https://api.hidscollect.com:9443/api/v1/import-immeuble",
                         json=json_data
                     )
                     if response.status_code != 200:
