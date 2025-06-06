@@ -545,7 +545,6 @@ async def create_new_user(user_data: UserCreate, background_tasks: BackgroundTas
         logger.error(f"Failed to create user: {str(e)}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create user: {str(e)}")
 
-
 # Fetch GeoJSON data with filters
 @router.get("/geojson", tags=["GeoJSON"])
 async def get_geojson(
@@ -673,8 +672,11 @@ async def get_geojson(
             # Efficient count query for biens
             count_query = "SELECT COUNT(DISTINCT b.id) FROM bien b"
             
-            # Add joins only if needed for filters
-            if any(f in filters for f in ["pr.id", "v.id", "c.id", "q.id", "av.id", "r.id"]):
+            # Define location patterns that require joins
+            location_patterns = ["pr.id", "v.id", "c.id", "q.id", "av.id", "r.id"]
+            
+            # Check if any filter contains location patterns
+            if any(any(pattern in f for pattern in location_patterns) for f in filters):
                 count_query += """
                     LEFT JOIN parcelle p ON b.fk_parcelle = p.id
                     LEFT JOIN adresse a ON p.fk_adresse = a.id
@@ -685,14 +687,14 @@ async def get_geojson(
                     LEFT JOIN province pr ON v.fk_province = pr.id
                     LEFT JOIN rang r ON p.fk_rang = r.id
                 """
-            if "nb.id" in filters:
+            
+            # Check for nature filter
+            if any("nb.id" in f for f in filters):
                 count_query += " LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id"
             
-            # Apply filters to count query
+            # Apply filters
             if filters:
-                # Remove date field prefix for count query
-                count_filters = [f.replace(date_field, "b.date_create") for f in filters]
-                count_query += " WHERE " + " AND ".join(count_filters)
+                count_query += " WHERE " + " AND ".join(filters)
                 
             total = db.execute(text(count_query), params).scalar()
         else:
