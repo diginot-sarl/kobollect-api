@@ -138,6 +138,16 @@ class Logs(Base):
     fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
     date_submission = Column(DateTime, nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    
+class LogsArchive(Base):
+    __tablename__ = "logs_archive"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    logs = Column(String, nullable=True)  # varchar(max)
+    id_kobo = Column(Integer, nullable=True)
+    data_json = Column(String, nullable=True)  # varchar(max)
+    fk_agent = Column(Integer, ForeignKey("utilisateur.id"), nullable=True)
+    date_submission = Column(DateTime, nullable=True)
+    date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
 # Table: membre_menage
 class MembreMenage(Base):

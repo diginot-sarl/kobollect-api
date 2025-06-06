@@ -69,6 +69,7 @@ from app.models import (
     Menage,
     MembreMenage,
     Logs,
+    LogsArchive,
     RapportRecensement)
 from app.auth import get_password_hash
 from app.utils import remove_trailing_commas
@@ -3964,7 +3965,7 @@ async def process_logs(db: Session = Depends(get_db)):
 
     try:
         # Fetch all logs from the database
-        logs = db.query(Logs).all()
+        logs = db.query(LogsArchive).all()
         
         logger.info(f"Fetched {len(logs)} logs for processing")
 
