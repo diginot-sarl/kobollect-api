@@ -75,7 +75,7 @@ from app.utils import remove_trailing_commas
 
 router = APIRouter()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

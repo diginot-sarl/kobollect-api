@@ -9,6 +9,7 @@ from app.models import (
 from app.utils import generate_nif, safe_int
 from datetime import datetime
 
+logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def process_recensement_form(payload: dict, db: Session, background_tasks: BackgroundTasks):
