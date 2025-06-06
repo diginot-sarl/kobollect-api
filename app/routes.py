@@ -3957,8 +3957,96 @@ async def update_user_password(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/process-logs", tags=["Logs"])
-async def process_logs(db: Session = Depends(get_db)):
+# @router.get("/process-logs", tags=["Logs"])
+# async def process_logs(db: Session = Depends(get_db)):
+#     failed_log_ids = []  # List to store IDs of logs that failed
+    
+#     logger.info("Starting to process logs...")
+
+#     try:
+#         # Fetch all logs from the database
+#         logs = db.query(LogsArchive).all()
+        
+#         logger.info(f"Fetched {len(logs)} logs for processing")
+        
+#         # return {"message": f"Fetched {len(logs)} logs for processing"}
+
+#         # Loop over each log
+#         for log in logs:
+#             try:            
+#                 data_json = remove_trailing_commas(log.data_json)
+                
+#                 json_data = json5.loads(data_json)
+                                
+#                 # Validate that payload is a dictionary
+#                 if not isinstance(json_data, dict):
+#                     raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+                
+#                 # Process based on log type
+#                 if log.logs == "process_recensement_form":
+#                     logger.info(f"Start processing LOGS id {log.id} for RECENSEMENT FORM")
+#                     response = requests.post(
+#                         "http://127.0.0.1:8000/api/v1/import-from-kobo",
+#                         # "https://api.hidscollect.com:9443/api/v1/import-from-kobo",
+#                         json=json_data
+#                     )
+#                     if response.status_code != 200:
+#                         logger.error(f"Failed to process log ID {log.id}: {response.text}")
+#                         failed_log_ids.append(log.id)
+
+#                 elif log.logs == "process_rapport_superviseur_form":
+#                     logger.info(f"Start processing LOGS id {log.id} for RAPPORT SUPERVISEUR FORM")
+#                     response = requests.post(
+#                         "http://127.0.0.1:8000/api/v1/import-rapport-superviseur",
+#                         # "https://api.hidscollect.com:9443/api/v1/import-rapport-superviseur",
+#                         json=json_data
+#                     )
+#                     if response.status_code != 200:
+#                         logger.error(f"Failed to process log ID {log.id}: {response.text}")
+#                         failed_log_ids.append(log.id)
+
+#                 elif log.logs == "process_parcelles_non_baties_form":
+#                     logger.info(f"Start processing LOGS id {log.id} for PARCELLE NON BATIE FORM")
+#                     response = requests.post(
+#                         "http://127.0.0.1:8000/api/v1/import-parcelle-non-batie",
+#                         # "https://api.hidscollect.com:9443/api/v1/import-parcelle-non-batie",
+#                         json=json_data
+#                     )
+#                     if response.status_code != 200:
+#                         logger.error(f"Failed to process log ID {log.id}: {response.text}")
+#                         failed_log_ids.append(log.id)
+
+#                 elif log.logs == "process_immeuble_form":
+#                     logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
+#                     response = requests.post(
+#                         "http://127.0.0.1:8000/api/v1/import-immeuble",
+#                         # "https://api.hidscollect.com:9443/api/v1/import-immeuble",
+#                         json=json_data
+#                     )
+#                     if response.status_code != 200:
+#                         logger.error(f"Failed to process log ID {log.id}: {response.text}")
+#                         failed_log_ids.append(log.id)
+
+#             except json.JSONDecodeError as e:
+#                 logger.error(f"Invalid JSON data for log ID {log.id}: {e}")
+#                 failed_log_ids.append(log.id)
+#                 continue
+#             except Exception as e:
+#                 logger.error(f"Error processing log ID {log.id}: {str(e)}")
+#                 failed_log_ids.append(log.id)
+#                 continue
+
+#         # Return the list of failed log IDs
+#         return {"message": "Logs processed successfully", "failed_log_ids": failed_log_ids}
+
+#     except Exception as e:
+#         logger.error(f"Unexpected error in process_logs: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+
+@router.get("/process-logs-local", tags=["Logs"])
+async def process_logs_in_local(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     failed_log_ids = []  # List to store IDs of logs that failed
     
     logger.info("Starting to process logs...")
@@ -3968,6 +4056,8 @@ async def process_logs(db: Session = Depends(get_db)):
         logs = db.query(LogsArchive).all()
         
         logger.info(f"Fetched {len(logs)} logs for processing")
+        
+        # return {"message": f"Fetched {len(logs)} logs for processing"}
 
         # Loop over each log
         for log in logs:
@@ -3983,47 +4073,19 @@ async def process_logs(db: Session = Depends(get_db)):
                 # Process based on log type
                 if log.logs == "process_recensement_form":
                     logger.info(f"Start processing LOGS id {log.id} for RECENSEMENT FORM")
-                    response = requests.post(
-                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-from-kobo",
-                        # "https://api.hidscollect.com:9443/api/v1/import-from-kobo",
-                        json=json_data
-                    )
-                    if response.status_code != 200:
-                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
-                        failed_log_ids.append(log.id)
+                    response = process_recensement_form(json_data, db, background_tasks)
 
                 elif log.logs == "process_rapport_superviseur_form":
                     logger.info(f"Start processing LOGS id {log.id} for RAPPORT SUPERVISEUR FORM")
-                    response = requests.post(
-                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-rapport-superviseur",
-                        # "https://api.hidscollect.com:9443/api/v1/import-rapport-superviseur",
-                        json=json_data
-                    )
-                    if response.status_code != 200:
-                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
-                        failed_log_ids.append(log.id)
+                    response = process_rapport_superviseur_form(json_data, db)
 
                 elif log.logs == "process_parcelles_non_baties_form":
                     logger.info(f"Start processing LOGS id {log.id} for PARCELLE NON BATIE FORM")
-                    response = requests.post(
-                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-parcelle-non-batie",
-                        # "https://api.hidscollect.com:9443/api/v1/import-parcelle-non-batie",
-                        json=json_data
-                    )
-                    if response.status_code != 200:
-                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
-                        failed_log_ids.append(log.id)
+                    response = process_parcelles_non_baties_form(json_data, db, background_tasks)
 
                 elif log.logs == "process_immeuble_form":
                     logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
-                    response = requests.post(
-                        "https://api-kobocollect.apps.kubedev.hologram.cd/api/v1/import-immeuble",
-                        # "https://api.hidscollect.com:9443/api/v1/import-immeuble",
-                        json=json_data
-                    )
-                    if response.status_code != 200:
-                        logger.error(f"Failed to process log ID {log.id}: {response.text}")
-                        failed_log_ids.append(log.id)
+                    response = process_immeuble_form(json_data, db, background_tasks)
 
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON data for log ID {log.id}: {e}")
