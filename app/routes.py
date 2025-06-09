@@ -575,7 +575,7 @@ async def create_new_user(user_data: UserCreate, background_tasks: BackgroundTas
 @router.get("/geojson", tags=["GeoJSON"])
 async def get_geojson(
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=5000),
+    page_size: int = Query(10, ge=1, le=10000),
     date_start: str = Query(None),
     date_end: str = Query(None),
     type: str = Query('parcelle'),
