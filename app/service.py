@@ -58,11 +58,8 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
         
         if kobo.get("parcelle_accessible_ou_non") == "oui":
             
-            fk_avenue = None
-            if (safe_int(kobo.get("adresse_de_la_parcelle/avenue"))) == 111111111:
-                fk_avenue = 11606
-            else:
-                fk_avenue = safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
+            fk_avenue = (11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111 
+                         else safe_int(kobo.get("adresse_de_la_parcelle/avenue")))
 
             # 1. Insert into Adresse
             adresse = Adresse(
