@@ -42,7 +42,7 @@ class Avenue(Base):
 class Bien(Base):
     __tablename__ = "bien"
     id = Column(Integer, primary_key=True, index=True)
-    numero_bien = Column(String(10), nullable=True)  # varchar(max)
+    numero_bien = Column(String(100), nullable=True)  # varchar(max)
     coordinates = Column(String, nullable=True)  # varchar(max)
     coord_projected = Column(String, nullable=True)  # varchar(max)
     coord_corrige = Column(String, nullable=True)  # varchar(max)

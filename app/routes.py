@@ -383,6 +383,31 @@ def get_all_users(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/users/simple", tags=["Users"])
+def get_all_users_simple(
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Query to get all users with only id, nom, postnom, and prenom
+        query = """
+            SELECT 
+                u.id, 
+                CONCAT(u.nom, ' ', u.postnom, ' ', u.prenom) AS full_name
+            FROM utilisateur u
+        """
+
+        # Execute query
+        results = db.execute(text(query)).fetchall()
+
+        # Format results
+        users = [{"id": row.id, "label": row.full_name} for row in results]
+
+        return users
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
@@ -1600,28 +1625,35 @@ def get_populations(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Fetch cartographie data
+# Fixed cartographie endpoint
 @router.get("/cartographie", tags=["Cartographie"])
 def get_cartographie(
-    commune: str = Query(None),
-    quartier: str = Query(None),
-    avenue: str = Query(None),
-    rang: str = Query(None),
-    nature: str = Query(None),
-    usage: str = Query(None),
-    usage_specifique: str = Query(None),
-    type_donnee: str = Query(None),
-    current_user = Depends(get_current_active_user),
+    commune: Optional[str] = Query(None),
+    quartier: Optional[str] = Query(None),
+    avenue: Optional[str] = Query(None),
+    rang: Optional[str] = Query(None),
+    nature: Optional[str] = Query(None),
+    usage: Optional[str] = Query(None),
+    usage_specifique: Optional[str] = Query(None),
+    type_donnee: Optional[str] = Query(None),
+    fk_agent: Optional[str] = Query(None),
+    current_user=Depends(get_current_active_user),
     db: Session = Depends(get_db),
+    entity_type: Optional[str] = Query(None, alias="type"),
 ):
     try:
         # Base query with all necessary joins
         base_query = """
             SELECT 
-                b.id AS bien_id, b.coordinates AS bien_coordinates, b.coord_corrige AS bien_coord_corrige,
-                b.superficie AS bien_superficie, b.date_create AS bien_date_create,
-                p.id AS parcelle_id, p.numero_parcellaire AS parcelle_numero,
-                p.coordonnee_geographique AS parcelle_coordinates, p.coord_corrige AS parcelle_coord_corrige,
+                b.id AS bien_id, 
+                b.coordinates AS bien_coordinates, 
+                b.coord_corrige AS bien_coord_corrige,
+                b.superficie AS bien_superficie, 
+                b.date_create AS bien_date_create,
+                p.id AS parcelle_id, 
+                p.numero_parcellaire AS parcelle_numero,
+                p.coordonnee_geographique AS parcelle_coordinates, 
+                p.coord_corrige AS parcelle_coord_corrige,
                 p.superficie_calculee AS parcelle_superficie,
                 p.date_create AS parcelle_date_create,
                 c.intitule AS commune,
@@ -1631,7 +1663,7 @@ def get_cartographie(
                     CONCAT(pp.nom, ' ', pp.prenom),  -- Parcelle owner
                     CONCAT(mp.nom, ' ', mp.prenom)   -- Bien owner through menage
                 ) AS nom_proprietaire,
-                CONCAT(mp.nom, ' ', mp.prenom) AS bien_proprietaire,  -- Specific owner for bien
+                CONCAT(mp.nom, ' ', mp.prenom) AS bien_proprietaire,
                 nb.intitule AS nature_bien,
                 u.intitule AS unite,
                 usg.intitule AS usage,
@@ -1641,9 +1673,9 @@ def get_cartographie(
                 pu.intitule AS parcelle_unite
             FROM bien b
             LEFT JOIN parcelle p ON b.fk_parcelle = p.id
-            LEFT JOIN personne pp ON p.fk_proprietaire = pp.id  -- Parcelle owner
+            LEFT JOIN personne pp ON p.fk_proprietaire = pp.id
             LEFT JOIN menage m ON b.id = m.fk_bien
-            LEFT JOIN personne mp ON m.fk_personne = mp.id  -- Bien owner through menage
+            LEFT JOIN personne mp ON m.fk_personne = mp.id
             LEFT JOIN adresse a ON p.fk_adresse = a.id
             LEFT JOIN avenue av ON a.fk_avenue = av.id
             LEFT JOIN quartier q ON av.fk_quartier = q.id
@@ -1682,14 +1714,32 @@ def get_cartographie(
         if usage_specifique:
             filters.append("us.id = :usage_specifique")
             params["usage_specifique"] = usage_specifique
-
+        if fk_agent:
+            try:
+                agent_id = int(fk_agent)
+                filters.append("(b.fk_agent = :fk_agent OR p.fk_agent = :fk_agent)")
+                params["fk_agent"] = agent_id
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid agent ID format")
+        
         # Build final query
         query = base_query
         if filters:
             query += " AND " + " AND ".join(filters)
 
+        # Entity type filtering - CRITICAL FIX
+        if entity_type == "bien":
+            # Only fetch biens with their linked parcelles
+            query = query.replace("FROM bien b", "FROM bien b LEFT JOIN parcelle p ON b.fk_parcelle = p.id")
+        elif entity_type == "parcelle":
+            # Only fetch parcelles and their linked biens
+            query = query.replace("FROM bien b", "FROM parcelle p LEFT JOIN bien b ON b.fk_parcelle = p.id")
+        else:
+            # Fetch both with bien as primary
+            pass
+
         # Add ordering
-        query += " ORDER BY b.id DESC"
+        query += " ORDER BY COALESCE(b.id, p.id) DESC"
 
         # Execute query
         results = db.execute(text(query), params).fetchall()
@@ -1697,8 +1747,11 @@ def get_cartographie(
         # Format results
         data = []
         for row in results:
-            data.append({
-                "bien": {
+            item = {}
+            
+            # Process bien data if exists
+            if row.bien_id:
+                item["bien"] = {
                     "id": row.bien_id,
                     "coordinates": parse_coordinates(row.bien_coordinates) if type_donnee == 'collected' else parse_coordinates(row.bien_coord_corrige),
                     "superficie": row.bien_superficie,
@@ -1707,9 +1760,12 @@ def get_cartographie(
                     "unite": row.unite,
                     "usage": row.usage,
                     "usage_specifique": row.usage_specifique,
-                    "nom_proprietaire": row.bien_proprietaire  # Added bien_proprietaire
-                },
-                "parcelle": {
+                    "nom_proprietaire": row.bien_proprietaire
+                }
+            
+            # Process parcelle data if exists
+            if row.parcelle_id:
+                item["parcelle"] = {
                     "id": row.parcelle_id,
                     "numero_parcellaire": row.parcelle_numero,
                     "coordinates": parse_coordinates(row.parcelle_coordinates) if type_donnee == 'collected' else parse_coordinates(row.parcelle_coord_corrige),
@@ -1718,12 +1774,15 @@ def get_cartographie(
                     "unite": row.parcelle_unite,
                     "rang": row.rang,
                     "nom_proprietaire": row.nom_proprietaire
-                },
-                "ajouter_par": row.ajouter_par,
-                "commune": row.commune,
-                "quartier": row.quartier,
-                "avenue": row.avenue
-            })
+                }
+            
+            # Only add items that match the entity_type
+            if not entity_type:
+                data.append(item)
+            elif entity_type == "bien" and "bien" in item:
+                data.append({"bien": item["bien"]})
+            elif entity_type == "parcelle" and "parcelle" in item:
+                data.append({"parcelle": item["parcelle"]})
 
         return {
             "data": data,
@@ -1732,7 +1791,6 @@ def get_cartographie(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # Fetch dashboard statistics
 @router.get("/stats/dashboard", tags=["Stats"])
@@ -4150,3 +4208,5 @@ async def process_logs(id_log: int, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Unexpected error in process_logs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
