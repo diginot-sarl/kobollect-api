@@ -92,28 +92,11 @@ def format_personne(row):
     }
     
 # # Helper function to parse coordinates
-# def parse_coordinates(coord_str):
-#     # If coord_str is already an array, return it directly
-#     if isinstance(coord_str, list):
-#         return coord_str
-#     # If coord_str is None or empty, return None
-#     if not coord_str:
-#         return None
-#     points = []
-#     for part in coord_str.split(';'):
-#         vals = part.strip().split()
-#         if len(vals) >= 2:
-#             try:
-#                 lat = float(vals[0])
-#                 lng = float(vals[1])
-#                 points.append([lat, lng])
-#             except Exception:
-#                 continue
-#     return points if points else None
-
 def parse_coordinates(coord_str):
+    # If coord_str is already an array, return it directly
     if isinstance(coord_str, list):
         return coord_str
+    # If coord_str is None or empty, return None
     if not coord_str:
         return None
     points = []
@@ -121,16 +104,13 @@ def parse_coordinates(coord_str):
         vals = part.strip().split()
         if len(vals) >= 2:
             try:
-                # Ensure latitude and longitude are parsed correctly
-                # Leaflet expects [lat, lng]
                 lat = float(vals[0])
                 lng = float(vals[1])
                 points.append([lat, lng])
-            except ValueError:
-                # Log the error or handle it as appropriate
-                # print(f"Warning: Could not parse coordinate part '{part}'")
+            except Exception:
                 continue
     return points if points else None
+
 
 
 @router.post("/create-user-kobo", tags=["Kobo"])
