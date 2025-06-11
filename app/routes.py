@@ -91,12 +91,29 @@ def format_personne(row):
         "sigle": row.sigle,
     }
     
-# Helper function to parse coordinates
+# # Helper function to parse coordinates
+# def parse_coordinates(coord_str):
+#     # If coord_str is already an array, return it directly
+#     if isinstance(coord_str, list):
+#         return coord_str
+#     # If coord_str is None or empty, return None
+#     if not coord_str:
+#         return None
+#     points = []
+#     for part in coord_str.split(';'):
+#         vals = part.strip().split()
+#         if len(vals) >= 2:
+#             try:
+#                 lat = float(vals[0])
+#                 lng = float(vals[1])
+#                 points.append([lat, lng])
+#             except Exception:
+#                 continue
+#     return points if points else None
+
 def parse_coordinates(coord_str):
-    # If coord_str is already an array, return it directly
     if isinstance(coord_str, list):
         return coord_str
-    # If coord_str is None or empty, return None
     if not coord_str:
         return None
     points = []
@@ -104,10 +121,14 @@ def parse_coordinates(coord_str):
         vals = part.strip().split()
         if len(vals) >= 2:
             try:
+                # Ensure latitude and longitude are parsed correctly
+                # Leaflet expects [lat, lng]
                 lat = float(vals[0])
                 lng = float(vals[1])
                 points.append([lat, lng])
-            except Exception:
+            except ValueError:
+                # Log the error or handle it as appropriate
+                # print(f"Warning: Could not parse coordinate part '{part}'")
                 continue
     return points if points else None
 
@@ -1804,11 +1825,13 @@ def get_cartographie(
     usage_specifique: str = Query(None),
     type_donnee: str = Query(None),
     current_user=Depends(get_current_active_user),
-    fk_agent: Optional[str] = Query(None),
+    fk_agent: Optional[str] = Query(None), # Keep as string, convert to int for query
     db: Session = Depends(get_db),
 ):
     try:
         # Base query with all necessary joins
+        # Ensure that the joins for 'per' (ajouter_par) are LEFT JOINs
+        # so that if b.fk_agent is NULL, it doesn't filter out the row.
         base_query = """
             SELECT
                 b.id AS bien_id, b.coordinates AS bien_coordinates, b.coord_corrige AS bien_coord_corrige,
@@ -1829,7 +1852,7 @@ def get_cartographie(
                 u.intitule AS unite,
                 usg.intitule AS usage,
                 us.intitule AS usage_specifique,
-                CONCAT(per.nom, ' ', per.prenom) AS ajouter_par,
+                CONCAT(per.nom, ' ', per.prenom) AS ajouter_par, -- This person is from b.fk_agent
                 r.intitule AS rang,
                 pu.intitule AS parcelle_unite
             FROM bien b
@@ -1847,13 +1870,14 @@ def get_cartographie(
             LEFT JOIN unite pu ON p.fk_unite = pu.id
             LEFT JOIN usage usg ON b.fk_usage = usg.id
             LEFT JOIN usage_specifique us ON b.fk_usage_specifique = us.id
-            LEFT JOIN personne per ON b.fk_agent = per.id
+            LEFT JOIN personne per ON b.fk_agent = per.id -- Join to get 'ajouter_par' from bien's agent
             WHERE 1=1
         """
 
         # Add filters
         filters = []
         params = {}
+
         if commune:
             filters.append("c.id = :commune")
             params["commune"] = commune
@@ -1875,9 +1899,22 @@ def get_cartographie(
         if usage_specifique:
             filters.append("us.id = :usage_specifique")
             params["usage_specifique"] = usage_specifique
+
+        # --- FIX FOR FK_AGENT ---
         if fk_agent:
-            filters.append("(b.fk_agent = :fk_agent OR p.fk_agent = :fk_agent)")
-            params["fk_agent"] = fk_agent
+            # Convert fk_agent to integer as it's an ID
+            try:
+                agent_id = int(fk_agent)
+                # This condition ensures we filter by the agent who added either the bien OR the parcelle.
+                # If an agent hasn't added anything, this will still return nothing for them,
+                # which is the correct filtering behavior.
+                # The 'LEFT JOIN' in the base query ensures that if a bien exists but its fk_agent is NULL,
+                # it's still included *before* this filter.
+                filters.append("(b.fk_agent = :fk_agent OR p.fk_agent = :fk_agent)")
+                params["fk_agent"] = agent_id
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid fk_agent format. Must be an integer.")
+        # --- END FIX ---
 
         # Build final query
         query = base_query
@@ -1893,33 +1930,37 @@ def get_cartographie(
         # Format results
         data = []
         for row in results:
-            data.append({
-                "bien": {
-                    "id": row.bien_id,
-                    "coordinates": parse_coordinates(row.bien_coordinates) if type_donnee == 'collected' else parse_coordinates(row.bien_coord_corrige),
-                    "superficie": row.bien_superficie,
-                    "date_create": row.bien_date_create.isoformat() if row.bien_date_create else None,
-                    "nature_bien": row.nature_bien,
-                    "unite": row.unite,
-                    "usage": row.usage,
-                    "usage_specifique": row.usage_specifique,
-                    "nom_proprietaire": row.bien_proprietaire  # Added bien_proprietaire
-                },
-                "parcelle": {
-                    "id": row.parcelle_id,
-                    "numero_parcellaire": row.parcelle_numero,
-                    "coordinates": parse_coordinates(row.parcelle_coordinates) if type_donnee == 'collected' else parse_coordinates(row.parcelle_coord_corrige),
-                    "superficie_calculee": row.parcelle_superficie,
-                    "date_create": row.parcelle_date_create.isoformat() if row.parcelle_date_create else None,
-                    "unite": row.parcelle_unite,
-                    "rang": row.rang,
-                    "nom_proprietaire": row.nom_proprietaire
-                },
-                "ajouter_par": row.ajouter_par,
-                "commune": row.commune,
-                "quartier": row.quartier,
-                "avenue": row.avenue
-            })
+            # Check if bien_id or parcelle_id exists to determine if a record was actually found
+            # This is more for structuring the output if you want to skip entirely empty rows
+            # but the SQL filters should prevent them.
+            if row.bien_id or row.parcelle_id:
+                data.append({
+                    "bien": {
+                        "id": row.bien_id,
+                        "coordinates": parse_coordinates(row.bien_coordinates) if type_donnee == 'collected' else parse_coordinates(row.bien_coord_corrige),
+                        "superficie": row.bien_superficie,
+                        "date_create": row.bien_date_create.isoformat() if row.bien_date_create else None,
+                        "nature_bien": row.nature_bien,
+                        "unite": row.unite,
+                        "usage": row.usage,
+                        "usage_specifique": row.usage_specifique,
+                        "nom_proprietaire": row.bien_proprietaire
+                    },
+                    "parcelle": {
+                        "id": row.parcelle_id,
+                        "numero_parcellaire": row.parcelle_numero,
+                        "coordinates": parse_coordinates(row.parcelle_coordinates) if type_donnee == 'collected' else parse_coordinates(row.parcelle_coord_corrige),
+                        "superficie_calculee": row.parcelle_superficie,
+                        "date_create": row.parcelle_date_create.isoformat() if row.parcelle_date_create else None,
+                        "unite": row.parcelle_unite,
+                        "rang": row.rang,
+                        "nom_proprietaire": row.nom_proprietaire
+                    },
+                    "ajouter_par": row.ajouter_par,
+                    "commune": row.commune,
+                    "quartier": row.quartier,
+                    "avenue": row.avenue
+                })
 
         return {
             "data": data,
@@ -1927,8 +1968,9 @@ def get_cartographie(
         }
 
     except Exception as e:
+        # Catch more specific exceptions if possible (e.g., database errors)
+        # For now, a general 500 is fine if the error message is informative.
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 # Fetch dashboard statistics
