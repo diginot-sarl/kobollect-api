@@ -14,7 +14,7 @@ logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Retry configuration
-@retry(wait=wait_fixed(5), stop=stop_after_attempt(15), reraise=True)
+@retry(wait=wait_fixed(30), stop=stop_after_attempt(30), reraise=True)
 def connect_to_db():
     try:
         # Attempt to establish a connection

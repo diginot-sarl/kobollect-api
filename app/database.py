@@ -7,6 +7,8 @@ import os
 
 load_dotenv()
 
+print(f"MSSQL_SERVER: {os.getenv('MSSQL_SERVER')}")
+
 engine = create_engine(
     os.getenv('MSSQL_SERVER'),
     isolation_level="REPEATABLE READ",
