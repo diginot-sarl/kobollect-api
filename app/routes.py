@@ -1917,7 +1917,7 @@ def get_cartographie(
                 data.append({
                     "bien": {
                         "id": row.bien_id,
-                        "coordinates": parse_coordinates(row.bien_coordinates) if type_donnee == 'collected' else parse_coordinates(row.bien_coord_corrige),
+                        "coordinates": row.bien_coordinates if type_donnee == 'collected' else row.bien_coord_corrige,
                         "superficie": row.bien_superficie,
                         "date_create": row.bien_date_create.isoformat() if row.bien_date_create else None,
                         "nature_bien": row.nature_bien,
@@ -1929,7 +1929,7 @@ def get_cartographie(
                     "parcelle": {
                         "id": row.parcelle_id,
                         "numero_parcellaire": row.parcelle_numero,
-                        "coordinates": parse_coordinates(row.parcelle_coordinates) if type_donnee == 'collected' else parse_coordinates(row.parcelle_coord_corrige),
+                        "coordinates": row.parcelle_coordinates if type_donnee == 'collected' else row.parcelle_coord_corrige,
                         "superficie_calculee": row.parcelle_superficie,
                         "date_create": row.parcelle_date_create.isoformat() if row.parcelle_date_create else None,
                         "unite": row.parcelle_unite,

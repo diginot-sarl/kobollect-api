@@ -58,6 +58,10 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
         
         if kobo.get("parcelle_accessible_ou_non") == "oui":
             
+            if kobo.get("adresse_de_la_parcelle/avenue") is None:
+                raise HTTPException(status_code=status.HTTP_200_OK, detail="Avenue est requise.")
+            
+            
             fk_avenue = (11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111 
                          else safe_int(kobo.get("adresse_de_la_parcelle/avenue")))
 
@@ -352,6 +356,10 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                         db.add(membre_menage)
 
         else:
+            
+            if kobo.get("Parcelle_non_accessible/avenue_1") is None:
+                raise HTTPException(status_code=status.HTTP_200_OK, detail="Avenue est requise.")
+            
             # 1. Insert into Adresse
             adresse = Adresse(
                 fk_avenue=safe_int(kobo.get("Parcelle_non_accessible/avenue_1")),  # Assuming this is an ID
@@ -510,7 +518,11 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
         
         if kobo.get("adresse_de_la_parcelle/La_maison_occupe_t_elle_toute_") == "oui":
             superficie_parcelle_egale_bien = True
-            coordonnee_geographique = kobo.get("informations_du_menage/coordonnee_geographique")
+            coordonnee_geographique = kobo.get("informations_du_menage/informations_du_bien/coordonnee_geographique")
+            
+        
+        if kobo.get("adresse_de_la_parcelle/avenue") is None:
+            raise HTTPException(status_code=status.HTTP_200_OK, detail="Avenue est requise.")
 
         # 1. Insert into Adresse
         adresse = Adresse(
@@ -639,17 +651,13 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
             
             fk_parcelle=fk_parcelle,
             
-            fk_nature_bien=safe_int(kobo.get("informations_du_menage/informations_du_bien/nature")) 
-                            if kobo.get("informations_du_menage/informations_du_bien/nature") else None,
+            fk_nature_bien=(safe_int(kobo.get("informations_du_menage/informations_du_bien/nature")) if kobo.get("informations_du_menage/informations_du_bien/nature") else None),
             
-            fk_unite=safe_int(kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) 
-                        if kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None,
+            fk_unite=(safe_int(kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1")) if kobo.get("informations_du_menage/informations_du_bien/unite_de_la_superficie_1") else None),
             
-            fk_usage=safe_int(kobo.get("informations_du_menage/informations_du_bien/usage")) 
-                        if kobo.get("informations_du_menage/informations_du_bien/usage") else None,
+            fk_usage=(safe_int(kobo.get("informations_du_menage/informations_du_bien/usage")) if kobo.get("informations_du_menage/informations_du_bien/usage") else None),
             
-            fk_usage_specifique=safe_int(kobo.get("informations_du_menage/informations_du_bien/usage_specifique")) 
-                                    if kobo.get("informations_du_menage/informations_du_bien/usage_specifique") else None,
+            fk_usage_specifique=(safe_int(kobo.get("informations_du_menage/informations_du_bien/usage_specifique")) if kobo.get("informations_du_menage/informations_du_bien/usage_specifique") else None),
             fk_agent=fk_agent,
             
             numero_bien=kobo.get("informations_du_menage/informations_du_bien/numero_bien"),
@@ -722,7 +730,11 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
             coordonnee_geographique = kobo.get("informations_immeuble/informations_du_bien/coordonnee_geographique")
         
         if kobo.get("parcelle_accessible_ou_non") == "oui":
-
+            
+            if kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue") is None:
+                raise HTTPException(status_code=status.HTTP_200_OK, detail="L'avenue de la parcelle est obligatoire.")
+            
+            
             # 1. Insert into Adresse
             adresse = Adresse(
                 fk_avenue=safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
@@ -1153,6 +1165,11 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
                         db.add(membre_menage)
                 
         else:
+            
+            if kobo.get("Parcelle_non_accessible/avenue_1") is None:
+                
+                raise HTTPException(status_code=status.HTTP_200_OK, detail="Avenue is required for parcelle non-accessible.")
+            
             # 1. Insert into Adresse
             adresse = Adresse(
                 fk_avenue=safe_int(kobo.get("Parcelle_non_accessible/avenue_1")),  # Assuming this is an ID
