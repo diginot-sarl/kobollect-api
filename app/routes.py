@@ -4178,7 +4178,7 @@ async def process_logs_in_continue(background_tasks: BackgroundTasks, db: Sessio
     try:
         # Fetch all logs from the database
         start_line = 4292
-        logs = db.query(LogsArchive).offset(start_line).all()  # Use offset to skip the first 4292 rows
+        logs = db.query(LogsArchive).order_by(LogsArchive.id).offset(start_line).all()  # Use offset to skip the first 4292 rows
         
         logger.info(f"Fetched {len(logs)} logs for processing")
         
