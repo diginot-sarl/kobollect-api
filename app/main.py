@@ -47,6 +47,6 @@ app.add_middleware(
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "Hids Collect Working v1.1"}
+    return {"status": "Hids Collect Working v1.2"}
 
 app.include_router(routes, prefix='/api/v1')
