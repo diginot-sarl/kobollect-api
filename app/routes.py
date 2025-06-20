@@ -4177,8 +4177,10 @@ async def process_logs_in_continue(background_tasks: BackgroundTasks, db: Sessio
 
     try:
         # Fetch all logs from the database
-        start_line = 4292
-        logs = db.query(LogsArchive).order_by(LogsArchive.id).offset(start_line).all()  # Use offset to skip the first 4292 rows
+        # start_line = 4292
+        # logs = db.query(LogsArchive).order_by(LogsArchive.id).offset(start_line).all()  # Use offset to skip the first 4292 rows
+        
+        logs = db.query(LogsArchive).order_by(LogsArchive.id).all()  # Use offset to skip the first 4292 rows
         
         logger.info(f"Fetched {len(logs)} logs for processing")
         
@@ -4228,6 +4230,78 @@ async def process_logs_in_continue(background_tasks: BackgroundTasks, db: Sessio
         logger.error(f"Unexpected error in process_logs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
     
+
+@router.get("/process-logs-xtra", tags=["Logs"])
+async def process_logs_xtra(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    failed_log_ids = []  # List to store IDs of logs that failed
+    
+    logger.info("Starting to process logs...")
+
+    try:
+        # # Fetch existing log IDs from the LogsArchive table
+        # existing_log_ids = {log.id_kobo for log in db.query(Logs.id_kobo).all()}
+        
+        # # Fetch all logs to process
+        # logs = db.query(LogsArchive).order_by(LogsArchive.id).all()
+        # logger.info(f"Fetched {len(logs)} logs for processing")
+        
+        existing_log_ids = set(db.query(Logs.id_kobo).scalars().all())
+        
+        # Fetch logs to process. Consider limiting the number of logs fetched at once
+        # to avoid memory issues for extremely large tables.
+        logs_to_process = db.query(LogsArchive).filter(
+            LogsArchive.id_kobo.notin_(existing_log_ids)
+        ).order_by(LogsArchive.id).all()
+        
+        logger.info(f"Found {len(logs_to_process)} new logs to process.")
+
+        if not logs_to_process:
+            return {"message": "No new logs to process."}
+        
+        # Loop over each log
+        for log in logs_to_process:
+            
+            try:            
+                data_json = remove_trailing_commas(log.data_json)
+                json_data = json5.loads(data_json)
+                
+                # Validate that payload is a dictionary
+                if not isinstance(json_data, dict):
+                    raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+                
+                # Process based on log type
+                if log.logs == "process_recensement_form":
+                    logger.info(f"Start processing LOGS id {log.id} for RECENSEMENT FORM")
+                    response = process_recensement_form(json_data, db, background_tasks)
+
+                elif log.logs == "process_rapport_superviseur_form":
+                    logger.info(f"Start processing LOGS id {log.id} for RAPPORT SUPERVISEUR FORM")
+                    response = process_rapport_superviseur_form(json_data, db)
+
+                elif log.logs == "process_parcelles_non_baties_form":
+                    logger.info(f"Start processing LOGS id {log.id} for PARCELLE NON BATIE FORM")
+                    response = process_parcelles_non_baties_form(json_data, db, background_tasks)
+
+                elif log.logs == "process_immeuble_form":
+                    logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
+                    response = process_immeuble_form(json_data, db, background_tasks)
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON data for log ID {log.id}: {e}")
+                failed_log_ids.append(log.id)
+                continue
+            except Exception as e:
+                logger.error(f"Error processing log ID {log.id}: {str(e)}")
+                failed_log_ids.append(log.id)
+                continue
+
+        # Return the list of failed log IDs
+        return {"message": "Logs processed successfully", "failed_log_ids": failed_log_ids}
+
+    except Exception as e:
+        logger.error(f"Unexpected error in process_logs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")    
+
     
 @router.get("/process-logs-recensement/{id_log}", tags=["Logs"])
 async def process_logs(id_log: int, db: Session = Depends(get_db)):
