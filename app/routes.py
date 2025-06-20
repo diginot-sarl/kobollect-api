@@ -4270,7 +4270,7 @@ async def process_logs_xtra(background_tasks: BackgroundTasks, db: Session = Dep
             Logs, LogsArchive.id_kobo == Logs.id_kobo
         ).filter(
             Logs.id_kobo.is_(None) # This means there was no matching entry in the Logs table
-        ).order_by(LogsArchive.id).all() # Still process in batches for memory
+        ).order_by(LogsArchive.id).limit(1000).all() # Still process in batches for memory
 
         logger.info(f"Found {len(logs_to_process)} new logs to process.")
 
