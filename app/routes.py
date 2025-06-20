@@ -4238,14 +4238,8 @@ async def process_logs_xtra(background_tasks: BackgroundTasks, db: Session = Dep
     logger.info("Starting to process logs...")
 
     try:
-        # # Fetch existing log IDs from the LogsArchive table
-        # existing_log_ids = {log.id_kobo for log in db.query(Logs.id_kobo).all()}
-        
-        # # Fetch all logs to process
-        # logs = db.query(LogsArchive).order_by(LogsArchive.id).all()
-        # logger.info(f"Fetched {len(logs)} logs for processing")
-        
-        existing_log_ids = set(db.query(Logs.id_kobo).scalars().all())
+        # # Fetch existing log IDs from the LogsArchive table        
+        existing_log_ids = {log_id for (log_id,) in db.query(Logs.id_kobo).all()}
         
         # Fetch logs to process. Consider limiting the number of logs fetched at once
         # to avoid memory issues for extremely large tables.
