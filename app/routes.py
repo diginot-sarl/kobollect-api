@@ -1,3 +1,4 @@
+import os
 import json
 import json5
 import requests
@@ -110,6 +111,30 @@ def parse_coordinates(coord_str):
             except Exception:
                 continue
     return points if points else None
+
+
+def write_failed_logs_to_file(failed_ids: list):
+    """
+    Writes a list of failed log IDs to a 'failed_logs.txt' file.
+    Appends to the file, including a timestamp.
+    """
+    if not failed_ids:
+        return
+
+    log_file_path = "/var/log/app/logs.txt" # Or specify an absolute path: e.g., "/var/log/app/logs.txt"
+
+    try:
+        current_time = datetime.now().isoformat()
+        with open(log_file_path, "a") as f: # 'a' for append mode
+            f.write(f"--- Failed Logs ({current_time}) ---\n")
+            for log_id in failed_ids:
+                f.write(f"{log_id}\n")
+            f.write("\n") # Add a newline for separation
+        logger.info(f"Successfully wrote {len(failed_ids)} failed log IDs to {log_file_path}")
+    except IOError as e:
+        logger.error(f"Failed to write failed log IDs to file {log_file_path}: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while writing failed logs: {e}")
 
 
 
@@ -4238,15 +4263,15 @@ async def process_logs_xtra(background_tasks: BackgroundTasks, db: Session = Dep
     logger.info("Starting to process logs...")
 
     try:
-        # # Fetch existing log IDs from the LogsArchive table        
-        existing_log_ids = {log_id for (log_id,) in db.query(Logs.id_kobo).all()}
+        # # Fetch existing log IDs from the LogsArchive table
+        # existing_log_ids = {log.id_kobo for log in db.query(Logs.id_kobo).all()}
         
-        # Fetch logs to process. Consider limiting the number of logs fetched at once
-        # to avoid memory issues for extremely large tables.
-        logs_to_process = db.query(LogsArchive).filter(
-            LogsArchive.id_kobo.notin_(existing_log_ids)
-        ).order_by(LogsArchive.id).all()
-        
+        logs_to_process = db.query(LogsArchive).outerjoin(
+            Logs, LogsArchive.id_kobo == Logs.id_kobo
+        ).filter(
+            Logs.id_kobo.is_(None) # This means there was no matching entry in the Logs table
+        ).order_by(LogsArchive.id).all() # Still process in batches for memory
+
         logger.info(f"Found {len(logs_to_process)} new logs to process.")
 
         if not logs_to_process:
@@ -4288,6 +4313,9 @@ async def process_logs_xtra(background_tasks: BackgroundTasks, db: Session = Dep
                 logger.error(f"Error processing log ID {log.id}: {str(e)}")
                 failed_log_ids.append(log.id)
                 continue
+            
+        # --- Write failed logs to file ---
+        write_failed_logs_to_file(failed_log_ids)
 
         # Return the list of failed log IDs
         return {"message": "Logs processed successfully", "failed_log_ids": failed_log_ids}
