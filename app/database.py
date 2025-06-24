@@ -10,7 +10,7 @@ load_dotenv()
 
 engine = create_engine(
     os.getenv('MSSQL_SERVER'),
-    isolation_level="REPEATABLE READ",
+    #isolation_level="REPEATABLE READ",
     poolclass=QueuePool,
     pool_size=20,          # Max idle connections
     max_overflow=40,       # Max temporary connections beyond pool_size
