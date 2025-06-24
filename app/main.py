@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from tenacity import retry, wait_fixed, stop_after_attempt
 from app.database import engine
 from app.routes import router as routes
+from app.rate_limit import RateLimiterMiddleware, TokenBucket
 
 # Configure logging
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
@@ -45,8 +46,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Initialize the token bucket with 4 tokens capacity and refill rate of 2 tokens/second
+bucket = TokenBucket(capacity=4, refill_rate=2)
+
+# Add the rate limiting middleware to the FastAPI app
+app.add_middleware(RateLimiterMiddleware, bucket=bucket)
+
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "Hids Collect Working v2.1 - Pointing to 213.199.58.100 DB"}
+    return {"status": "Hids Collect Working v2.1 -> Pointing to 213.199.58.100 DB -> Applying Rate Limit of 4 requests per second"}
 
 app.include_router(routes, prefix='/api/v1')
