@@ -54,6 +54,6 @@ app.add_middleware(RateLimiterMiddleware, bucket=bucket)
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "Hids Collect Working v2.2 -> Pointing to 213.199.58.100 DB -> Applying Rate Limit of 4 requests per second"}
+    return {"status": "Hids Collect Working v2.3"}
 
 app.include_router(routes, prefix='/api/v1')

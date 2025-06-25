@@ -61,9 +61,11 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
             if kobo.get("adresse_de_la_parcelle/avenue") is None:
                 raise HTTPException(status_code=status.HTTP_200_OK, detail="Avenue est requise.")
             
-            
-            fk_avenue = (11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111 
-                         else safe_int(kobo.get("adresse_de_la_parcelle/avenue")))
+            fk_avenue = (
+                11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
+                else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
+                else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
+            )
 
             # 1. Insert into Adresse
             adresse = Adresse(
@@ -523,10 +525,16 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
         
         if kobo.get("adresse_de_la_parcelle/avenue") is None:
             raise HTTPException(status_code=status.HTTP_200_OK, detail="Avenue est requise.")
+            
+        fk_avenue = (
+            11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
+            else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
+            else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
+        )
 
         # 1. Insert into Adresse
         adresse = Adresse(
-            fk_avenue=safe_int(kobo.get("adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
+            fk_avenue=fk_avenue,  # Assuming this is an ID
             numero=kobo.get("adresse_de_la_parcelle/numero_parcellaire"),
             fk_agent=fk_agent,
             date_create=date_create,
@@ -725,6 +733,7 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
         
         coordonnee_geographique = None
         superficie_parcelle_egale_bien = False
+        
         if kobo.get("informations_immeuble/adresse_de_la_parcelle/La_maison_occupe_t_elle_toute_") == "oui":
             superficie_parcelle_egale_bien = True
             coordonnee_geographique = kobo.get("informations_immeuble/informations_du_bien/coordonnee_geographique")
@@ -734,10 +743,15 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
             if kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue") is None:
                 raise HTTPException(status_code=status.HTTP_200_OK, detail="L'avenue de la parcelle est obligatoire.")
             
+            fk_avenue = (
+                11606 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 111111111
+                else 10627 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 2217
+                else safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue"))
+            )
             
             # 1. Insert into Adresse
             adresse = Adresse(
-                fk_avenue=safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")),  # Assuming this is an ID
+                fk_avenue=fk_avenue,  # Assuming this is an ID
                 numero=kobo.get("informations_immeuble/adresse_de_la_parcelle/numero_parcellaire"),
                 fk_agent=fk_agent,
                 date_create=date_create,
