@@ -407,7 +407,7 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
     except Exception as e:
         db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}\n Formulaire: process_recensement_form")
 
 
 def process_rapport_superviseur_form(payload: dict, db: Session):
@@ -482,7 +482,7 @@ def process_rapport_superviseur_form(payload: dict, db: Session):
     except Exception as e:
         db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}\n Formulaire: process_rapport_superviseur_form")
 
 
 def process_parcelles_non_baties_form(payload: dict, db: Session, background_tasks: BackgroundTasks):
@@ -692,7 +692,7 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
     except Exception as e:
         db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}\n Formulaire: process_parcelles_non_baties_form")
 
 
 def process_immeuble_form(payload: dict, db: Session, background_tasks: BackgroundTasks):
@@ -1228,7 +1228,7 @@ def process_immeuble_form(payload: dict, db: Session, background_tasks: Backgrou
     except Exception as e:
         db.rollback()
         logger.error(f"Erreur lors de l'insertion des données _id={record_id} : {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}\n Formulaire: process_immeuble_form")
 
 
 
