@@ -1236,6 +1236,8 @@ async def get_parcelle_details(
 
         # Process biens and their relationships
         biens_map = {}
+        membres_seen = {}  # Track seen member IDs per bien
+
         for row in biens_results:
             if row.id not in biens_map:
                 biens_map[row.id] = {
@@ -1252,12 +1254,14 @@ async def get_parcelle_details(
                     "locataire": get_personne_details(row.locataire_id),
                     "membres_menage": []
                 }
+                membres_seen[row.id] = set()
 
-            # Add membre if exists
-            if row.membre_id:
+            # Add membre if exists and not already added
+            if row.membre_id and row.membre_id not in membres_seen[row.id]:
                 membre_details = get_personne_details(row.membre_id)
                 if membre_details:
                     biens_map[row.id]["membres_menage"].append(membre_details)
+                    membres_seen[row.id].add(row.membre_id)
 
         return {
             "parcelle": {
