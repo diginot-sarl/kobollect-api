@@ -54,6 +54,6 @@ app.add_middleware(RateLimiterMiddleware, bucket=bucket)
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "Hids Collect Working v2.4"}
+    return {"status": "Hids Collect Working v2.5 - Handle Importing GeoJSON"}
 
 app.include_router(routes, prefix='/api/v1')

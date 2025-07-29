@@ -434,6 +434,7 @@ def get_all_users_simple(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
@@ -806,6 +807,7 @@ async def get_geojson(
         logger.error(f"Error in get_geojson: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Fetch provinces
 @router.get("/provinces", tags=["GeoJSON"])
 def get_provinces(
@@ -818,6 +820,7 @@ def get_provinces(
         return [{"id": row[0], "intitule": row[1]} for row in result]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Fetch villes by province
 @router.get("/villes", tags=["GeoJSON"])
@@ -2150,6 +2153,7 @@ async def import_geojson(
             props = feature.get("properties", {})
             obj_id = props.get("id")
             geometry = feature.get("geometry", {})
+            superficie = props.get("Sup")
             coordinates = geometry.get("coordinates")
 
             if not obj_id or not coordinates:
@@ -2159,11 +2163,13 @@ async def import_geojson(
                 parcelle = db.query(Parcelle).filter(Parcelle.id == obj_id).first()
                 if parcelle:
                     parcelle.coord_corrige = json.dumps(coordinates)  # Store as JSON string
+                    parcelle.superficie_corrige = superficie if superficie is not None and superficie != 0 else parcelle.superficie_calculee
                     updated_ids.append(obj_id)
             elif type == "bien":
                 bien = db.query(Bien).filter(Bien.id == obj_id).first()
                 if bien:
                     bien.coord_corrige = json.dumps(coordinates)  # Store as JSON string
+                    bien.superficie_corrige = superficie if superficie is not None and superficie != 0 else bien.superficie
                     updated_ids.append(obj_id)
 
         db.commit()
