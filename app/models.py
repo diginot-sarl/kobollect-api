@@ -1,5 +1,5 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, BigInteger, Date, DateTime
+from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, BigInteger, Date, DateTime, Boolean
 from sqlalchemy.sql import text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import NVARCHAR, NCHAR
@@ -58,6 +58,7 @@ class Bien(Base):
     fk_proprietaire = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     nombre_etage = Column(Integer, nullable=True)
     numero_etage = Column(Integer, nullable=True)
+    est_parent = Column(Boolean, nullable=True, default=False)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
     
     parcelle = relationship("Parcelle", back_populates="biens")

@@ -887,6 +887,8 @@ def process_immeuble_plusieurs_proprietaires_form(payload: dict, db: Session, ba
                 
                 fk_agent=fk_agent,
                 
+                est_parent=True,  # Assuming this is an Immeuble
+                
                 nombre_etage=(safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None),
             )
             db.add(immeuble)
