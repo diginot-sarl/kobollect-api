@@ -34,7 +34,9 @@ from app.service import (
     process_recensement_form,
     process_rapport_superviseur_form,
     process_parcelles_non_baties_form,
-    process_immeuble_form)
+    process_immeuble_plusieurs_proprietaires_form,
+    process_immeuble_seul_proprietaire_form
+)
 from app.schemas import (
     UserCreate,
     TeamCreate,
@@ -80,6 +82,8 @@ router = APIRouter()
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+class UserWithDroits(User):
+    droits: List[str] = []
 
 # Helper function to format personne (used in get_parcelle_details)
 def format_personne(row):
@@ -135,7 +139,6 @@ def write_failed_logs_to_file(failed_ids: list):
         logger.error(f"Failed to write failed log IDs to file {log_file_path}: {e}")
     except Exception as e:
         logger.error(f"An unexpected error occurred while writing failed logs: {e}")
-
 
 
 @router.post("/create-user-kobo", tags=["Kobo"])
@@ -217,7 +220,11 @@ async def process_rapport_superviseur(request: Request, db: Session = Depends(ge
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-parcelle-non-batie", tags=["Kobo"])
-async def process_parcelles_non_baties(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def process_parcelles_non_baties(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -237,7 +244,11 @@ async def process_parcelles_non_baties(request: Request,  background_tasks: Back
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-immeuble", tags=["Kobo"])
-async def process_immeuble(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def process_immeuble(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -252,7 +263,31 @@ async def process_immeuble(request: Request,  background_tasks: BackgroundTasks,
         raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
     
     # Process the payload using the service function
-    return process_immeuble_form(payload, db, background_tasks)
+    return process_immeuble_plusieurs_proprietaires_form(payload, db, background_tasks)
+
+
+# Process Kobo data from Kobotoolbox
+@router.post("/import-immeuble-seul-proprietaire", tags=["Kobo"])
+async def process_immeuble_seul_proprietaire(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    try:
+        # Parse the raw JSON body
+        payload = await request.json()
+        
+        # Validate that payload is a dictionary
+        if not isinstance(payload, dict):
+            raise HTTPException(status_code=400, detail="Invalid payload format. Expected a JSON object.")
+                
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing request: {str(e)}")
+    
+    # Process the payload using the service function
+    return process_immeuble_seul_proprietaire_form(payload, db, background_tasks)
 
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
@@ -492,9 +527,6 @@ def get_user(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-class UserWithDroits(User):
-    droits: List[str] = []
 
 @router.get("/user/me/", response_model=UserWithDroits, tags=["Users"])
 def read_users_me(
