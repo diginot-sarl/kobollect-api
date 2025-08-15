@@ -1,6 +1,12 @@
 # app/service.py
 import pytz
+import requests
+import json
+
+from sqlalchemy import or_, exists
 from sqlalchemy.orm import Session
+from sqlalchemy.inspection import inspect
+
 from fastapi import BackgroundTasks, HTTPException, status
 from fastapi.responses import JSONResponse
 import logging
@@ -8,6 +14,9 @@ from app.models import (
     Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement)
 from app.utils import generate_nif, safe_int
 from datetime import datetime
+
+from app.models import Parcelle, Bien, Adresse
+
 
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -65,6 +74,16 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
             fk_avenue = (
                 11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
                 else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
+                else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
+                
+                else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+                else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
+                else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
+                else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
+                else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
+                else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+                else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+                
                 else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
             )
 
@@ -530,6 +549,16 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
         fk_avenue = (
             11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
             else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
+            else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
+            
+            else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+            else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
+            else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
+            else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
+            else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
+            else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+            else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+            
             else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
         )
 
@@ -745,9 +774,19 @@ def process_immeuble_plusieurs_proprietaires_form(payload: dict, db: Session, ba
                 raise HTTPException(status_code=status.HTTP_200_OK, detail="L'avenue de la parcelle est obligatoire.")
             
             fk_avenue = (
-                11606 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 111111111
-                else 10627 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 2217
-                else safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue"))
+                11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
+                else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
+                else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
+                
+                else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+                else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
+                else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
+                else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
+                else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
+                else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+                else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+                
+                else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
             )
             
             # 1. Insert into Adresse
@@ -887,7 +926,7 @@ def process_immeuble_plusieurs_proprietaires_form(payload: dict, db: Session, ba
                 
                 fk_agent=fk_agent,
                 
-                est_parent=True,  # Assuming this is an Immeuble
+                est_parent=1,  # Assuming this is an Immeuble
                 
                 nombre_etage=(safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None),
             )
@@ -1289,9 +1328,20 @@ def process_immeuble_seul_proprietaire_form(payload: dict, db: Session, backgrou
                 raise HTTPException(status_code=status.HTTP_200_OK, detail="L'avenue de la parcelle est obligatoire.")
             
             fk_avenue = (
-                11606 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 111111111
-                else 10627 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 2217
-                else safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue"))
+                11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
+                
+                else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
+                else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
+                
+                else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+                else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
+                else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
+                else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
+                else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
+                else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+                else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+                
+                else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
             )
             
             # 1. Insert into Adresse
@@ -1431,7 +1481,7 @@ def process_immeuble_seul_proprietaire_form(payload: dict, db: Session, backgrou
                 
                 fk_agent=fk_agent,
                 
-                est_parent=True,
+                est_parent=1,
                 
                 nombre_etage=(safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None),
             )
@@ -1702,3 +1752,582 @@ def process_immeuble_seul_proprietaire_form(payload: dict, db: Session, backgrou
 
 
 
+
+def update_to_erecettes_v1(updated_keys: list[dict], db: Session):
+    
+    userCreat = 1908
+    """
+    Send updated parcelle and bien data to the remote server in the background.
+    
+    Args:
+        updated_keys (list[dict]): List of dictionaries with 'type' ('parcelle' or 'bien') and 'id'.
+    """
+    try:
+        # Step 1: Collect unique parcelle IDs from updated_keys
+        parcelle_ids = set()
+        for key in updated_keys:
+            if key["type"] == "parcelle":
+                parcelle = db.query(Parcelle).filter(Parcelle.id == key["id"]).first()
+                if parcelle:
+                    # Include parcelle if it has fk_proprietaire or any bien with fk_proprietaire
+                    has_biens_with_proprietaire = db.query(Bien).filter(
+                        Bien.fk_parcelle == parcelle.id,
+                        Bien.fk_proprietaire != None
+                    ).count() > 0
+                    if parcelle.fk_proprietaire or has_biens_with_proprietaire:
+                        parcelle_ids.add(parcelle.id)
+            elif key["type"] == "bien":
+                bien = db.query(Bien).filter(Bien.id == key["id"]).first()
+                if bien and bien.fk_parcelle and bien.fk_proprietaire:
+                    parcelle_ids.add(bien.fk_parcelle)
+
+        # Step 2: Construct the payload for each unique parcelle
+        parcelles_payload = []
+        for parcelle_id in parcelle_ids:
+            parcelle = db.query(Parcelle).filter(Parcelle.id == parcelle_id).first()
+            if not parcelle:
+                continue
+
+            # Fetch fk_avenue from Adresse
+            adresse = db.query(Adresse).filter(Adresse.id == parcelle.fk_adresse).first()
+            fk_avenue = adresse.fk_avenue if adresse else 0
+
+            # Fetch parent biens (fk_bien_parent is None and fk_proprietaire exists)
+            parent_biens = db.query(Bien).filter(
+                Bien.fk_parcelle == parcelle_id,
+                Bien.fk_bien_parent == None,
+                Bien.fk_proprietaire != None
+            ).all()
+            
+            # Construct biens payload (second level)
+            biens_payload = []
+            for bien in parent_biens:
+                # Fetch child biens (etage level) where fk_bien_parent matches this bien's id
+                child_biens = db.query(Bien).filter(
+                    Bien.fk_bien_parent == bien.id,
+                    Bien.fk_proprietaire != None
+                ).all()
+                
+                # Third level: etage
+                etage_payload = []
+                for child in child_biens:
+                    etage = {
+                        "relance": 0,
+                        "niveau_etage": child.numero_etage or None,
+                        "fk_contribuable": str(child.fk_proprietaire),
+                        "userCreat": userCreat,
+                        "valeurUnite": child.nombre_etage or None,
+                        "superficieBien": str(child.superficie_corrige or child.superficie or None),
+                        "fk_unite": str(child.fk_unite) if child.fk_unite else "",
+                        "fk_nature": child.fk_nature_bien or None,
+                        "fk_usage": child.fk_usage or None,
+                        "coordonnee": child.coord_corrige or "",
+                        "intitule": "",
+                        "fk_rang": parcelle.fk_rang if parcelle.fk_rang else None,
+                        "dataJsonBien": json.dumps(model_to_dict(child)),
+                    }
+                    etage_payload.append(etage)
+                
+                # Second level: bien
+                bien_payload = {
+                    "relance": 0,
+                    "niveau_etage": bien.numero_etage or None,
+                    "fk_contribuable": str(bien.fk_proprietaire),
+                    "userCreat": 1,
+                    "valeurUnite": bien.nombre_etage or None,
+                    "superficieBien": str(bien.superficie_corrige or bien.superficie or None),
+                    "fk_unite": str(bien.fk_unite) if bien.fk_unite else "",
+                    "fk_nature": bien.fk_nature_bien or None,
+                    "fk_usage": bien.fk_usage or None,
+                    "coordonnee": bien.coord_corrige or "",
+                    "intitule": "",
+                    "fk_rang": parcelle.fk_rang or None,
+                    "dataJsonBien": json.dumps(model_to_dict(bien)),
+                    "etage": etage_payload,
+                }
+                biens_payload.append(bien_payload)
+            
+            # First level: parcelle
+            many_contribuable = 1 if len(parent_biens) > 1 else 0
+            
+            parcelle_payload = {
+                "manyContribuable": many_contribuable,
+                "fk_contribuable": str(parcelle.fk_proprietaire) if parcelle.fk_proprietaire else "",
+                "coordinates": parcelle.coord_corrige or parcelle.coordonnee_geographique or "",
+                "largeur": parcelle.largeur or 0,
+                "longeur": parcelle.longueur or 0,  # Note: Kept as 'longeur' to match example payload
+                "superficie": str(parcelle.superficie_corrige or parcelle.superficie_calculee or None),
+                "coordinatesProjected": parcelle.coord_projected or None,
+                "agent_Creat": userCreat,
+                "fk_avenue": fk_avenue,
+                "numero": parcelle.numero_parcellaire or None,
+                "dataJsonParcelle": json.dumps(model_to_dict(parcelle)),
+                "fk_rang": parcelle.fk_rang or None,
+                "adressContribuableExist": 0,
+                "fk_parcelle": str(parcelle.id),
+                "biens": biens_payload,
+            }
+            parcelles_payload.append(parcelle_payload)
+
+        # Step 3: Send the POST request if there is data to send
+        if parcelles_payload:
+            try:
+                url = "https://api-dgrk-ms-sig-dev.apps.kubedev.hologram.cd/api/biens/creer"
+                payload = {"parcelles": parcelles_payload}
+                response = requests.post(url, json=payload)
+                # Log response for debugging (in production, use proper logging)
+                print(f"Response: {response.status_code}, {response.text}")
+            except Exception as e:
+               print(f"Error sending data to remote server: {str(e)}")
+
+    finally:
+        db.close()
+
+
+def update_to_erecettes_v2(updated_keys: list[dict], db: Session):
+    """
+    Send updated parcelle and bien data to the remote server in the background based on the new request body structure.
+    
+    Args:
+        updated_keys (list[dict]): List of dictionaries with 'type' ('parcelle' or 'bien') and 'id'.
+        db (Session): SQLAlchemy database session.
+    """
+    userCreat = 1908  # Hardcoded user ID for agent_Creat
+    try:
+        # Step 1: Collect unique proprietaire IDs from updated_keys
+        proprietaire_ids = set()
+        for key in updated_keys:
+            if key["type"] == "parcelle":
+                parcelle = db.query(Parcelle).filter(Parcelle.id == key["id"]).first()
+                if parcelle and parcelle.fk_proprietaire:
+                    proprietaire_ids.add(parcelle.fk_proprietaire)
+            elif key["type"] == "bien":
+                bien = db.query(Bien).filter(Bien.id == key["id"]).first()
+                if bien and bien.fk_proprietaire:
+                    proprietaire_ids.add(bien.fk_proprietaire)
+
+        # Step 2: For each unique proprietaire, construct the payload
+        for proprietaire_id in proprietaire_ids:
+            proprietaire = db.query(Personne).filter(Personne.id == proprietaire_id).first()
+            if not proprietaire:
+                continue
+
+            # Fetch all parcelles for this proprietaire
+            parcelles = db.query(Parcelle).filter(Parcelle.fk_proprietaire == proprietaire_id).all() ### probleme
+            parcelles_payload = []
+            
+            if len(parcelles) > 0:
+                adresse = db.query(Adresse).filter(Adresse.id == parcelles[0].fk_adresse).first()
+                fk_avenue = adresse.fk_avenue if adresse else None
+                
+                numero_parcellaire = parcelles[0].numero_parcellaire or None
+                
+                # Construct contribuable payload
+                contribuable_payload = {
+                    "nom": proprietaire.nom or "",
+                    "prenom": proprietaire.prenom or "",
+                    "postnom": proprietaire.postnom or "",
+                    "fk_forme": proprietaire.fk_type_personne or None,
+                    "idnat": proprietaire.id_nat or "",
+                    "rccm": proprietaire.rccm or "",
+                    "sigle": proprietaire.sigle or "",
+                    "sexe": proprietaire.sexe or "",
+                    "agent_Creat": userCreat,
+                    "fk_pays": proprietaire.fk_nationalite or None,
+                    "fk_avenue": fk_avenue,  # No direct link in Personne model
+                    "numero": numero_parcellaire,   # No direct link in Personne model
+                    "telephone": proprietaire.telephone or "",
+                    "email": proprietaire.adresse_mail or ""
+                }
+            
+            for parcelle in parcelles:
+                # Fetch fk_avenue from Adresse
+                adresse = db.query(Adresse).filter(Adresse.id == parcelle.fk_adresse).first()
+                fk_avenue = adresse.fk_avenue if adresse else 0
+
+                # Fetch parent biens (fk_bien_parent is None)
+                parent_biens = db.query(Bien).filter(
+                    Bien.fk_parcelle == parcelle.id,
+                    Bien.fk_bien_parent == None,
+                    Bien.fk_proprietaire != None
+                ).all()
+
+                # Construct biens payload
+                biens_payload = []
+                for bien in parent_biens:
+                    # Fetch child biens (sous_biens)
+                    child_biens = db.query(Bien).filter(Bien.fk_bien_parent == bien.id).all()
+
+                    # Construct sous_biens payload
+                    sous_biens_payload = []
+                    for child in child_biens:
+                        sous_bien = {
+                            "intitule": "",  # No intitule field in Bien model
+                            "fk_nature": child.fk_nature_bien or 0,
+                            "fk_usage": child.fk_usage or 0,
+                            "coordinates": child.coord_corrige or "",
+                            "superficie": str(child.superficie_corrige or child.superficie or 0),
+                            "valeur_unite": child.nombre_etage or 0,
+                            "fk_unite": child.fk_unite or 0,
+                            "fk_rang": parcelle.fk_rang or 0,
+                            "niveau_etage": child.numero_etage or 0
+                        }
+                        sous_biens_payload.append(sous_bien)
+
+                    # Construct bien payload
+                    bien_payload = {
+                        "intitule": "",  # No intitule field in Bien model
+                        "fk_nature": bien.fk_nature_bien or 0,
+                        "fk_usage": bien.fk_usage or 0,
+                        "coordinates": bien.coord_corrige or "",
+                        "superficie": str(bien.superficie_corrige or bien.superficie or 0),
+                        "valeur_unite": bien.nombre_etage or 0,
+                        "fk_unite": bien.fk_unite or 0,
+                        "fk_rang": parcelle.fk_rang or 0,
+                        "niveau_etage": bien.numero_etage or 0,
+                        "sous_biens": sous_biens_payload
+                    }
+                    biens_payload.append(bien_payload)
+
+                # Construct parcelle payload
+                parcelle_payload = {
+                    "coordinates": parcelle.coord_corrige or parcelle.coordonnee_geographique or "",
+                    "largeur": parcelle.largeur or 0,
+                    "longeur": parcelle.longueur or 0,
+                    "superficie": str(parcelle.superficie_corrige or parcelle.superficie_calculee or 0),
+                    "fk_avenue": fk_avenue,
+                    "numero": parcelle.numero_parcellaire or "",
+                    "fk_rang": parcelle.fk_rang or 0,
+                    "biens": biens_payload
+                }
+                parcelles_payload.append(parcelle_payload)
+
+            # Step 3: Send the POST request for this contribuable and their parcelles
+            if parcelles_payload:
+                url = "https://api-dgrk-ms-sig-dev.apps.kubedev.hologram.cd/api/contribuables/creer-avec-biens"
+                payload = {
+                    "contribuable": contribuable_payload or None,
+                    "parcelles": parcelles_payload
+                }
+                response = requests.post(url, json=payload)
+                print(f"Payload: {payload}")
+                print(f"Response: {response.status_code}, {response.text}")
+
+    finally:
+        db.close()
+        
+        
+def update_to_erecettes_v3(updated_keys: list[dict], db: Session):
+    """
+    Send updated parcelle and bien data to the remote server in the background based on the new request body structure.
+    
+    Args:
+        updated_keys (list[dict]): List of dictionaries with 'type' ('parcelle' or 'bien') and 'id'.
+        db (Session): SQLAlchemy database session.
+    """
+    userCreat = 1908  # Hardcoded user ID for agent_Creat
+    try:
+        # Step 1: Collect updated parcelle and bien IDs
+        updated_parcelle_ids = {key["id"] for key in updated_keys if key["type"] == "parcelle"}
+        updated_bien_ids = {key["id"] for key in updated_keys if key["type"] == "bien"}
+
+        # Step 2: Collect parcelles to include: directly updated or associated with updated biens
+        parcelle_ids_from_biens = db.query(Bien.fk_parcelle).filter(Bien.id.in_(updated_bien_ids)).distinct().all()
+        parcelle_ids_to_include = updated_parcelle_ids.union({id for (id,) in parcelle_ids_from_biens})
+
+        # Step 3: Collect unique proprietaire IDs from updated parcelles and biens
+        proprietaire_ids = set()
+        for key in updated_keys:
+            if key["type"] == "parcelle":
+                parcelle = db.query(Parcelle).filter(Parcelle.id == key["id"]).first()
+                if parcelle and parcelle.fk_proprietaire:
+                    proprietaire_ids.add(parcelle.fk_proprietaire)
+            elif key["type"] == "bien":
+                bien = db.query(Bien).filter(Bien.id == key["id"]).first()
+                if bien and bien.fk_proprietaire:
+                    proprietaire_ids.add(bien.fk_proprietaire)
+
+        # Step 4: For each proprietaire, construct the payload
+        for proprietaire_id in proprietaire_ids:
+            proprietaire = db.query(Personne).filter(Personne.id == proprietaire_id).first()
+            if not proprietaire:
+                continue
+
+            # Fetch only parcelles that were updated or have updated biens
+            parcelles = db.query(Parcelle).filter(
+                Parcelle.fk_proprietaire == proprietaire_id,
+                Parcelle.id.in_(parcelle_ids_to_include)
+            ).all()
+            if not parcelles:
+                continue
+
+            # Use first parcelle's adresse for contribuable details
+            adresse = db.query(Adresse).filter(Adresse.id == parcelles[0].fk_adresse).first()
+            fk_avenue = adresse.fk_avenue if adresse else None
+            numero_parcellaire = parcelles[0].numero_parcellaire or None
+
+            # Construct contribuable payload
+            contribuable_payload = {
+                "nom": proprietaire.nom or "",
+                "prenom": proprietaire.prenom or "",
+                "postnom": proprietaire.postnom or "",
+                "fk_forme": proprietaire.fk_type_personne or None,
+                "idnat": proprietaire.id_nat or "",
+                "rccm": proprietaire.rccm or "",
+                "sigle": proprietaire.sigle or "",
+                "sexe": proprietaire.sexe or "",
+                "agent_Creat": userCreat,
+                "fk_pays": proprietaire.fk_nationalite or None,
+                "fk_avenue": fk_avenue,
+                "numero": numero_parcellaire,
+                "telephone": proprietaire.telephone or "",
+                "email": proprietaire.adresse_mail or ""
+            }
+
+            parcelles_payload = []
+            for parcelle in parcelles:
+                # Fetch parent biens to include: updated or with updated child biens
+                parent_bien_ids_to_include = db.query(Bien.id).filter(
+                    Bien.fk_parcelle == parcelle.id,
+                    Bien.fk_bien_parent == None,
+                    Bien.fk_proprietaire != None,
+                    or_(
+                        Bien.id.in_(updated_bien_ids),
+                        exists().where(
+                            Bien.id == Bien.fk_bien_parent,
+                            Bien.id.in_(updated_bien_ids)
+                        )
+                    )
+                ).all()
+                parent_bien_ids_to_include = [id for (id,) in parent_bien_ids_to_include]
+
+                parent_biens = db.query(Bien).filter(Bien.id.in_(parent_bien_ids_to_include)).all()
+
+                biens_payload = []
+                for bien in parent_biens:
+                    # Fetch only updated child biens
+                    child_biens = db.query(Bien).filter(
+                        Bien.fk_bien_parent == bien.id,
+                        Bien.id.in_(updated_bien_ids)
+                    ).all()
+
+                    # Construct sous_biens payload
+                    sous_biens_payload = []
+                    for child in child_biens:
+                        sous_bien = {
+                            "intitule": "",
+                            "fk_nature": child.fk_nature_bien or None,
+                            "fk_usage": child.fk_usage or None,
+                            "coordinates": child.coord_corrige or "",
+                            "superficie": str(child.superficie_corrige or child.superficie or None),
+                            "valeur_unite": child.nombre_etage or None,
+                            "fk_unite": child.fk_unite or None,
+                            "fk_rang": parcelle.fk_rang or None,
+                            "niveau_etage": child.numero_etage or None
+                        }
+                        sous_biens_payload.append(sous_bien)
+
+                    # Construct bien payload
+                    bien_payload = {
+                        "intitule": "",
+                        "fk_nature": bien.fk_nature_bien or None,
+                        "fk_usage": bien.fk_usage or None,
+                        "coordinates": bien.coord_corrige or "",
+                        "superficie": str(bien.superficie_corrige or bien.superficie or None),
+                        "valeur_unite": bien.nombre_etage or None,
+                        "fk_unite": bien.fk_unite or None,
+                        "fk_rang": parcelle.fk_rang or None,
+                        "niveau_etage": bien.numero_etage or None,
+                        "sous_biens": sous_biens_payload
+                    }
+                    biens_payload.append(bien_payload)
+
+                # Fetch fk_avenue for parcelle
+                adresse = db.query(Adresse).filter(Adresse.id == parcelle.fk_adresse).first()
+                fk_avenue = adresse.fk_avenue if adresse else 0
+
+                # Construct parcelle payload
+                parcelle_payload = {
+                    "coordinates": parcelle.coord_corrige or parcelle.coordonnee_geographique or "",
+                    "largeur": parcelle.largeur or None,
+                    "longeur": parcelle.longueur or None,
+                    "superficie": str(parcelle.superficie_corrige or parcelle.superficie_calculee or None),
+                    "fk_avenue": fk_avenue,
+                    "numero": parcelle.numero_parcellaire or "",
+                    "fk_rang": parcelle.fk_rang or None,
+                    "biens": biens_payload
+                }
+                parcelles_payload.append(parcelle_payload)
+
+            # Step 5: Send the POST request if there are parcelles
+            if parcelles_payload:
+                url = "https://api-dgrk-ms-sig-dev.apps.kubedev.hologram.cd/api/contribuables/creer-avec-biens"
+                payload = {
+                    "contribuable": contribuable_payload,
+                    "parcelles": parcelles_payload
+                }
+                response = requests.post(url, json=payload)
+                print(f"Payload: {json.dumps(payload, indent=2)}")
+                print(f"Response: {response.status_code}, {response.text}")
+
+    finally:
+        db.close()
+        
+
+def update_to_erecettes(updated_keys: list[dict], db: Session):
+    print("update_to_erecettes called with updated_keys:", updated_keys)
+    """
+    Send updated parcelle and bien data to the remote server in the background based on the new GeoJSON import structure.
+    
+    Args:
+        updated_keys (list[dict]): List of dictionaries with 'parcelle' (parcelle_id) and 'biens' (list of bien IDs).
+        db (Session): SQLAlchemy database session.
+    """
+    userCreat = 1908  # Hardcoded user ID for agent_Creat
+    try:
+        # Step 1: Collect parcelle and bien IDs from updated_keys
+        parcelle_ids = {key["parcelle"] for key in updated_keys}
+        bien_ids = set()
+        for key in updated_keys:
+            bien_ids.update(key["biens"])
+
+        # Step 2: Collect unique proprietaire IDs from parcelles and biens
+        proprietaire_ids = set()
+        for parcelle_id in parcelle_ids:
+            parcelle = db.query(Parcelle).filter(Parcelle.id == parcelle_id).first()
+            if parcelle and parcelle.fk_proprietaire:
+                proprietaire_ids.add(parcelle.fk_proprietaire)
+        for bien_id in bien_ids:
+            bien = db.query(Bien).filter(Bien.id == bien_id).first()
+            if bien and bien.fk_proprietaire:
+                proprietaire_ids.add(bien.fk_proprietaire)
+
+
+        # Step 3: For each proprietaire, construct the payload
+        for proprietaire_id in proprietaire_ids:
+            proprietaire = db.query(Personne).filter(Personne.id == proprietaire_id).first()
+            if not proprietaire:
+                continue
+
+            # Fetch parcelles for this proprietaire that are in updated_keys
+            parcelles = db.query(Parcelle).filter(
+                Parcelle.fk_proprietaire == proprietaire_id,
+                Parcelle.id.in_(parcelle_ids)
+            ).all()
+            if not parcelles:
+                continue
+            
+
+            # Use first parcelle's adresse for contribuable details
+            adresse = db.query(Adresse).filter(Adresse.id == parcelles[0].fk_adresse).first()
+            fk_avenue = adresse.fk_avenue if adresse else None
+            numero_parcellaire = parcelles[0].numero_parcellaire or None
+
+            # Construct contribuable payload
+            contribuable_payload = {
+                "nom": proprietaire.nom or "",
+                "prenom": proprietaire.prenom or "",
+                "postnom": proprietaire.postnom or "",
+                "fk_forme": proprietaire.fk_type_personne or None,
+                "idnat": proprietaire.id_nat or "",
+                "rccm": proprietaire.rccm or "",
+                "sigle": proprietaire.sigle or "",
+                "sexe": proprietaire.sexe or "",
+                "agent_Creat": userCreat,
+                "fk_pays": proprietaire.fk_nationalite or None,
+                "fk_avenue": fk_avenue,
+                "numero": numero_parcellaire,
+                "telephone": proprietaire.telephone or "",
+                "email": proprietaire.adresse_mail or "",
+                "src": "hids_collect"
+            }
+            
+            
+
+            parcelles_payload = []
+            for parcelle in parcelles:
+                
+                # Find the updated_keys entry for this parcelle
+                parcelle_key = next((key for key in updated_keys if key["parcelle"] == parcelle.id), None)
+                if not parcelle_key:
+                    continue
+                
+                print(f"Proprietaire IDS {proprietaire_ids}\nParcelles: {len(parcelles)}\nContribuable: {contribuable_payload}\nCurrent Parcelle:{parcelle}")
+
+                # Fetch only the biens specified in updated_keys for this parcelle
+                biens = db.query(Bien).filter(
+                    Bien.id.in_(parcelle_key["biens"]),
+                    Bien.fk_parcelle == parcelle.id
+                ).all()
+                
+                
+                print(f"Proprietaire IDS {proprietaire_ids}\Biens: {len(biens)}")
+
+                biens_payload = []
+                for bien in biens:
+                    bien_payload = {
+                        "intitule": "",
+                        "fk_nature": bien.fk_nature_bien or None,
+                        "fk_usage": bien.fk_usage or None,
+                        "coordinates": bien.coord_corrige or bien.coordonnee_geographique or "",
+                        "superficie": str(bien.superficie_corrige or bien.superficie or 0),
+                        "valeur_unite": bien.nombre_etage or None,
+                        "fk_unite": bien.fk_unite or None,
+                        "fk_rang": parcelle.fk_rang or None,
+                        "niveau_etage": bien.numero_etage or None,
+                        "sous_biens": []  # No child biens in GeoJSON structure
+                    }
+                    biens_payload.append(bien_payload)
+                    
+                print(f"Proprietaire IDS {proprietaire_ids}\Biens Saved In Payload: {biens_payload}")
+
+                # Fetch fk_avenue for parcelle
+                adresse = db.query(Adresse).filter(Adresse.id == parcelle.fk_adresse).first()
+                fk_avenue = adresse.fk_avenue if adresse else None
+
+                # Construct parcelle payload
+                parcelle_payload = {
+                    "coordinates": parcelle.coord_corrige or parcelle.coordonnee_geographique or "",
+                    "largeur": parcelle.largeur or None,
+                    "longueur": parcelle.longueur or None,
+                    "superficie": str(parcelle.superficie_corrige or parcelle.superficie_calculee or 0),
+                    "fk_avenue": fk_avenue,
+                    "numero": parcelle.numero_parcellaire or "",
+                    "fk_rang": parcelle.fk_rang or None,
+                    "biens": biens_payload
+                }
+                parcelles_payload.append(parcelle_payload)
+
+            print(f"Sending to E-Recettes: {parcelles_payload}")
+            # Step 4: Send the POST request if there are parcelles
+            if parcelles_payload:
+                import os
+                url = os.getenv("ERECETTES_URL")
+                payload = {
+                    "contribuable": contribuable_payload,
+                    "parcelles": parcelles_payload
+                }
+                try:
+                    response = requests.post(url, json=payload)
+                    print(f"Payload: {json.dumps(payload, indent=2)}")
+                    print(f"Response: {response.status_code}, {response.text}")
+                except requests.RequestException as e:
+                    print(f"Error sending request for proprietaire {proprietaire_id}: {str(e)}")
+
+    except Exception as e:
+        print(f"Error in update_to_erecettes: {str(e)}")
+    finally:
+        db.close()
+
+        
+def model_to_dict(model):
+    """Convert a SQLAlchemy model instance to a dictionary of column attributes."""
+    return {c.key: getattr(model, c.key) for c in inspect(model).mapper.column_attrs}
+        
+        
+        
+        
+        
+        
+        
+        

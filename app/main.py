@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from tenacity import retry, wait_fixed, stop_after_attempt
 from app.database import engine
 from app.routes import router as routes
+from app.v2.routes import router as v2_routes
 from app.rate_limit import RateLimiterMiddleware, TokenBucket
 
 # Configure logging
@@ -57,3 +58,4 @@ def health_check():
     return {"status": "Hids Collect Working v3 - Production to 85.215.107.149"}
 
 app.include_router(routes, prefix='/api/v1')
+app.include_router(v2_routes, prefix='/api/v2')

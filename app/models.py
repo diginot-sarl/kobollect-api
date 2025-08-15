@@ -58,7 +58,7 @@ class Bien(Base):
     fk_proprietaire = Column(BigInteger, ForeignKey("personne.id"), nullable=True)
     nombre_etage = Column(Integer, nullable=True)
     numero_etage = Column(Integer, nullable=True)
-    est_parent = Column(Boolean, nullable=True, default=False)
+    est_parent = Column(Integer, nullable=True, default=0)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
     
     parcelle = relationship("Parcelle", back_populates="biens")

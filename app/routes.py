@@ -1,4 +1,5 @@
-import os
+import zipfile
+from io import BytesIO
 import json
 import json5
 import requests
@@ -35,7 +36,8 @@ from app.service import (
     process_rapport_superviseur_form,
     process_parcelles_non_baties_form,
     process_immeuble_plusieurs_proprietaires_form,
-    process_immeuble_seul_proprietaire_form
+    process_immeuble_seul_proprietaire_form,
+    update_to_erecettes_v3
 )
 from app.schemas import (
     UserCreate,
@@ -85,6 +87,7 @@ logger = logging.getLogger(__name__)
 class UserWithDroits(User):
     droits: List[str] = []
 
+
 # Helper function to format personne (used in get_parcelle_details)
 def format_personne(row):
     return {
@@ -95,7 +98,8 @@ def format_personne(row):
         "denomination": row.denomination,
         "sigle": row.sigle,
     }
-    
+
+
 # # Helper function to parse coordinates
 def parse_coordinates(coord_str):
     # If coord_str is already an array, return it directly
@@ -178,9 +182,14 @@ async def create_kobo_account(user_data: UserCreate):
     except requests.exceptions.RequestException as e:
         return logger.error(f"Erreur de requête {str(e)}")
 
+
 # Process Kobo data from Kobotoolbox
 @router.post("/import-from-kobo", tags=["Kobo"])
-async def process_kobo(request: Request,  background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def process_kobo(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -200,7 +209,10 @@ async def process_kobo(request: Request,  background_tasks: BackgroundTasks, db:
 
 # Process Kobo data from Kobotoolbox
 @router.post("/import-rapport-superviseur", tags=["Kobo"])
-async def process_rapport_superviseur(request: Request, db: Session = Depends(get_db)):
+async def process_rapport_superviseur(
+    request: Request,
+    db: Session = Depends(get_db)
+):
     try:
         # Parse the raw JSON body
         payload = await request.json()
@@ -291,7 +303,10 @@ async def process_immeuble_seul_proprietaire(
 
 
 @router.post("/token", response_model=Token, tags=["Authentication"])
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
@@ -565,7 +580,11 @@ def read_users_me(
 
 # Create a new user
 @router.post("/users", response_model=User, tags=["Users"])
-async def create_new_user(user_data: UserCreate, background_tasks: BackgroundTasks, current_user = Depends(get_current_active_user), db: Session = Depends(get_db)):
+async def create_new_user(
+    user_data: UserCreate,
+    background_tasks: BackgroundTasks,
+    current_user = Depends(get_current_active_user), db: Session = Depends(get_db)
+):
     try:
         # Generate login by combining first and last name, removing whitespace, and converting to lowercase
         login = f"{user_data.prenom}{user_data.nom}".replace(" ", "").lower()
@@ -2166,6 +2185,7 @@ def get_dashboard_stats(
 # Import GeoJSON data
 @router.post("/import-geojson", tags=["GeoJSON"])
 async def import_geojson(
+    background_tasks: BackgroundTasks,
     type: str = Query(..., regex="^(parcelle|bien)$"),
     file: UploadFile = File(...),
     current_user = Depends(get_current_active_user),
@@ -2181,6 +2201,8 @@ async def import_geojson(
             raise HTTPException(status_code=400, detail="Le fichier n'est pas un FeatureCollection GeoJSON valide.")
 
         updated_ids = []
+        updated_keys = []
+        
         for feature in geojson.get("features", []):
             props = feature.get("properties", {})
             obj_id = props.get("id")
@@ -2197,20 +2219,26 @@ async def import_geojson(
                     parcelle.coord_corrige = json.dumps(coordinates)  # Store as JSON string
                     parcelle.superficie_corrige = superficie if superficie is not None and superficie != 0 else parcelle.superficie_calculee
                     updated_ids.append(obj_id)
+                    updated_keys.append({"type": "parcelle", "id": obj_id})
+                    
             elif type == "bien":
                 bien = db.query(Bien).filter(Bien.id == obj_id).first()
                 if bien:
                     bien.coord_corrige = json.dumps(coordinates)  # Store as JSON string
                     bien.superficie_corrige = superficie if superficie is not None and superficie != 0 else bien.superficie
                     updated_ids.append(obj_id)
+                    updated_keys.append({"type": "bien", "id": obj_id})
 
         db.commit()
+        
+        background_tasks.add_task(update_to_erecettes_v3, updated_keys, db)
+        
         return {"updated": updated_ids, "count": len(updated_ids)}
 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=f"Erreur lors de l'import: {str(e)}")
-    
+
 
 @router.get("/recherche-utilisateur/{code_chasuble}", tags=["Users"])
 def get_user_by_code_chasuble(
@@ -3677,6 +3705,7 @@ def get_agent_activity_stats(
         "stats": stats
     }
 
+
 @router.get("/stats/all-agents-activity", tags=["Stats"])
 def get_all_agents_activity_stats(
     date_debut: str = Query(..., description="Start date in format YYYY-MM-DD"),
@@ -3827,6 +3856,7 @@ def get_all_agents_activity_stats(
         "page_size": page_size
     }
 
+
 @router.get("/stats/all-agents-activity-by-date", tags=["Stats"])
 def get_all_agents_activity_stats_by_date(
     date_debut: str = Query(..., description="Start date in format YYYY-MM-DD"),
@@ -3955,6 +3985,7 @@ def get_all_agents_activity_stats_by_date(
         ]
     }
 
+
 @router.get("/rapports", tags=["Rapports"])
 def get_all_rapports(
     date_debut: str = Query(..., 
@@ -4031,6 +4062,7 @@ def get_all_rapports(
         ]
     }
 
+
 @router.get("/rapports/{rapport_id}", tags=["Rapports"])
 def get_rapport_by_id(
     rapport_id: int,
@@ -4057,6 +4089,7 @@ def get_rapport_by_id(
         **rapport[0].__dict__,
         "agent_name": f"{rapport[1]} {rapport[2]}"
     }
+
 
 @router.put("/users/{user_id}/update-password", tags=["Users"])
 async def update_user_password(
@@ -4175,9 +4208,11 @@ async def update_user_password(
 #         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-
 @router.get("/process-logs-local", tags=["Logs"])
-async def process_logs_in_local(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def process_logs_in_local(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     failed_log_ids = []  # List to store IDs of logs that failed
     
     logger.info("Starting to process logs...")
@@ -4216,7 +4251,7 @@ async def process_logs_in_local(background_tasks: BackgroundTasks, db: Session =
 
                 elif log.logs == "process_immeuble_form":
                     logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
-                    response = process_immeuble_form(json_data, db, background_tasks)
+                    response = process_immeuble_plusieurs_proprietaires_form(json_data, db, background_tasks)
 
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON data for log ID {log.id}: {e}")
@@ -4235,9 +4270,11 @@ async def process_logs_in_local(background_tasks: BackgroundTasks, db: Session =
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-
 @router.get("/process-logs-continue", tags=["Logs"])
-async def process_logs_in_continue(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def process_logs_in_continue(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     failed_log_ids = []  # List to store IDs of logs that failed
     
     logger.info("Starting to process logs...")
@@ -4279,7 +4316,7 @@ async def process_logs_in_continue(background_tasks: BackgroundTasks, db: Sessio
 
                 elif log.logs == "process_immeuble_form":
                     logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
-                    response = process_immeuble_form(json_data, db, background_tasks)
+                    response = process_immeuble_plusieurs_proprietaires_form(json_data, db, background_tasks)
 
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON data for log ID {log.id}: {e}")
@@ -4299,7 +4336,10 @@ async def process_logs_in_continue(background_tasks: BackgroundTasks, db: Sessio
     
 
 @router.get("/process-logs-xtra", tags=["Logs"])
-async def process_logs_xtra(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def process_logs_xtra(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     failed_log_ids = []  # List to store IDs of logs that failed
     
     logger.info("Starting to process logs...")
@@ -4343,7 +4383,7 @@ async def process_logs_xtra(background_tasks: BackgroundTasks, db: Session = Dep
 
                 elif log.logs == "process_immeuble_form":
                     logger.info(f"Start processing LOGS id {log.id} for IMMEUBLE FORM")
-                    response = process_immeuble_form(json_data, db, background_tasks)
+                    response = process_immeuble_plusieurs_proprietaires_form(json_data, db, background_tasks)
 
             except json.JSONDecodeError as e:
                 logger.error(f"Invalid JSON data for log ID {log.id}: {e}")
