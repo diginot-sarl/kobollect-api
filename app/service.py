@@ -76,13 +76,22 @@ def process_recensement_form(payload: dict, db: Session, background_tasks: Backg
                 else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
                 else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
                 
+                else 11670 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18017
                 else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+                else 16336 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18019
                 else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
                 else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
                 else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
                 else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
-                else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+                else 16318 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18026
+                else 16320 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18027
+                else 16314 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18028
+                else 11671 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
                 else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+                else 16312 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18031
+                else 11672 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18033
+                else 16319 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18034
+                else 11673 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18035
                 
                 else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
             )
@@ -551,13 +560,22 @@ def process_parcelles_non_baties_form(payload: dict, db: Session, background_tas
             else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
             else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
             
+            else 11670 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18017
             else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+            else 16336 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18019
             else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
             else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
             else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
             else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
-            else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+            else 16318 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18026
+            else 16320 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18027
+            else 16314 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18028
+            else 11671 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
             else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+            else 16312 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18031
+            else 11672 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18033
+            else 16319 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18034
+            else 11673 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18035
             
             else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
         )
@@ -778,13 +796,22 @@ def process_immeuble_plusieurs_proprietaires_form(payload: dict, db: Session, ba
                 else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
                 else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
                 
+                else 11670 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18017
                 else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+                else 16336 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18019
                 else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
                 else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
                 else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
                 else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
-                else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+                else 16318 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18026
+                else 16320 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18027
+                else 16314 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18028
+                else 11671 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
                 else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+                else 16312 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18031
+                else 11672 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18033
+                else 16319 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18034
+                else 11673 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18035
                 
                 else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
             )
@@ -1329,17 +1356,25 @@ def process_immeuble_seul_proprietaire_form(payload: dict, db: Session, backgrou
             
             fk_avenue = (
                 11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
-                
                 else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
                 else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
                 
+                else 11670 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18017
                 else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
+                else 16336 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18019
                 else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
                 else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
                 else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
                 else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
-                else 11667 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
+                else 16318 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18026
+                else 16320 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18027
+                else 16314 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18028
+                else 11671 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
                 else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
+                else 16312 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18031
+                else 11672 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18033
+                else 16319 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18034
+                else 11673 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18035
                 
                 else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
             )
