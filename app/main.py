@@ -55,7 +55,7 @@ app.add_middleware(RateLimiterMiddleware, bucket=bucket)
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "Hids Collect Working v3 - Production to 85.215.107.149"}
+    return {"status": "Hids Collect Working"}
 
 app.include_router(routes, prefix='/api/v1')
 app.include_router(v2_routes, prefix='/api/v2')
