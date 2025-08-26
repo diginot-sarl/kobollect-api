@@ -413,4 +413,10 @@ class RapportRecensement(Base):
     etat = Column(Integer, nullable=True, default=1)
     date = Column(String(50), nullable=True)
     objectif_atteint = Column(Integer, nullable=True, default=0)
-    
+
+
+
+
+
+
+
