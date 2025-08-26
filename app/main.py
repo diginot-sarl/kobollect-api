@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="API KOBO/SIG",
     description="API de récupération des données KOBO",
-    version="1.0.0",
+    version="1.0.2",
     lifespan=lifespan
 )
 
