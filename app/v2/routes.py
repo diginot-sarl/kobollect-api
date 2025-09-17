@@ -1,16 +1,10 @@
 import zipfile
 from io import BytesIO
 import json
-import json5
-import requests
 import logging
 from collections import defaultdict
 
-from datetime import timedelta, datetime
-from typing import Optional, List
-from sqlalchemy import Date
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from sqlalchemy.sql import text, func, cast, and_, or_  # Add Date and or_ here
 from fastapi import (
     APIRouter,
@@ -18,69 +12,18 @@ from fastapi import (
     HTTPException,
     File,
     Query,
-    status,
-    Request,
     UploadFile,
     BackgroundTasks)
-from fastapi.security import OAuth2PasswordRequestForm
 from app.auth import (
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    authenticate_user,
-    create_access_token,
     get_current_active_user,
-    Token,
-    User,
 )
 from app.service import (
-    process_recensement_form,
-    process_rapport_superviseur_form,
-    process_parcelles_non_baties_form,
-    process_immeuble_plusieurs_proprietaires_form,
-    process_immeuble_seul_proprietaire_form,
     update_to_erecettes
 )
-from app.schemas import (
-    UserCreate,
-    TeamCreate,
-    AssignUserTeams,
-    UserUpdate,
-    PaginatedModuleResponse,
-    ModuleOut,
-    ModuleCreate,
-    ModuleUpdate,
-    PaginatedGroupeResponse,
-    GroupeOut,
-    GroupeCreate,
-    GroupeUpdate,
-    DroitOut,
-    DroitCreate,
-    DroitUpdate,
-    AssignDroitsToEntity,
-    UpdatePassword)
 from app.database import get_db
 from app.models import (
     Bien,
     Parcelle,
-    Equipe,
-    AgentEquipe,
-    Utilisateur,
-    Module,
-    Groupe,
-    Droit,
-    GroupeDroit,
-    UtilisateurDroit,
-    Commune,
-    Quartier,
-    Menage,
-    MembreMenage,
-    Logs,
-    LogsArchive,
-    RapportRecensement,
-    Adresse,
-    Ville,
-    Personne,
-    Avenue,
-    Quartier, Province, Rang, TypePersonne, NatureBien
 )
 from app.auth import get_password_hash
 from app.utils import remove_trailing_commas
@@ -402,7 +345,7 @@ async def get_geojson(
 async def import_geojson_zip(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    current_user = Depends(get_current_active_user),
+    # current_user = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """

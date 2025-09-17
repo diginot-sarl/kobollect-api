@@ -2220,43 +2220,47 @@ def update_to_erecettes(updated_keys: list[dict], db: Session):
     """
     userCreat = 1908  # Hardcoded user ID for agent_Creat
     try:
-        # Step 1: Collect parcelle and bien IDs from updated_keys
-        parcelle_ids = {key["parcelle"] for key in updated_keys}
-        bien_ids = set()
+        
         for key in updated_keys:
-            bien_ids.update(key["biens"])
-
-        # Step 2: Collect unique proprietaire IDs from parcelles and biens
-        proprietaire_ids = set()
-        for parcelle_id in parcelle_ids:
-            parcelle = db.query(Parcelle).filter(Parcelle.id == parcelle_id).first()
-            if parcelle and parcelle.fk_proprietaire:
-                proprietaire_ids.add(parcelle.fk_proprietaire)
-        for bien_id in bien_ids:
-            bien = db.query(Bien).filter(Bien.id == bien_id).first()
-            if bien and bien.fk_proprietaire:
-                proprietaire_ids.add(bien.fk_proprietaire)
-
-
-        # Step 3: For each proprietaire, construct the payload
-        for proprietaire_id in proprietaire_ids:
-            proprietaire = db.query(Personne).filter(Personne.id == proprietaire_id).first()
-            if not proprietaire:
-                continue
-
-            # Fetch parcelles for this proprietaire that are in updated_keys
-            parcelles = db.query(Parcelle).filter(
-                Parcelle.fk_proprietaire == proprietaire_id,
-                Parcelle.id.in_(parcelle_ids)
-            ).all()
-            if not parcelles:
+            parcelle = db.query(Parcelle).filter(Parcelle.id == key['parcelle']).first()
+            
+            if not parcelle:
+                print(f"Parcelle with ID {key['parcelle']} not found.")
                 continue
             
-
+            proprietaire = db.query(Personne).filter(Personne.id == parcelle.fk_proprietaire).first()
+            
+            if not proprietaire:
+                continue
+            
             # Use first parcelle's adresse for contribuable details
-            adresse = db.query(Adresse).filter(Adresse.id == parcelles[0].fk_adresse).first()
+            adresse = db.query(Adresse).filter(Adresse.id == parcelle.fk_adresse).first()
             fk_avenue = adresse.fk_avenue if adresse else None
-            numero_parcellaire = parcelles[0].numero_parcellaire or None
+            numero_parcellaire = parcelle.numero_parcellaire or None
+            
+            # Fetch only the biens specified in updated_keys for this parcelle
+            biens_payload = []
+            
+            biens = db.query(Bien).filter(
+                Bien.id.in_(key["biens"]),
+                Bien.fk_parcelle == parcelle.id
+            ).all()
+            
+            for bien in biens:
+                bien_payload = {
+                    "intitule": "*",
+                    "fk_nature": bien.fk_nature_bien or None,
+                    "fk_usage": bien.fk_usage or None,
+                    "coordinates": bien.coord_corrige or bien.coordinates or "",
+                    "superficie": str(bien.superficie_corrige or bien.superficie or 0),
+                    "valeur_unite": bien.nombre_etage or None,
+                    "fk_unite": bien.fk_unite or None,
+                    "fk_rang": parcelle.fk_rang or None,
+                    "niveau_etage": bien.numero_etage or None,
+                    "sous_biens": []  # No child biens in GeoJSON structure
+                }
+                biens_payload.append(bien_payload)
+                
 
             # Construct contribuable payload
             contribuable_payload = {
@@ -2277,77 +2281,30 @@ def update_to_erecettes(updated_keys: list[dict], db: Session):
                 "src": "hids_collect"
             }
             
+            # Construct parcelle payload
+            parcelle_payload = {
+                "coordinates": parcelle.coord_corrige or parcelle.coordonnee_geographique or "",
+                "largeur": parcelle.largeur or None,
+                "longueur": parcelle.longueur or None,
+                "superficie": str(parcelle.superficie_corrige or parcelle.superficie_calculee or 0),
+                "fk_avenue": fk_avenue,
+                "numero": parcelle.numero_parcellaire or "",
+                "fk_rang": parcelle.fk_rang or None,
+                "biens": biens_payload
+            }
             
-
-            parcelles_payload = []
-            for parcelle in parcelles:
-                
-                # Find the updated_keys entry for this parcelle
-                parcelle_key = next((key for key in updated_keys if key["parcelle"] == parcelle.id), None)
-                if not parcelle_key:
-                    continue
-                
-                print(f"Proprietaire IDS {proprietaire_ids}\nParcelles: {len(parcelles)}\nContribuable: {contribuable_payload}\nCurrent Parcelle:{parcelle}")
-
-                # Fetch only the biens specified in updated_keys for this parcelle
-                biens = db.query(Bien).filter(
-                    Bien.id.in_(parcelle_key["biens"]),
-                    Bien.fk_parcelle == parcelle.id
-                ).all()
-                
-                
-                print(f"Proprietaire IDS {proprietaire_ids}\Biens: {len(biens)}")
-
-                biens_payload = []
-                for bien in biens:
-                    bien_payload = {
-                        "intitule": "",
-                        "fk_nature": bien.fk_nature_bien or None,
-                        "fk_usage": bien.fk_usage or None,
-                        "coordinates": bien.coord_corrige or bien.coordonnee_geographique or "",
-                        "superficie": str(bien.superficie_corrige or bien.superficie or 0),
-                        "valeur_unite": bien.nombre_etage or None,
-                        "fk_unite": bien.fk_unite or None,
-                        "fk_rang": parcelle.fk_rang or None,
-                        "niveau_etage": bien.numero_etage or None,
-                        "sous_biens": []  # No child biens in GeoJSON structure
-                    }
-                    biens_payload.append(bien_payload)
-                    
-                print(f"Proprietaire IDS {proprietaire_ids}\Biens Saved In Payload: {biens_payload}")
-
-                # Fetch fk_avenue for parcelle
-                adresse = db.query(Adresse).filter(Adresse.id == parcelle.fk_adresse).first()
-                fk_avenue = adresse.fk_avenue if adresse else None
-
-                # Construct parcelle payload
-                parcelle_payload = {
-                    "coordinates": parcelle.coord_corrige or parcelle.coordonnee_geographique or "",
-                    "largeur": parcelle.largeur or None,
-                    "longueur": parcelle.longueur or None,
-                    "superficie": str(parcelle.superficie_corrige or parcelle.superficie_calculee or 0),
-                    "fk_avenue": fk_avenue,
-                    "numero": parcelle.numero_parcellaire or "",
-                    "fk_rang": parcelle.fk_rang or None,
-                    "biens": biens_payload
-                }
-                parcelles_payload.append(parcelle_payload)
-
-            print(f"Sending to E-Recettes: {parcelles_payload}")
-            # Step 4: Send the POST request if there are parcelles
-            if parcelles_payload:
-                import os
-                url = os.getenv("ERECETTES_URL")
-                payload = {
-                    "contribuable": contribuable_payload,
-                    "parcelles": parcelles_payload
-                }
-                try:
-                    response = requests.post(url, json=payload)
-                    print(f"Payload: {json.dumps(payload, indent=2)}")
-                    print(f"Response: {response.status_code}, {response.text}")
-                except requests.RequestException as e:
-                    print(f"Error sending request for proprietaire {proprietaire_id}: {str(e)}")
+            import os
+            url = os.getenv("ERECETTES_URL")
+            payload = {
+                "contribuable": contribuable_payload,
+                "parcelles": [parcelle_payload]
+            }
+            try:
+                response = requests.post(url, json=payload)
+                print(f"Response: {response.status_code}, {response.text}")
+            except requests.RequestException as e:
+                print(f"Error sending request for proprietaire {proprietaire.id}: {str(e)}")
+        
 
     except Exception as e:
         print(f"Error in update_to_erecettes: {str(e)}")
