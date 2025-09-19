@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 def connect_to_db():
     try:
         # Attempt to establish a connection
+        import os
         engine.connect()
+        logger.info(f"SERVER URL: {os.getenv('MSSQL_SERVER')}")
         logger.info("Successfully connected to the database.")
     except Exception as e:
         logger.error("Database connection failed. Retrying...", exc_info=True)

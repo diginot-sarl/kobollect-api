@@ -13,7 +13,8 @@ def parse_str_to_json(json_str):
         return json_data
     except json.JSONDecodeError as e:
         return None
-    
+
+
 def find_object_by_id(data, id):
     for obj in data:
         if obj["id"] == id:
@@ -32,6 +33,7 @@ def generate_nif():
     code = f"NTD2-{base36_timestamp}"
     return code
 
+
 def base36_encode(number):
     """Convert an integer to a base36 string (uppercase)."""
     alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -42,6 +44,7 @@ def base36_encode(number):
         number, i = divmod(number, 36)
         base36 = alphabet[i] + base36
     return base36 or '0'
+
 
 def safe_int(value):
     if value is None:
