@@ -1,9 +1,10 @@
 import zipfile
-from io import BytesIO
 import json
 import logging
+from io import BytesIO
+from typing import Optional
 from collections import defaultdict
-
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text, func, cast, and_, or_  # Add Date and or_ here
 from fastapi import (
@@ -27,6 +28,7 @@ from app.models import (
 )
 from app.auth import get_password_hash
 from app.utils import remove_trailing_commas
+
 
 router = APIRouter()
 
@@ -474,6 +476,345 @@ def process_geojson(geojson, db: Session):
 
     return updated_keys, parcelle_id, updated_bien_ids
     
-      
-# remember that updated keys is [{"parcelle": parcelle_id, "biens": ["bien_1", "bien_2"]}]
+from typing import Optional, Dict, Any
+from sqlalchemy.orm import Session
+from app.models import Parcelle, Bien, Personne  # Import relevant models if using ORM, but sticking to raw for perf
+# Assuming imports for router, get_db, get_current_active_user
 
+def build_parcelle_filters_and_params(
+    commune: Optional[str] = None,
+    quartier: Optional[str] = None,
+    avenue: Optional[str] = None,
+    rang: Optional[str] = None,
+    date_start: Optional[str] = None,
+    date_end: Optional[str] = None,
+) -> tuple[list[str], dict]:
+    filters = []
+    params = {}
+    if commune:
+        filters.append("c.id = :commune")
+        params["commune"] = commune
+    if quartier:
+        filters.append("q.id = :quartier")
+        params["quartier"] = quartier
+    if avenue:
+        filters.append("av.id = :avenue")
+        params["avenue"] = avenue
+    if rang:
+        filters.append("r.id = :rang")
+        params["rang"] = rang
+    if date_start:
+        filters.append("CAST(p.date_create AS DATE) >= CAST(:date_start AS DATE)")
+        params["date_start"] = date_start
+    if date_end:
+        filters.append("CAST(p.date_create AS DATE) <= CAST(:date_end AS DATE)")
+        params["date_end"] = date_end
+    return filters, params
+
+
+def build_bien_filters_and_params(
+    commune: Optional[str] = None,
+    quartier: Optional[str] = None,
+    avenue: Optional[str] = None,
+    rang: Optional[str] = None,
+    nature: Optional[str] = None,
+    date_start: Optional[str] = None,
+    date_end: Optional[str] = None,
+) -> tuple[list[str], dict]:
+    filters, params = build_parcelle_filters_and_params(commune, quartier, avenue, rang, date_start, date_end)
+    if nature:
+        filters.append("nb.id = :nature")
+        params["nature"] = nature
+    return filters, params
+
+
+def build_population_filters_and_params(
+    date_start: Optional[str] = None,
+    date_end: Optional[str] = None,
+) -> tuple[list[str], dict]:
+    filters = []
+    params = {}
+    if date_start:
+        filters.append("CAST(per.date_create AS DATE) >= CAST(:date_start AS DATE)")
+        params["date_start"] = date_start
+    if date_end:
+        filters.append("CAST(per.date_create AS DATE) <= CAST(:date_end AS DATE)")
+        params["date_end"] = date_end
+    return filters, params
+
+
+# Group 1: Core stats - separate simple queries for each count
+@router.get("/stats/dashboard/core", tags=["Stats"])
+def get_core_stats(
+    commune: Optional[str] = Query(None),
+    quartier: Optional[str] = Query(None),
+    avenue: Optional[str] = Query(None),
+    rang: Optional[str] = Query(None),
+    nature: Optional[str] = Query(None),
+    date_start: Optional[str] = Query(None),
+    date_end: Optional[str] = Query(None),
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        # Accessible parcelles
+        parcelle_filters, parcelle_params = build_parcelle_filters_and_params(commune, quartier, avenue, rang, date_start, date_end)
+        # filter_clause = " AND " + " AND ".join(parcelle_filters) if parcelle_filters else ""
+        accessible_query = f"""
+            SELECT COUNT(p.id) 
+            FROM parcelle p
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            WHERE p.statut = 1
+        """
+            # WHERE p.statut = 1{filter_clause}
+        total_parcelles_accessibles = db.execute(text(accessible_query), parcelle_params).scalar() or 0
+
+        # Inaccessible parcelles (similar, but statut=2)
+        inaccessible_query = accessible_query.replace("p.statut = 1", "p.statut = 2")
+        total_parcelles_inaccessibles = db.execute(text(inaccessible_query), parcelle_params).scalar() or 0
+
+        # Total biens
+        bien_filters, bien_params = build_bien_filters_and_params(commune, quartier, avenue, rang, nature, date_start, date_end)
+        # bien_filter_clause = " AND " + " AND ".join(bien_filters) if bien_filters else ""
+        bien_query = f"""
+            SELECT COUNT(p.id) 
+            FROM bien b
+            LEFT JOIN parcelle p ON b.fk_parcelle = p.id
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
+            WHERE 1=1
+        """
+            # WHERE 1=1{bien_filter_clause}
+        total_biens = db.execute(text(bien_query), bien_params).scalar() or 0
+
+        # Total proprietaires: distinct fk_proprietaire from parcelles (no nature) and biens (with nature)
+        parcelle_subquery = f"""
+            SELECT p.id 
+            FROM parcelle p
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            WHERE 1=1
+        """
+            # WHERE 1=1{filter_clause}
+            
+        # For biens subquery, remove nature filter for proprietaires
+        parcelle_bien_filters = [f for f in bien_filters if "nb.id" not in f]
+        parcelle_bien_params = {k: v for k, v in bien_params.items() if k != "nature"}
+        parcelle_bien_filter_clause = " AND " + " AND ".join(parcelle_bien_filters) if parcelle_bien_filters else ""
+        bien_subquery = f"""
+            SELECT b.id 
+            FROM bien b
+            LEFT JOIN parcelle p ON b.fk_parcelle = p.id
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            WHERE 1=1
+        """
+            # WHERE 1=1{parcelle_bien_filter_clause}
+            
+        proprietaire_query = f"""
+            SELECT COUNT(DISTINCT person_id)
+            FROM (
+                SELECT p.fk_proprietaire AS person_id
+                FROM ({parcelle_subquery}) fp
+                JOIN parcelle p ON fp.id = p.id
+                WHERE p.fk_proprietaire IS NOT NULL
+                UNION
+                SELECT b.fk_proprietaire AS person_id
+                FROM ({bien_subquery}) fb
+                JOIN bien b ON fb.id = b.id
+                WHERE b.fk_proprietaire IS NOT NULL
+            ) AS all_owners
+        """
+        all_params = {**parcelle_params, **parcelle_bien_params}
+        total_proprietaires = db.execute(text(proprietaire_query), all_params).scalar() or 0
+
+        # Total population: simple count from personne where fk_type_personne = 1, with date filters only
+        pop_filters, pop_params = build_population_filters_and_params(date_start, date_end)
+        pop_filter_clause = " AND " + " AND ".join(pop_filters) if pop_filters else ""
+        population_query = f"""
+            SELECT COUNT(per.id) 
+            FROM personne per
+        """
+            # WHERE per.id is not null {pop_filter_clause}
+        total_population = db.execute(text(population_query), pop_params).scalar() or 0
+
+        return {
+            "total_parcelles_accessibles": total_parcelles_accessibles,
+            "total_parcelles_inaccessibles": total_parcelles_inaccessibles,
+            "total_biens": total_biens,
+            "total_proprietaires": total_proprietaires,
+            "total_population": total_population,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Group 2: Biens breakdowns - separate simple queries
+@router.get("/stats/dashboard/biens", tags=["Stats"])
+def get_biens_breakdowns(
+    commune: Optional[str] = Query(None),
+    quartier: Optional[str] = Query(None),
+    avenue: Optional[str] = Query(None),
+    rang: Optional[str] = Query(None),
+    nature: Optional[str] = Query(None),
+    date_start: Optional[str] = Query(None),
+    date_end: Optional[str] = Query(None),
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        bien_filters, params = build_bien_filters_and_params(commune, quartier, avenue, rang, nature, date_start, date_end)
+        filter_clause = " AND " + " AND ".join(bien_filters) if bien_filters else ""
+        base_bien_query = f"""
+            FROM bien b
+            LEFT JOIN parcelle p ON b.fk_parcelle = p.id
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            LEFT JOIN nature_bien nb ON b.fk_nature_bien = nb.id
+            LEFT JOIN usage u ON b.fk_usage = u.id
+            LEFT JOIN usage_specifique us ON b.fk_usage_specifique = us.id
+            WHERE 1=1{filter_clause}
+        """
+
+        # biens_by_nature
+        biens_by_nature_query = f"""
+            SELECT COALESCE(nb.intitule, 'Inconnu'), COUNT(b.id)
+            {base_bien_query}
+            GROUP BY nb.id, nb.intitule
+        """
+        biens_by_nature = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(biens_by_nature_query), params).fetchall()
+        }
+
+        # biens_by_rang
+        biens_by_rang_query = biens_by_nature_query.replace("COALESCE(nb.intitule, 'Inconnu')", "COALESCE(r.intitule, 'Inconnu')").replace("nb.id, nb.intitule", "r.id, r.intitule")
+        biens_by_rang = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(biens_by_rang_query), params).fetchall()
+        }
+
+        # biens_by_usage
+        biens_by_usage_query = biens_by_nature_query.replace("nb.intitule", "u.intitule").replace("nb.id, nb.intitule", "u.id, u.intitule")
+        biens_by_usage = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(biens_by_usage_query), params).fetchall()
+        }
+
+        # biens_by_usage_specifique
+        biens_by_usage_specifique_query = biens_by_nature_query.replace("nb.intitule", "us.intitule").replace("nb.id, nb.intitule", "us.id, us.intitule")
+        biens_by_usage_specifique = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(biens_by_usage_specifique_query), params).fetchall()
+        }
+
+        return {
+            "biens_by_nature": biens_by_nature,
+            "biens_by_rang": biens_by_rang,
+            "biens_by_usage": biens_by_usage,
+            "biens_by_usage_specifique": biens_by_usage_specifique,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Group 3: Parcelles breakdowns - separate simple queries (no nature)
+@router.get("/stats/dashboard/parcelles", tags=["Stats"])
+def get_parcelles_breakdowns(
+    commune: Optional[str] = Query(None),
+    quartier: Optional[str] = Query(None),
+    avenue: Optional[str] = Query(None),
+    rang: Optional[str] = Query(None),
+    date_start: Optional[str] = Query(None),
+    date_end: Optional[str] = Query(None),
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        parcelle_filters, params = build_parcelle_filters_and_params(commune, quartier, avenue, rang, date_start, date_end)
+        filter_clause = " AND " + " AND ".join(parcelle_filters) if parcelle_filters else ""
+        base_parcelle_query = f"""
+            FROM parcelle p
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            LEFT JOIN commune c ON q.fk_commune = c.id
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            WHERE 1=1{filter_clause}
+        """
+
+        # parcelles_by_rang
+        parcelles_by_rang_query = f"""
+            SELECT COALESCE(r.intitule, 'Inconnu'), COUNT(p.id)
+            {base_parcelle_query}
+            GROUP BY r.id, r.intitule
+        """
+        parcelles_by_rang = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(parcelles_by_rang_query), params).fetchall()
+        }
+
+        # parcelles_by_commune (only fk_ville=1)
+        parcelles_by_commune_query = f"""
+            SELECT c.intitule, COUNT(p.id)
+            FROM parcelle p
+            LEFT JOIN adresse a ON p.fk_adresse = a.id
+            LEFT JOIN avenue av ON a.fk_avenue = av.id
+            LEFT JOIN quartier q ON av.fk_quartier = q.id
+            INNER JOIN commune c ON q.fk_commune = c.id AND c.fk_ville = 1
+            LEFT JOIN rang r ON p.fk_rang = r.id
+            WHERE 1=1{filter_clause}
+            GROUP BY c.id, c.intitule
+        """
+        parcelles_by_commune = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(parcelles_by_commune_query), params).fetchall()
+        }
+
+        # parcelles_by_quartier
+        parcelles_by_quartier_query = f"""
+            SELECT CONCAT(COALESCE(q.intitule, ''), ' (', COALESCE(c.intitule, ''), ')'), COUNT(p.id)
+            {base_parcelle_query}
+            GROUP BY q.id, q.intitule, c.id, c.intitule
+        """
+        parcelles_by_quartier = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(parcelles_by_quartier_query), params).fetchall()
+        }
+
+        # parcelles_by_avenue
+        parcelles_by_avenue_query = f"""
+            SELECT CONCAT(COALESCE(av.intitule, ''), ' (', COALESCE(c.intitule, ''), ')'), COUNT(p.id)
+            {base_parcelle_query}
+            GROUP BY av.id, av.intitule, c.id, c.intitule
+        """
+        parcelles_by_avenue = {
+            row[0] if row[0] else "Inconnu": row[1]
+            for row in db.execute(text(parcelles_by_avenue_query), params).fetchall()
+        }
+
+        return {
+            "parcelles_by_rang": parcelles_by_rang,
+            "parcelles_by_commune": parcelles_by_commune,
+            "parcelles_by_quartier": parcelles_by_quartier,
+            "parcelles_by_avenue": parcelles_by_avenue,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
