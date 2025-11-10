@@ -1786,8 +1786,6 @@ def process_immeuble_seul_proprietaire_form(payload: dict, db: Session, backgrou
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}\n Formulaire: process_immeuble_form")
 
 
-
-
 def update_to_erecettes_v1(updated_keys: list[dict], db: Session):
     
     userCreat = 1908

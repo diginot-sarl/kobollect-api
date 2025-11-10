@@ -61,9 +61,14 @@ class Bien(Base):
     est_parent = Column(Integer, nullable=True, default=0)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
     
-    parcelle = relationship("Parcelle", back_populates="biens")
-    proprietaire = relationship("Personne", back_populates="biens")
     menages = relationship("Menage", back_populates="bien")
+    proprietaire = relationship("Personne", back_populates="biens")
+    parcelle = relationship("Parcelle", back_populates="biens")
+    nature_bien = relationship("NatureBien")
+    unite = relationship("Unite")
+    usage = relationship("Usage")
+    usage_specifique = relationship("UsageSpecifique")
+
 
 # Table: commune
 class Commune(Base):
@@ -76,7 +81,9 @@ class Commune(Base):
     agent_Creat = Column(Integer, nullable=True)
     fk_ville = Column(Integer, ForeignKey("ville.id"), nullable=True)
     
-    quartiers = relationship("Quartier", back_populates="commune")
+    ville = relationship("Ville", back_populates="communes") # ✅ Relation ORM : Commune -> Ville
+    quartiers = relationship("Quartier", back_populates="commune") # Relation vers les quartiers
+
 
 # Table: droit
 class Droit(Base):
@@ -267,12 +274,15 @@ class Personne(Base):
     etranger = Column(Integer, nullable=True, default=0)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
     
+    # --- Relations ORM ---
+    type_personne = relationship("TypePersonne", back_populates="personnes")
     nationalite = relationship("Nationalite")
     lien_parente = relationship("FiliationMembre")
     menages = relationship("Menage", back_populates="personne")
     membre_menages = relationship("MembreMenage", back_populates="personne")
     parcelles = relationship("Parcelle", back_populates="proprietaire")
     biens = relationship("Bien", back_populates="proprietaire")
+    
 
 # Table: province
 class Province(Base):
@@ -282,6 +292,9 @@ class Province(Base):
     lon = Column(Float(precision=18), nullable=True)
     lat = Column(Float(precision=18), nullable=True)
     agent_Creat = Column(Integer, nullable=True)
+    
+    villes = relationship("Ville", back_populates="province") # Relation ORM : 1 Province -> plusieurs Villes
+
 
 # Table: quartier
 class Quartier(Base):
@@ -318,6 +331,9 @@ class TypePersonne(Base):
     __tablename__ = "type_personne"
     id = Column(Integer, primary_key=True, index=True)
     intitule = Column(NVARCHAR(100), nullable=True)
+    
+    personnes = relationship("Personne", back_populates="type_personne") # Relation ORM : un type_personne peut concerner plusieurs personnes
+
 
 # Table: Type_piece_identite
 class TypePieceIdentite(Base):
@@ -366,6 +382,7 @@ class Utilisateur(Base):
     fk_groupe = Column(Integer, ForeignKey("groupe.id"), nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
 
+
 # Table: ville
 class Ville(Base):
     __tablename__ = "ville"
@@ -375,6 +392,10 @@ class Ville(Base):
     lat = Column(Float(precision=18), nullable=True)
     shape = Column(Text, nullable=True)
     fk_province = Column(Integer, ForeignKey("province.id"), nullable=True)
+    
+    communes = relationship("Commune", back_populates="ville") # Relation ORM : 1 Ville -> plusieurs Communes
+    province = relationship("Province", back_populates="villes") # Relation vers Province
+
 
 # Table: equipe
 class Equipe(Base):
