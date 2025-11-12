@@ -1756,6 +1756,326 @@ from sqlalchemy.types import Date
 import datetime
 
 
+'''
+@router.get("/cartographie_v1", tags=["Cartographie"])
+async def get_cartographie_v1(
+    commune: str = Query(None),
+    quartier: str = Query(None),
+    avenue: str = Query(None),
+    rang: str = Query(None),
+    nature: str = Query(None),
+    usage: str = Query(None),
+    usage_specifique: str = Query(None),
+    type_donnee: str = Query(None),
+    entity_type: str = Query(default="parcelle"),
+    current_user=Depends(get_current_active_user),
+    fk_agent: Optional[str] = Query(None),
+    date_start: str = Query(..., description="Start date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    date_end: str = Query(..., description="End date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=10000),
+):
+    try:
+        # ------------------------------------------------------------------ #
+        # 1. Parse query-string parameters
+        # ------------------------------------------------------------------ #
+        commune_id = int(commune) if commune else None
+        quartier_id = int(quartier) if quartier else None
+        avenue_id = int(avenue) if avenue else None
+        rang_id = int(rang) if rang else None
+        nature_id = int(nature) if nature else None
+        usage_id = int(usage) if usage else None
+        usage_specifique_id = int(usage_specifique) if usage_specifique else None
+        agent_id = int(fk_agent) if fk_agent else None
+
+        date_start_dt = datetime.date.fromisoformat(date_start)
+        date_end_dt = datetime.date.fromisoformat(date_end)
+
+        if date_start_dt > date_end_dt:
+            raise HTTPException(status_code=400, detail="date_start must be before or equal to date_end")
+
+        # ------------------------------------------------------------------ #
+        # 2. Aliases (to avoid column-name clashes)
+        # ------------------------------------------------------------------ #
+        UniteBien = aliased(Unite, name="unite_bien")
+        UniteParcelle = aliased(Unite, name="unite_parcelle")
+        PersonneParcelle = aliased(Personne, name="personne_parcelle")
+        PersonneBien = aliased(Personne, name="personne_bien")
+        PersonneAgent = aliased(Utilisateur, name="personne_agent")
+
+        # ------------------------------------------------------------------ #
+        # 3. Common filters (applied to both count & paginated queries)
+        # ------------------------------------------------------------------ #
+        filters = []
+
+        if commune_id:
+            filters.append(Commune.id == commune_id)
+        if quartier_id:
+            filters.append(Quartier.id == quartier_id)
+        if avenue_id:
+            filters.append(Avenue.id == avenue_id)
+        if rang_id:
+            filters.append(Rang.id == rang_id)
+        if nature_id:
+            filters.append(NatureBien.id == nature_id)
+        if usage_id:
+            filters.append(Usage.id == usage_id)
+        if usage_specifique_id:
+            filters.append(UsageSpecifique.id == usage_specifique_id)
+        if agent_id:
+            filters.append(or_(Bien.fk_agent == agent_id, Parcelle.fk_agent == agent_id))
+
+        # Date range – at least one of the two entities must be inside the interval
+        date_filter = or_(
+            and_(
+                cast(Bien.date_create, Date) >= date_start_dt,
+                cast(Bien.date_create, Date) <= date_end_dt,
+            ),
+            and_(
+                cast(Parcelle.date_create, Date) >= date_start_dt,
+                cast(Parcelle.date_create, Date) <= date_end_dt,
+            ),
+        )
+        filters.append(date_filter)
+
+        # ------------------------------------------------------------------ #
+        # 4. type_donnee validation & extra filter
+        # ------------------------------------------------------------------ #
+        if type_donnee not in {"corrected", "collected", None}:
+            raise HTTPException(status_code=400, detail="type_donnee must be 'corrected' or 'collected'")
+
+        # ------------------------------------------------------------------ #
+        # 5. Build the SELECT statement (different for parcelle / bien)
+        # ------------------------------------------------------------------ #
+        if entity_type == "parcelle":
+            # ---- extra filter for coordinates -------------------------------------------------
+            if type_donnee == "corrected":
+                filters.append(Parcelle.coord_corrige.isnot(None))
+            elif type_donnee == "collected":
+                filters.append(Parcelle.coordonnee_geographique.isnot(None))
+
+            stmt = (
+                select(
+                    # total-count column (used only for the count query)
+                    func.count().over().label("total_rows"),
+                    # ---- data columns ---------------------------------------------------------
+                    Bien.id.label("bien_id"),
+                    Bien.coordinates.label("bien_coordinates"),
+                    Bien.coord_corrige.label("bien_coord_corrige"),
+                    Bien.superficie.label("bien_superficie"),
+                    Bien.date_create.label("bien_date_create"),
+                    Parcelle.id.label("parcelle_id"),
+                    Parcelle.numero_parcellaire.label("parcelle_numero"),
+                    Parcelle.coordonnee_geographique.label("parcelle_coordinates"),
+                    Parcelle.coord_corrige.label("parcelle_coord_corrige"),
+                    Parcelle.superficie_calculee.label("parcelle_superficie"),
+                    Parcelle.date_create.label("parcelle_date_create"),
+                    Commune.intitule.label("commune"),
+                    Quartier.intitule.label("quartier"),
+                    Avenue.intitule.label("avenue"),
+                    func.coalesce(
+                        func.concat(PersonneParcelle.nom, " ", PersonneParcelle.prenom),
+                        func.concat(PersonneBien.nom, " ", PersonneBien.prenom),
+                    ).label("nom_proprietaire"),
+                    func.concat(PersonneBien.nom, " ", PersonneBien.prenom).label("bien_proprietaire"),
+                    NatureBien.intitule.label("nature_bien"),
+                    UniteBien.intitule.label("unite"),
+                    Usage.intitule.label("usage"),
+                    UsageSpecifique.intitule.label("usage_specifique"),
+                    func.concat(PersonneAgent.nom, " ", PersonneAgent.prenom).label("ajouter_par"),
+                    Rang.intitule.label("rang"),
+                    UniteParcelle.intitule.label("parcelle_unite"),
+                )
+                .select_from(Parcelle)
+                .outerjoin(Bien, Parcelle.id == Bien.fk_parcelle)
+                .outerjoin(Menage, Bien.id == Menage.fk_bien)
+                .outerjoin(PersonneBien, Menage.fk_personne == PersonneBien.id)
+                .outerjoin(NatureBien, Bien.fk_nature_bien == NatureBien.id)
+                .outerjoin(UniteBien, Bien.fk_unite == UniteBien.id)
+                .outerjoin(Usage, Bien.fk_usage == Usage.id)
+                .outerjoin(UsageSpecifique, Bien.fk_usage_specifique == UsageSpecifique.id)
+                .outerjoin(Adresse, Parcelle.fk_adresse == Adresse.id)
+                .outerjoin(Avenue, Adresse.fk_avenue == Avenue.id)
+                .outerjoin(Quartier, Avenue.fk_quartier == Quartier.id)
+                .outerjoin(Commune, Quartier.fk_commune == Commune.id)
+                .outerjoin(Rang, Parcelle.fk_rang == Rang.id)
+                .outerjoin(UniteParcelle, Parcelle.fk_unite == UniteParcelle.id)
+                .outerjoin(PersonneParcelle, Parcelle.fk_proprietaire == PersonneParcelle.id)
+                .outerjoin(PersonneAgent, Parcelle.fk_agent == PersonneAgent.id)
+                .where(and_(*filters))
+                .order_by(Parcelle.id.desc())
+            )
+
+        elif entity_type == "bien":
+            # ---- extra filter for coordinates -------------------------------------------------
+            if type_donnee == "corrected":
+                filters.append(Bien.coord_corrige.isnot(None))
+            elif type_donnee == "collected":
+                filters.append(Bien.coordinates.isnot(None))
+
+            stmt = (
+                select(
+                    func.count().over().label("total_rows"),
+                    Bien.id.label("bien_id"),
+                    Bien.coordinates.label("bien_coordinates"),
+                    Bien.coord_corrige.label("bien_coord_corrige"),
+                    Bien.superficie.label("bien_superficie"),
+                    Bien.date_create.label("bien_date_create"),
+                    func.concat(PersonneBien.nom, " ", PersonneBien.prenom).label("bien_proprietaire"),
+                    NatureBien.intitule.label("nature_bien"),
+                    UniteBien.intitule.label("unite"),
+                    Usage.intitule.label("usage"),
+                    UsageSpecifique.intitule.label("usage_specifique"),
+                    func.concat(PersonneAgent.nom, " ", PersonneAgent.prenom).label("ajouter_par"),
+                    Commune.intitule.label("commune"),
+                    Quartier.intitule.label("quartier"),
+                    Avenue.intitule.label("avenue"),
+                    Rang.intitule.label("rang"),
+                )
+                .select_from(Bien)
+                .outerjoin(Parcelle, Bien.fk_parcelle == Parcelle.id)
+                .outerjoin(Adresse, Parcelle.fk_adresse == Adresse.id)
+                .outerjoin(Avenue, Adresse.fk_avenue == Avenue.id)
+                .outerjoin(Quartier, Avenue.fk_quartier == Quartier.id)
+                .outerjoin(Commune, Quartier.fk_commune == Commune.id)
+                .outerjoin(Rang, Parcelle.fk_rang == Rang.id)
+                .outerjoin(Menage, Bien.id == Menage.fk_bien)
+                .outerjoin(PersonneBien, Menage.fk_personne == PersonneBien.id)
+                .outerjoin(NatureBien, Bien.fk_nature_bien == NatureBien.id)
+                .outerjoin(UniteBien, Bien.fk_unite == UniteBien.id)
+                .outerjoin(Usage, Bien.fk_usage == Usage.id)
+                .outerjoin(UsageSpecifique, Bien.fk_usage_specifique == UsageSpecifique.id)
+                .outerjoin(PersonneAgent, Bien.fk_agent == PersonneAgent.id)
+                .where(and_(*filters))
+                .order_by(Bien.id.desc())
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Invalid entity_type. Must be 'parcelle' or 'bien'.")
+
+        # ------------------------------------------------------------------ #
+        # 6. Pagination
+        # ------------------------------------------------------------------ #
+        offset_val = (page - 1) * limit
+        paginated_stmt = stmt.offset(offset_val).limit(limit)
+
+        # ------------------------------------------------------------------ #
+        # 7. Execute
+        # ------------------------------------------------------------------ #
+        result = db.execute(paginated_stmt).fetchall()
+
+        # total rows (same for every row because of .over())
+        total = result[0].total_rows if result else 0
+
+        # ------------------------------------------------------------------ #
+        # 8. Format response
+        # ------------------------------------------------------------------ #
+        data = []
+        if entity_type == "parcelle":
+            for row in result:
+                if not row.parcelle_id:
+                    continue
+
+                parcelle_coords = (
+                    row.parcelle_coordinates
+                    if type_donnee == "collected"
+                    else row.parcelle_coord_corrige
+                )
+                bien_coords = (
+                    row.bien_coordinates
+                    if type_donnee == "collected"
+                    else row.bien_coord_corrige
+                ) if row.bien_id else None
+
+                data.append(
+                    {
+                        "parcelle": {
+                            "id": row.parcelle_id,
+                            "numero_parcellaire": row.parcelle_numero,
+                            "coordinates": parcelle_coords,
+                            "superficie_calculee": row.parcelle_superficie,
+                            "date_create": row.parcelle_date_create.isoformat()
+                            if row.parcelle_date_create
+                            else None,
+                            "unite": row.parcelle_unite,
+                            "rang": row.rang,
+                            "nom_proprietaire": row.nom_proprietaire,
+                        },
+                        "bien": (
+                            {
+                                "id": row.bien_id,
+                                "coordinates": bien_coords,
+                                "superficie": row.bien_superficie,
+                                "date_create": row.bien_date_create.isoformat()
+                                if row.bien_date_create
+                                else None,
+                                "nature_bien": row.nature_bien,
+                                "unite": row.unite,
+                                "usage": row.usage,
+                                "usage_specifique": row.usage_specifique,
+                                "nom_proprietaire": row.bien_proprietaire,
+                            }
+                            if row.bien_id
+                            else None
+                        ),
+                        "ajouter_par": row.ajouter_par,
+                        "commune": row.commune,
+                        "quartier": row.quartier,
+                        "avenue": row.avenue,
+                    }
+                )
+        else:  # bien
+            for row in result:
+                if not row.bien_id:
+                    continue
+
+                bien_coords = (
+                    row.bien_coordinates
+                    if type_donnee == "collected"
+                    else row.bien_coord_corrige
+                )
+
+                data.append(
+                    {
+                        "bien": {
+                            "id": row.bien_id,
+                            "coordinates": bien_coords,
+                            "superficie": row.bien_superficie,
+                            "date_create": row.bien_date_create.isoformat()
+                            if row.bien_date_create
+                            else None,
+                            "nature_bien": row.nature_bien,
+                            "unite": row.unite,
+                            "usage": row.usage,
+                            "usage_specifique": row.usage_specifique,
+                            "nom_proprietaire": row.bien_proprietaire,
+                        },
+                        "ajouter_par": row.ajouter_par,
+                        "commune": row.commune,
+                        "quartier": row.quartier,
+                        "avenue": row.avenue,
+                        "rang": row.rang,
+                    }
+                )
+
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "page_size": limit,
+        }
+
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=f"Invalid parameter format: {str(ve)}")
+    except Exception as e:
+        import logging
+
+        logging.exception("Error in get_cartographie")
+        raise HTTPException(status_code=500, detail=str(e))
+
+'''
+
+
 @router.get("/cartographie", tags=["Cartographie"])
 def get_cartographie(
     commune: str = Query(None),
@@ -1772,6 +2092,8 @@ def get_cartographie(
     date_start: str = Query(..., description="Start date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
     date_end: str = Query(..., description="End date in format YYYY-MM-DD", regex=r"^\d{4}-\d{2}-\d{2}$"),
     db: Session = Depends(get_db),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=10000),
 ):
     try:
         # Parse parameters to integers/dates
@@ -1840,6 +2162,7 @@ def get_cartographie(
                 filters.append(Parcelle.coordonnee_geographique.isnot(None))
             # Select statement for parcelle entity_type
             stmt = select(
+                func.count().over().label("total_rows"),
                 Bien.id.label('bien_id'),
                 Bien.coordinates.label('bien_coordinates'),
                 Bien.coord_corrige.label('bien_coord_corrige'),
@@ -1928,12 +2251,27 @@ def get_cartographie(
             raise HTTPException(status_code=400, detail="Invalid entity_type. Must be 'parcelle' or 'bien'.")
 
         # Execute the statement
-        results = db.execute(stmt).fetchall()
+        # results = db.execute(stmt).fetchall()
+        
+        
+        # ------------------------------------------------------------------ #
+        # 6. Pagination
+        # ------------------------------------------------------------------ #
+        offset_val = (page - 1) * limit
+        paginated_stmt = stmt.offset(offset_val).limit(limit)
+
+        # ------------------------------------------------------------------ #
+        # 7. Execute
+        # ------------------------------------------------------------------ #
+        result = db.execute(paginated_stmt).fetchall()
+
+        # total rows (same for every row because of .over())
+        total = result[0].total_rows if result else 0
 
         # Format results based on entity_type
         data = []
         if entity_type == 'parcelle':
-            for row in results:
+            for row in result:
                 if row.parcelle_id:
                     parcelle_coords = row.parcelle_coordinates if type_donnee == 'collected' else (row.parcelle_coord_corrige)
                     bien_coords = row.bien_coordinates if type_donnee == 'collected' else (row.bien_coord_corrige) if row.bien_id else None
@@ -1965,7 +2303,7 @@ def get_cartographie(
                         "avenue": row.avenue
                     })
         elif entity_type == 'bien':
-            for row in results:
+            for row in result:
                 if row.bien_id:
                     bien_coords = row.bien_coordinates if type_donnee == 'collected' else (row.bien_coord_corrige)
                     data.append({
@@ -1988,8 +2326,12 @@ def get_cartographie(
                     })
 
         return {
+            # "data": data,
+            # "total": len(data),
             "data": data,
-            "total": len(data),
+            "total": total,
+            "page": page,
+            "limit": limit,
         }
 
     except ValueError as ve:

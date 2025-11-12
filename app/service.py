@@ -2297,6 +2297,9 @@ def update_to_erecettes(updated_keys: list[dict], db: Session):
                 "contribuable": contribuable_payload,
                 "parcelles": [parcelle_payload]
             }
+            
+            print(f"Request: {json.dumps(payload, indent=2)}")
+            
             try:
                 response = requests.post(url, json=payload)
                 print(f"Response: {response.status_code}, {response.text}")

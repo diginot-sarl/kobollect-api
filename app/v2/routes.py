@@ -392,7 +392,7 @@ async def get_geojson(
 ):
     try:
         # ==========================
-        # Étape 1. Construction filtres de base
+        # Étape 1. Construction filtres de base (avec propriétaire)
         # ==========================
         parcelle_q = db.query(Parcelle.id)
         parcelle_q = parcelle_q \
@@ -402,7 +402,8 @@ async def get_geojson(
             .outerjoin(Commune, Quartier.fk_commune == Commune.id) \
             .outerjoin(Ville, Commune.fk_ville == Ville.id) \
             .outerjoin(Province, Ville.fk_province == Province.id) \
-            .outerjoin(Rang, Parcelle.fk_rang == Rang.id)
+            .outerjoin(Rang, Parcelle.fk_rang == Rang.id) \
+            .outerjoin(Personne, Parcelle.fk_proprietaire == Personne.id)  # Ajouté
 
         # Application des filtres
         if date_start:
@@ -423,7 +424,7 @@ async def get_geojson(
             parcelle_q = parcelle_q.filter(Rang.id == rang)
 
         # ==========================
-        # Étape 2. Total distinct
+        # Étape 2. Total distinct (avec propriétaire)
         # ==========================
         total = db.query(func.count(distinct(Parcelle.id))) \
             .select_from(Parcelle) \
@@ -433,7 +434,8 @@ async def get_geojson(
             .outerjoin(Commune, Quartier.fk_commune == Commune.id) \
             .outerjoin(Ville, Commune.fk_ville == Ville.id) \
             .outerjoin(Province, Ville.fk_province == Province.id) \
-            .outerjoin(Rang, Parcelle.fk_rang == Rang.id)
+            .outerjoin(Rang, Parcelle.fk_rang == Rang.id) \
+            .outerjoin(Personne, Parcelle.fk_proprietaire == Personne.id)  # Ajouté
 
         if date_start:
             total = total.filter(func.cast(Parcelle.date_create, Date) >= func.cast(date_start, Date))
@@ -468,35 +470,23 @@ async def get_geojson(
             return {"data": [], "total": total, "page": page, "page_size": page_size}
 
         # ==========================
-        # Étape 4. Charger Parcelles avec relations
+        # Étape 4. Charger Parcelles avec relations (propriétaire activé)
         # ==========================
         parcelles = (
             db.query(Parcelle)
             .options(
-                # 
-                # joinedload(Parcelle.biens)
-                # .joinedload(Bien.proprietaire),
-                # joinedload(Parcelle.biens)
-                # .joinedload(Bien.nature_bien),
-                # joinedload(Parcelle.biens)
-                # .joinedload(Bien.unite),
-                # joinedload(Parcelle.biens)
-                # .joinedload(Bien.usage),
-                # joinedload(Parcelle.biens)
-                # .joinedload(Bien.usage_specifique),
-                # joinedload(Parcelle.commune)
-                # .joinedload(Commune.ville)
-                # .joinedload(Ville.province)
-                # 
+                # Adresse complète
                 joinedload(Parcelle.adresse)
                     .joinedload(Adresse.avenue)
                     .joinedload(Avenue.quartier)
                     .joinedload(Quartier.commune)
                     .joinedload(Commune.ville)
                     .joinedload(Ville.province),
+                # Rang
                 joinedload(Parcelle.rang),
+                # Propriétaire de la parcelle + type personne
                 joinedload(Parcelle.proprietaire)
-                    .joinedload(Personne.type_personne)
+                    .joinedload(Personne.type_personne),
             )
             .filter(Parcelle.id.in_(parcelle_ids))
             .order_by(Parcelle.id.desc())
@@ -535,16 +525,18 @@ async def get_geojson(
         biens_map = defaultdict(list)
         seen_bien = set()
         for (
-            b, proprietaire_nom, proprietaire_postnom, proprietaire_prenom, agent_nom, agent_prenom, usage_intitule, usage_specifique_intitule, nature_bien_intitule, unite_intitule
+            b, proprietaire_nom, proprietaire_postnom, proprietaire_prenom,
+            agent_nom, agent_prenom, usage_intitule, usage_specifique_intitule,
+            nature_bien_intitule, unite_intitule
         ) in biens_rows:
             if b.id in seen_bien:
                 continue
-            
-            proprietaire_nom = (
+
+            proprietaire_full_name = (
                 f"{proprietaire_nom or ''} {proprietaire_postnom or ''} {proprietaire_prenom or ''}".strip()
-                if b.proprietaire else None
+                if b.fk_proprietaire else None
             )
-            
+
             seen_bien.add(b.id)
             biens_map[b.fk_parcelle].append({
                 "id": str(b.id),
@@ -552,15 +544,13 @@ async def get_geojson(
                 "superficie_corrige": b.superficie_corrige,
                 "nombre_etage": b.nombre_etage,
                 "numero_etage": b.numero_etage,
-                "proprietaire": proprietaire_nom,
-                "nature_bien": nature_bien_intitule if b.nature_bien else None,
-                "unite": unite_intitule if b.unite else None,
-                "usage": usage_intitule if b.usage else None,
-                "usage_specifique": usage_specifique_intitule if b.usage_specifique else None,
+                "proprietaire": proprietaire_full_name,
+                "nature_bien": nature_bien_intitule if b.fk_nature_bien else None,
+                "unite": unite_intitule if b.fk_unite else None,
+                "usage": usage_intitule if b.fk_usage else None,
+                "usage_specifique": usage_specifique_intitule if b.fk_usage_specifique else None,
                 "coordinates": b.coordinates,
                 "date": b.date_create.isoformat() if b.date_create else None,
-                # "nature": nature_intitule,
-                # "recense_par": f"{agent_nom or ''} {agent_prenom or ''}".strip() or None
                 "recense_par": None
             })
 
@@ -578,7 +568,12 @@ async def get_geojson(
 
             data.append({
                 "id": str(p.id),
-                "coordinates": p.coordonnee_geographique,
+                "parcelle": {
+                    "coordinates": p.coordonnee_geographique,
+                    "rang": p.rang.intitule if p.rang else None,
+                    "superficie": p.superficie_calculee,
+                    "superficie_corrige": p.superficie_corrige,
+                },
                 "date": p.date_create.isoformat() if p.date_create else None,
                 "adresse": {
                     "numero": adr.numero if adr else None,
