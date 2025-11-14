@@ -31,7 +31,8 @@ def generate_nif():
     
     # Create the final code
     code = f"NTD2-{base36_timestamp}"
-    return code
+    # return code
+    return None
 
 
 def base36_encode(number):
