@@ -2314,12 +2314,14 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
                 .all()
             )
             for bien in biens:
+                raw_coords = bien.coord_corrige or bien.coordinates or ""
+                formatted_coords = format_coordinates_erecettes(raw_coords)
                 biens_payload.append(
                     {
                         "intitule": "*",
                         "fk_nature": bien.fk_nature_bien,
                         "fk_usage": bien.fk_usage,
-                        "coordinates": bien.coord_corrige or bien.coordinates or "",
+                        "coordinates": formatted_coords,
                         "superficie": str(bien.superficie_corrige or bien.superficie or 0),
                         "valeur_unite": bien.nombre_etage,
                         "fk_unite": bien.fk_unite,
@@ -2368,7 +2370,8 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
                 "parcelles": [parcelle_payload],
             }
             
-            print(f"Contribuable:{payload['contribuable']}")
+            print(f"Contribuable: {payload['contribuable']}")
+            print(f"Parcelle: {payload['parcelles']}")
 
             # ------------------------------------------------------------------
             # 3. POST to e-recettes
@@ -2431,11 +2434,5 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
 def model_to_dict(model):
     """Convert a SQLAlchemy model instance to a dictionary of column attributes."""
     return {c.key: getattr(model, c.key) for c in inspect(model).mapper.column_attrs}
-        
-        
-        
-        
-        
-        
         
         
