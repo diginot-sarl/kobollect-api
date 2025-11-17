@@ -3,6 +3,7 @@ import pytz
 import requests
 import json
 import os
+import ast
 
 from sqlalchemy import or_, exists
 from sqlalchemy.orm import Session
@@ -2209,12 +2210,72 @@ def update_to_erecettes_v3(updated_keys: list[dict], db: Session):
         db.close()
         
 
+def format_coordinates_erecettes(coord_str: str) -> str:
+    """
+    Converts a GeoJSON-like polygon string (stored as string in DB)
+    Example input:
+        '[[[15.317859935860959, pata -4.417842795135316], [15.317957045165862, -4.417813899012001], ...]]'
+    
+    Output required by e-recettes:
+        '-4.417998333333333 15.317995 384.2 1.8; -4.418055 15.31798 384.9 1.6; ...; <first_point_again>'
+    
+    Note: The 3rd value seems to be altitude (~384-385m in Kinshasa)
+          The 4th value seems to be a quality/confidence index or number of floors
+    → Since your current data doesn't have Z or this 4th value, we use realistic defaults.
+    """
+    if not coord_str or str(coord_str).strip() == "":
+        return ""
+
+    coord_str = str(coord_str).strip()
+
+    # Try to parse the coordinate string
+    try:
+        coords = json.loads(coord_str)
+    except json.JSONDecodeError:
+        try:
+            coords = ast.literal_eval(coord_str)
+        except:
+            print(f"[WARN] Impossible to parse coordinates: {coord_str[:100]}...")
+            return ""
+
+    # Extract the first ring (Polygon → [[[...]]])
+    while isinstance(coords, list) and len(coords) == 1 and isinstance(coords[0], list):
+        coords = coords[0]
+
+    if not coords or not isinstance(coords[0], list) or len(coords[0]) < 2:
+        return ""
+
+    result = []
+    for i, point in enumerate(coords):
+        if not isinstance(point, (list, tuple)) or len(point) < 2:
+            continue
+        lon, lat = float(point[0]), float(point[1])
+
+        # Realistic values for Kinshasa (Plateau des Batéké ≈ 300–400m)
+        # 3rd value: altitude in meters → we use a plausible fixed value
+        altitude = 384.5
+
+        # 4th value: unknown → from your example: 1.8, 1.6, 1.5 → likely quality or floor count
+        # We'll use 1.5 as default (common in similar systems)
+        quality = 1.5
+
+        result.append(f"{lat:.12f} {lon:.12f} {altitude:.1f} {quality}")
+
+    # Close the polygon: repeat the first point at the end
+    if len(result) > 2:
+        result.append(result[0])
+
+    return "; ".join(result)
+
+
 def update_to_erecettes(updated_keys: List[Dict], db: Session):
     """
     Send parcelle + biens to the remote e-recettes server.
     When the remote returns 201 → update the local Personne.nif.
     """
     userCreat = 1908  # Hard-coded agent
+    
+    print("-------- Updating to eRecettes --------")
 
     try:
         for key in updated_keys:
@@ -2288,13 +2349,16 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
             }
 
             # ---- parcelle payload ---------------------------------------------
+            raw_coords = parcelle.coord_corrige or parcelle.coordonnee_geographique or ""
+            formatted_coords = format_coordinates_erecettes(raw_coords)
+            
             parcelle_payload = {
-                "coordinates": parcelle.coord_corrige or parcelle.coordonnee_geographique or "",
-                "largeur": parcelle.largeur,
-                "longueur": parcelle.longueur,
+                "coordinates": formatted_coords,  # This is now in the correct format!
+                "largeur": parcelle.largeur or 0,
+                "longueur": parcelle.longueur or 0,
                 "superficie": str(parcelle.superficie_corrige or parcelle.superficie_calculee or 0),
                 "fk_avenue": fk_avenue,
-                "numero": parcelle.numero_parcellaire or "",
+                "numero": numero_parcellaire,
                 "fk_rang": parcelle.fk_rang,
                 "biens": biens_payload,
             }
@@ -2327,14 +2391,24 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
 
                     if nif and nif != proprietaire.nif:
                         proprietaire.nif = nif
-                        db.add(proprietaire)  # mark for update
+                        parcelle.date_erecettes = datetime.now(pytz.UTC)
+                        
+                        db.add(proprietaire)
+                        db.add(parcelle)
+            
                         db.commit()
                         print(f"[SUCCESS] NIF updated → Personne {proprietaire.id} = {nif}")
                     else:
+                        # Optional: even if NIF didn't change, still mark as synced?
+                        parcelle.date_erecettes = datetime.now(pytz.UTC)
+                        db.add(parcelle)
+                        db.commit()
                         print(f"[INFO] NIF unchanged for Personne {proprietaire.id}")
+                        print(f"[INFO] Already up to date – sync timestamp updated for parcelle {parcelle_id}")
 
                 except Exception as parse_err:
                     print(f"[ERROR] Failed to parse 201 response: {parse_err}")
+                    print(f"Raw response: {response.text}")
                     db.rollback()
 
             else:

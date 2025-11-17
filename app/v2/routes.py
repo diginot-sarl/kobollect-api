@@ -4,7 +4,7 @@ import logging
 from io import BytesIO
 from typing import Optional
 from collections import defaultdict
-from sqlalchemy import text, func, distinct, Date
+from sqlalchemy import text, func, distinct, Date, case, desc
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.sql import text, func, cast, and_, or_  # Add Date and or_ here
 from fastapi import (
@@ -175,7 +175,6 @@ async def get_geojson(
         import traceback
         logger.error(f"Error in get_geojson: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
-
 '''
 
 from fastapi import Depends, Query, HTTPException
@@ -370,7 +369,6 @@ async def get_geojson(
         import traceback
         logger.error(f"Error in get_geojson: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
-
 '''
 
 
@@ -606,6 +604,151 @@ async def get_geojson(
         import traceback, logging
         logging.exception("Error in get_geojson ORM version")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/geojson-summary", tags=["GeoJSON"])
+async def get_geojson_summary(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=10000),
+    date_start: str = Query(None),
+    date_end: str = Query(None),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user),
+):
+    """
+    Returns only parcelles SUCCESSFULLY synced to e-recettes (date_erecettes NOT NULL)
+    Ordered by most recent sync first.
+    """
+    try:
+        # ==========================
+        # 1. Base query: ONLY synced parcelles
+        # ==========================
+        query = db.query(Parcelle).filter(Parcelle.date_erecettes.isnot(None))
+
+        # Optional date_create filters
+        if date_start:
+            query = query.filter(func.cast(Parcelle.date_create, Date) >= date_start)
+        if date_end:
+            query = query.filter(func.cast(Parcelle.date_create, Date) <= date_end)
+
+        # ==========================
+        # 2. Total count (only synced ones)
+        # ==========================
+        total = query.count()
+
+        # ==========================
+        # 3. Pagination + ordering (most recent sync first)
+        # ==========================
+        offset_val = (page - 1) * page_size
+
+        parcelles_paginated = (
+            query
+            .order_by(
+                Parcelle.date_erecettes.desc(),   # Most recently synced first
+                Parcelle.id.desc()                # Stable sort
+            )
+            .offset(offset_val)
+            .limit(page_size)
+            .all()
+        )
+
+        if not parcelles_paginated:
+            return {
+                "data": [],
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+            }
+
+        parcelle_ids = [p.id for p in parcelles_paginated]
+
+        # ==========================
+        # 4. Load full relations
+        # ==========================
+        parcelles = (
+            db.query(Parcelle)
+            .options(
+                joinedload(Parcelle.adresse)
+                    .joinedload(Adresse.avenue)
+                    .joinedload(Avenue.quartier)
+                    .joinedload(Quartier.commune)
+                    .joinedload(Commune.ville)
+                    .joinedload(Ville.province),
+                joinedload(Parcelle.rang),
+                joinedload(Parcelle.proprietaire)
+                    .joinedload(Personne.type_personne),
+            )
+            .filter(Parcelle.id.in_(parcelle_ids))
+            .order_by(
+                Parcelle.date_erecettes.desc(),
+                Parcelle.id.desc()
+            )
+            .all()
+        )
+
+        # ==========================
+        # 5. Count biens
+        # ==========================
+        biens_count = (
+            db.query(Bien.fk_parcelle, func.count(Bien.id))
+            .filter(Bien.fk_parcelle.in_(parcelle_ids))
+            .group_by(Bien.fk_parcelle)
+            .all()
+        )
+        biens_count_map = {pid: cnt for pid, cnt in biens_count}
+
+        # ==========================
+        # 6. Build response
+        # ==========================
+        data = []
+        for p in parcelles:
+            adr = p.adresse
+            av = adr.avenue if adr else None
+            q = av.quartier if av else None
+            c = q.commune if q else None
+            v = c.ville if c else None
+            prov = v.province if v else None
+
+            data.append({
+                "id": str(p.id),
+                "parcelle": {
+                    "coordinates": p.coord_corrige or p.coordonnee_geographique,
+                    "rang": p.rang.intitule if p.rang else None,
+                    "superficie": float(p.superficie_calculee) if p.superficie_calculee else None,
+                    "superficie_corrige": float(p.superficie_corrige) if p.superficie_corrige else None,
+                },
+                "date": p.date_create.isoformat() if p.date_create else None,
+                "date_erecettes": p.date_erecettes.isoformat(),  # Always exists here
+                "adresse": {
+                    "numero": adr.numero if adr else None,
+                    "avenue": av.intitule if av else None,
+                    "quartier": q.intitule if q else None,
+                    "commune": c.intitule if c else None,
+                    "ville": v.intitule if v else None,
+                    "province": prov.intitule if prov else None,
+                },
+                "proprietaire": {
+                    "nom": p.proprietaire.nom if p.proprietaire else None,
+                    "postnom": p.proprietaire.postnom if p.proprietaire else None,
+                    "prenom": p.proprietaire.prenom if p.proprietaire else None,
+                    "denomination": p.proprietaire.denomination if p.proprietaire else None,
+                    "type_personne": p.proprietaire.type_personne.intitule if p.proprietaire and p.proprietaire.type_personne else None,
+                    "nif": p.proprietaire.nif if p.proprietaire else None,
+                },
+                "nombre_biens": biens_count_map.get(p.id, 0),
+            })
+
+        return {
+            "data": data,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+        }
+
+    except Exception as e:
+        import logging
+        logging.exception("Error in get_geojson_summary")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/import-geojson", tags=["GeoJSON"])

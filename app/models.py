@@ -227,6 +227,7 @@ class Parcelle(Base):
     statut = Column(Integer, nullable=True, default=1)
     nombre_etage = Column(Integer, nullable=True)
     date_create = Column(DateTime, nullable=True, server_default=text("NOW()"))
+    date_erecettes = Column(DateTime, nullable=True)
     
     adresse = relationship("Adresse", back_populates="parcelles")
     rang = relationship("Rang")
