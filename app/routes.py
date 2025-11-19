@@ -37,7 +37,7 @@ from app.service import (
     process_parcelles_non_baties_form,
     process_immeuble_plusieurs_proprietaires_form,
     process_immeuble_seul_proprietaire_form,
-    update_to_erecettes_v3
+    update_to_erecettes_v1_0_1
 )
 from app.schemas import (
     UserCreate,
@@ -2696,7 +2696,7 @@ async def import_geojson(
 
         db.commit()
         
-        background_tasks.add_task(update_to_erecettes_v3, updated_keys, db)
+        background_tasks.add_task(update_to_erecettes_v1_0_1, updated_keys, db)
         
         return {"updated": updated_ids, "count": len(updated_ids)}
 
