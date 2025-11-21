@@ -13,12 +13,20 @@ from fastapi import BackgroundTasks, HTTPException, status
 from fastapi.responses import JSONResponse
 import logging
 from app.models import (
-    Adresse, Personne, Parcelle, Bien, LocationBien, Utilisateur, Logs, Menage, MembreMenage, RapportRecensement)
+    Adresse,
+    Bien,
+    LocationBien,
+    Logs,
+    Menage,
+    MembreMenage,
+    Parcelle,
+    Personne,
+    RapportRecensement,
+    Utilisateur,
+)
 from app.utils import generate_nif, safe_int
 from datetime import datetime
 from typing import List, Dict, Optional
-
-from app.models import Parcelle, Bien, Adresse
 
 
 logging.basicConfig(format='%(asctime)s : %(message)s', level=logging.INFO)
@@ -795,28 +803,28 @@ def process_immeuble_plusieurs_proprietaires_form(payload: dict, db: Session, ba
                 raise HTTPException(status_code=status.HTTP_200_OK, detail="L'avenue de la parcelle est obligatoire.")
             
             fk_avenue = (
-                11606 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 111111111
-                else 10627 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2217
-                else 10654 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 2152
+                11606 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 111111111
+                else 10627 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 2217
+                else 10654 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 2152
                 
-                else 11670 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18017
-                else 11662 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18018
-                else 16336 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18019
-                else 11663 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18020
-                else 11664 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18021
-                else 11665 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18024
-                else 11666 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18025
-                else 16318 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18026
-                else 16320 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18027
-                else 16314 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18028
-                else 11671 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18029
-                else 11668 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18030
-                else 16312 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18031
-                else 11672 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18033
-                else 16319 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18034
-                else 11673 if safe_int(kobo.get("adresse_de_la_parcelle/avenue")) == 18035
+                else 11670 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18017
+                else 11662 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18018
+                else 16336 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18019
+                else 11663 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18020
+                else 11664 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18021
+                else 11665 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18024
+                else 11666 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18025
+                else 16318 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18026
+                else 16320 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18027
+                else 16314 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18028
+                else 11671 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18029
+                else 11668 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18030
+                else 16312 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18031
+                else 11672 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18033
+                else 16319 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18034
+                else 11673 if safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue")) == 18035
                 
-                else safe_int(kobo.get("adresse_de_la_parcelle/avenue"))
+                else safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/avenue"))
             )
             
             # 1. Insert into Adresse
@@ -909,6 +917,7 @@ def process_immeuble_plusieurs_proprietaires_form(payload: dict, db: Session, ba
                 db.flush()
                 
                 fk_proprietaire = proprietaire.id
+                
                 
             parcelle = Parcelle(
                 
@@ -1790,7 +1799,6 @@ def process_immeuble_seul_proprietaire_form(payload: dict, db: Session, backgrou
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Erreur lors de l'insertion des données : {str(e)}\n Formulaire: process_immeuble_form")
 
         
-
 def format_coordinates_erecettes(coord_str: str) -> str:
     """
     Converts a GeoJSON-like polygon string (stored as string in DB)
@@ -1832,15 +1840,7 @@ def format_coordinates_erecettes(coord_str: str) -> str:
             continue
         lon, lat = float(point[0]), float(point[1])
 
-        # Realistic values for Kinshasa (Plateau des Batéké ≈ 300–400m)
-        # 3rd value: altitude in meters → we use a plausible fixed value
-        altitude = 384.5
-
-        # 4th value: unknown → from your example: 1.8, 1.6, 1.5 → likely quality or floor count
-        # We'll use 1.5 as default (common in similar systems)
-        quality = 1.5
-
-        result.append(f"{lat:.12f} {lon:.12f} {altitude:.1f} {quality}")
+        result.append(f"{lat:.12f} {lon:.12f}")
 
     # Close the polygon: repeat the first point at the end
     if len(result) > 2:
@@ -2004,6 +2004,7 @@ def update_to_erecettes_v1_0_1(updated_keys: list[dict], db: Session):
 
     finally:
         db.close()
+
 
 def update_to_erecettes_v1_0_4(updated_keys: List[Dict], db: Session):
     """
@@ -2182,6 +2183,7 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
     """
     userCreat = 1908
     print("-------- e-recettes Sync (Immeuble v2 - Single Parent) --------")
+    print(f"Updated keys: {updated_keys}")
 
     try:
         for key in updated_keys:
@@ -2202,11 +2204,12 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
                 db.query(Personne)
                 .filter(Personne.id == parcelle.fk_proprietaire)
                 .first()
-            )
+            ) or None
             
-            if not proprietaire:
-                print(f"[SKIP] Missing propriétaire for parcelle {parcelle_id}")
-                continue
+            # if not proprietaire:
+            #     print(f"[SKIP] Missing propriétaire for parcelle {parcelle_id}")
+            #     # continue
+                
 
             adresse = db.query(Adresse).filter(Adresse.id == parcelle.fk_adresse).first()
             fk_avenue = adresse.fk_avenue if adresse else None
@@ -2303,7 +2306,7 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
                 "telephone": proprietaire.telephone or "",
                 "email": proprietaire.adresse_mail or "",
                 "src": "hids_collect",
-            }
+            } if proprietaire is not None else None
 
             # Parcelle
             parcelle_coords = format_coordinates_erecettes(
@@ -2327,6 +2330,7 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
             }
 
             print(f"[INFO] Sending parcelle {parcelle_id} | Immeuble: {parent_bien is not None}")
+            print(f"Parcelles: {parcelle_payload}")
 
             url = os.getenv("ERECETTES_URL")
             if not url:
@@ -2373,11 +2377,6 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
 def model_to_dict(model):
     """Convert a SQLAlchemy model instance to a dictionary of column attributes."""
     return {c.key: getattr(model, c.key) for c in inspect(model).mapper.column_attrs}
-        
-        
-        
-        
-        
         
         
         

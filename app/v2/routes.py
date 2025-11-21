@@ -72,7 +72,7 @@ def process_geojson(geojson, db: Session):
         bien_coordinates = bien_geometry.get("coordinates")
         bien_superficie = bien_props.get("Sup")
 
-        if not bien_id or not bien_coordinates:
+        if not bien_id:
             continue  # Skip invalid Bien features
 
         bien = db.query(Bien).filter(Bien.id == bien_id).first()
