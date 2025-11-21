@@ -1840,13 +1840,13 @@ def format_coordinates_erecettes(coord_str: str) -> str:
             continue
         lon, lat = float(point[0]), float(point[1])
 
-        result.append(f"{lat:.12f} {lon:.12f}")
+        result.append(f"{lat:.12f},{lon:.12f}")
 
     # Close the polygon: repeat the first point at the end
     if len(result) > 2:
         result.append(result[0])
 
-    return "; ".join(result)
+    return ";".join(result)
 
 
 def update_to_erecettes_v1_0_1(updated_keys: list[dict], db: Session):
