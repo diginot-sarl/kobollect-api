@@ -7,13 +7,13 @@ from typing import Optional, Dict, Any
 from collections import defaultdict
 
 from sqlalchemy import text, func, distinct, Date
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, aliased
 from fastapi import APIRouter, Depends, HTTPException, File, Query, UploadFile, BackgroundTasks
 
 from app.auth import get_current_active_user
 from app.service import update_to_erecettes
 from app.database import get_db
-from app.models import Bien, Parcelle, Usage, UsageSpecifique, Adresse, Avenue, Quartier, Commune, Rang, NatureBien, Utilisateur, Personne, TypePersonne, Ville, Province, Unite
+from app.models import Bien, Parcelle, Usage, UsageSpecifique, Adresse, Avenue, Quartier, Commune, Rang, NatureBien, Utilisateur, Personne, TypePersonne, Ville, Province, Unite, Menage
 
 
 router = APIRouter()
@@ -152,8 +152,6 @@ def build_population_filters_and_params(
     return filters, params
 
 
-
-
 @router.get("/geojson", tags=["GeoJSON"])
 async def get_geojson(
     page: int = Query(1, ge=1),
@@ -172,99 +170,56 @@ async def get_geojson(
 ):
     try:
         # ==========================
-        # Étape 1. Construction filtres de base (avec propriétaire)
+        # 1. Parcelle IDs + filters
         # ==========================
-        parcelle_q = db.query(Parcelle.id)
-        parcelle_q = parcelle_q \
+        parcelle_q = db.query(Parcelle.id) \
             .outerjoin(Adresse, Parcelle.fk_adresse == Adresse.id) \
             .outerjoin(Avenue, Adresse.fk_avenue == Avenue.id) \
             .outerjoin(Quartier, Avenue.fk_quartier == Quartier.id) \
             .outerjoin(Commune, Quartier.fk_commune == Commune.id) \
             .outerjoin(Ville, Commune.fk_ville == Ville.id) \
             .outerjoin(Province, Ville.fk_province == Province.id) \
-            .outerjoin(Rang, Parcelle.fk_rang == Rang.id) \
-            .outerjoin(Personne, Parcelle.fk_proprietaire == Personne.id)  # Ajouté
-
-        # Application des filtres
-        if date_start:
-            parcelle_q = parcelle_q.filter(func.cast(Parcelle.date_create, Date) >= func.cast(date_start, Date))
-        if date_end:
-            parcelle_q = parcelle_q.filter(func.cast(Parcelle.date_create, Date) <= func.cast(date_end, Date))
-        if province:
-            parcelle_q = parcelle_q.filter(Province.id == province)
-        if ville:
-            parcelle_q = parcelle_q.filter(Ville.id == ville)
-        if commune:
-            parcelle_q = parcelle_q.filter(Commune.id == commune)
-        if quartier:
-            parcelle_q = parcelle_q.filter(Quartier.id == quartier)
-        if avenue:
-            parcelle_q = parcelle_q.filter(Avenue.id == avenue)
-        if rang:
-            parcelle_q = parcelle_q.filter(Rang.id == rang)
-
-        # ==========================
-        # Étape 2. Total distinct (avec propriétaire)
-        # ==========================
-        total = db.query(func.count(distinct(Parcelle.id))) \
-            .select_from(Parcelle) \
-            .outerjoin(Adresse, Parcelle.fk_adresse == Adresse.id) \
-            .outerjoin(Avenue, Adresse.fk_avenue == Avenue.id) \
-            .outerjoin(Quartier, Avenue.fk_quartier == Quartier.id) \
-            .outerjoin(Commune, Quartier.fk_commune == Commune.id) \
-            .outerjoin(Ville, Commune.fk_ville == Ville.id) \
-            .outerjoin(Province, Ville.fk_province == Province.id) \
-            .outerjoin(Rang, Parcelle.fk_rang == Rang.id) \
-            .outerjoin(Personne, Parcelle.fk_proprietaire == Personne.id)  # Ajouté
+            .outerjoin(Rang, Parcelle.fk_rang == Rang.id)
 
         if date_start:
-            total = total.filter(func.cast(Parcelle.date_create, Date) >= func.cast(date_start, Date))
+            parcelle_q = parcelle_q.filter(func.cast(Parcelle.date_create, Date) >= date_start)
         if date_end:
-            total = total.filter(func.cast(Parcelle.date_create, Date) <= func.cast(date_end, Date))
-        if province:
-            total = total.filter(Province.id == province)
-        if ville:
-            total = total.filter(Ville.id == ville)
-        if commune:
-            total = total.filter(Commune.id == commune)
-        if quartier:
-            total = total.filter(Quartier.id == quartier)
-        if avenue:
-            total = total.filter(Avenue.id == avenue)
-        if rang:
-            total = total.filter(Rang.id == rang)
+            parcelle_q = parcelle_q.filter(func.cast(Parcelle.date_create, Date) <= date_end)
+        if province: parcelle_q = parcelle_q.filter(Province.id == province)
+        if ville: parcelle_q = parcelle_q.filter(Ville.id == ville)
+        if commune: parcelle_q = parcelle_q.filter(Commune.id == commune)
+        if quartier: parcelle_q = parcelle_q.filter(Quartier.id == quartier)
+        if avenue: parcelle_q = parcelle_q.filter(Avenue.id == avenue)
+        if rang: parcelle_q = parcelle_q.filter(Rang.id == rang)
 
-        total = total.scalar() or 0
+        total = parcelle_q.distinct(Parcelle.id).count()
 
-        # ==========================
-        # Étape 3. Pagination & IDs distincts
-        # ==========================
         offset = (page - 1) * page_size
         parcelle_ids = [
-            row[0] for row in parcelle_q.distinct(Parcelle.id)
+            row[0] for row in parcelle_q
+            .distinct(Parcelle.id)
             .order_by(Parcelle.id.desc())
-            .offset(offset).limit(page_size).all()
+            .offset(offset)
+            .limit(page_size)
+            .all()
         ]
 
         if not parcelle_ids:
             return {"data": [], "total": total, "page": page, "page_size": page_size}
 
         # ==========================
-        # Étape 4. Charger Parcelles avec relations (propriétaire activé)
+        # 2. Load parcelles with relationships
         # ==========================
         parcelles = (
             db.query(Parcelle)
             .options(
-                # Adresse complète
                 joinedload(Parcelle.adresse)
                     .joinedload(Adresse.avenue)
                     .joinedload(Avenue.quartier)
                     .joinedload(Quartier.commune)
                     .joinedload(Commune.ville)
                     .joinedload(Ville.province),
-                # Rang
                 joinedload(Parcelle.rang),
-                # Propriétaire de la parcelle + type personne
                 joinedload(Parcelle.proprietaire)
                     .joinedload(Personne.type_personne),
             )
@@ -274,14 +229,24 @@ async def get_geojson(
         )
 
         # ==========================
-        # Étape 5. Charger Biens en batch
+        # 3. Load Biens + propriétaire fallback via Menage (with aliases!)
         # ==========================
+        # Two different Personne tables → must be aliased
+        PersonneDirect = aliased(Personne)   # For Bien.fk_proprietaire
+        PersonneMenage = aliased(Personne)   # For Menage.fk_personne
+
         biens_q = (
             db.query(
                 Bien,
-                Personne.nom.label("proprietaire_nom"),
-                Personne.postnom.label("proprietaire_postnom"),
-                Personne.prenom.label("proprietaire_prenom"),
+                # Direct propriétaire
+                PersonneDirect.nom.label("prop_nom"),
+                PersonneDirect.postnom.label("prop_postnom"),
+                PersonneDirect.prenom.label("prop_prenom"),
+                # Via ménage
+                PersonneMenage.nom.label("menage_prop_nom"),
+                PersonneMenage.postnom.label("menage_prop_postnom"),
+                PersonneMenage.prenom.label("menage_prop_prenom"),
+                # Others
                 Utilisateur.nom.label("agent_nom"),
                 Utilisateur.prenom.label("agent_prenom"),
                 Usage.intitule.label("usage_intitule"),
@@ -289,7 +254,9 @@ async def get_geojson(
                 NatureBien.intitule.label("nature_bien_intitule"),
                 Unite.intitule.label("unite_intitule")
             )
-            .outerjoin(Personne, Bien.fk_proprietaire == Personne.id)
+            .outerjoin(PersonneDirect, Bien.fk_proprietaire == PersonneDirect.id)
+            .outerjoin(Menage, Bien.id == Menage.fk_bien)
+            .outerjoin(PersonneMenage, Menage.fk_personne == PersonneMenage.id)
             .outerjoin(Utilisateur, Bien.fk_agent == Utilisateur.id)
             .outerjoin(NatureBien, Bien.fk_nature_bien == NatureBien.id)
             .outerjoin(Usage, Bien.fk_usage == Usage.id)
@@ -297,45 +264,50 @@ async def get_geojson(
             .outerjoin(Unite, Bien.fk_unite == Unite.id)
             .filter(Bien.fk_parcelle.in_(parcelle_ids))
         )
+
         if nature:
             biens_q = biens_q.filter(NatureBien.id == nature)
 
         biens_rows = biens_q.all()
 
+        # ==========================
+        # 4. Build biens map with correct propriétaire
+        # ==========================
         biens_map = defaultdict(list)
-        seen_bien = set()
-        for (
-            b, proprietaire_nom, proprietaire_postnom, proprietaire_prenom,
-            agent_nom, agent_prenom, usage_intitule, usage_specifique_intitule,
-            nature_bien_intitule, unite_intitule
-        ) in biens_rows:
-            if b.id in seen_bien:
+        seen = set()
+
+        for row in biens_rows:
+            b = row[0]
+            if b.id in seen:
                 continue
+            seen.add(b.id)
 
-            proprietaire_full_name = (
-                f"{proprietaire_nom or ''} {proprietaire_postnom or ''} {proprietaire_prenom or ''}".strip()
-                if b.fk_proprietaire else None
-            )
+            # Priority: direct propriétaire → ménage → none
+            if any([row.prop_nom, row.prop_postnom, row.prop_prenom]):
+                prop_name = f"{row.prop_nom or ''} {row.prop_postnom or ''} {row.prop_prenom or ''}".strip()
+            elif any([row.menage_prop_nom, row.menage_prop_postnom, row.menage_prop_prenom]):
+                prop_name = f"{row.menage_prop_nom or ''} {row.menage_prop_postnom or ''} {row.menage_prop_prenom or ''}".strip()
+            else:
+                prop_name = None
 
-            seen_bien.add(b.id)
             biens_map[b.fk_parcelle].append({
                 "id": str(b.id),
-                "superficie": b.superficie,
-                "superficie_corrige": b.superficie_corrige,
+                "superficie": float(b.superficie) if b.superficie else None,
+                "superficie_corrige": float(b.superficie_corrige) if b.superficie_corrige else None,
                 "nombre_etage": b.nombre_etage,
                 "numero_etage": b.numero_etage,
-                "proprietaire": proprietaire_full_name,
-                "nature_bien": nature_bien_intitule if b.fk_nature_bien else None,
-                "unite": unite_intitule if b.fk_unite else None,
-                "usage": usage_intitule if b.fk_usage else None,
-                "usage_specifique": usage_specifique_intitule if b.fk_usage_specifique else None,
-                "coordinates": b.coordinates,
+                "proprietaire": prop_name or None,
+                "nature_bien": row.nature_bien_intitule,
+                "unite": row.unite_intitule,
+                "usage": row.usage_intitule,
+                "usage_specifique": row.usage_specifique_intitule,
+                "coordinates": b.coord_corrige or b.coordinates,
                 "date": b.date_create.isoformat() if b.date_create else None,
-                "recense_par": None
+                "recense_par": f"{row.agent_prenom or ''} {row.agent_nom or ''}".strip() or None,
             })
 
         # ==========================
-        # Étape 6. Assembler la réponse finale
+        # 5. Final response
         # ==========================
         data = []
         for p in parcelles:
@@ -349,10 +321,10 @@ async def get_geojson(
             data.append({
                 "id": str(p.id),
                 "parcelle": {
-                    "coordinates": p.coordonnee_geographique,
+                    "coordinates": p.coord_corrige or p.coordonnee_geographique,
                     "rang": p.rang.intitule if p.rang else None,
-                    "superficie": p.superficie_calculee,
-                    "superficie_corrige": p.superficie_corrige,
+                    "superficie": float(p.superficie_calculee) if p.superficie_calculee else None,
+                    "superficie_corrige": float(p.superficie_corrige) if p.superficie_corrige else None,
                 },
                 "date": p.date_create.isoformat() if p.date_create else None,
                 "adresse": {
@@ -368,9 +340,7 @@ async def get_geojson(
                     "postnom": p.proprietaire.postnom if p.proprietaire else None,
                     "prenom": p.proprietaire.prenom if p.proprietaire else None,
                     "denomination": p.proprietaire.denomination if p.proprietaire else None,
-                    "type_personne": p.proprietaire.type_personne.intitule if (
-                        p.proprietaire and p.proprietaire.type_personne
-                    ) else None
+                    "type_personne": p.proprietaire.type_personne.intitule if p.proprietaire and p.proprietaire.type_personne else None,
                 },
                 "biens": biens_map.get(p.id, [])
             })
@@ -383,9 +353,9 @@ async def get_geojson(
         }
 
     except Exception as e:
-        import traceback, logging
-        logging.exception("Error in get_geojson ORM version")
-        raise HTTPException(status_code=500, detail=str(e))
+        import logging
+        logging.exception("Error in get_geojson")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/geojson-summary", tags=["GeoJSON"])

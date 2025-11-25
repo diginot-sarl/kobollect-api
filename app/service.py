@@ -1531,8 +1531,6 @@ def process_immeuble_seul_proprietaire_form(payload: dict, db: Session, backgrou
                 
                 est_parent=1,
                 
-                fk_usage=1,
-                
                 nombre_etage=(safe_int(kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages")) if kobo.get("informations_immeuble/adresse_de_la_parcelle/nombre_d_etages") else None),
             )
             db.add(immeuble)
@@ -2248,7 +2246,7 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
                         "coordinates": coords,
                         "superficie": str(bien.superficie_corrige or bien.superficie or 0),
                         "valeur_unite": bien.nombre_etage or 0,
-                        "fk_unite": bien.fk_unite,
+                        "fk_unite": 2, #bien.fk_unite,
                         "fk_rang": parcelle.fk_rang,
                         "niveau_etage": bien.numero_etage or 0,
                         "sous_biens": [],
@@ -2269,7 +2267,7 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
                         "coordinates": coords,
                         "superficie": str(sb.superficie_corrige or sb.superficie or 0),
                         "valeur_unite": sb.nombre_etage or 0,
-                        "fk_unite": sb.fk_unite,
+                        "fk_unite": 2, #sb.fk_unite,
                         "fk_rang": parcelle.fk_rang,
                         "niveau_etage": sb.numero_etage or 0,
                     })
@@ -2285,7 +2283,7 @@ def update_to_erecettes(updated_keys: List[Dict], db: Session):
                     "coordinates": parent_coords,
                     "superficie": str(parent_bien.superficie_corrige or parent_bien.superficie or 0),
                     "valeur_unite": parent_bien.nombre_etage or 0,
-                    "fk_unite": parent_bien.fk_unite,
+                    "fk_unite": 2, #parent_bien.fk_unite,
                     "fk_rang": parcelle.fk_rang,
                     "niveau_etage": parent_bien.numero_etage or 0,
                     "sous_biens": sous_biens_payload,  # Only one parent → sous_biens here
